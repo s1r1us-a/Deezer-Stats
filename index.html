@@ -229,11 +229,57 @@ footer{padding:28px 0;text-align:center;}
 .np-card-inner{gap:14px;padding:16px;}
 .np-cover,.np-cover-ph{width:70px;height:70px;}
 .np-track{font-size:15px;}
-}
 .g2,.g3,.cmp-grid{grid-template-columns:1fr;}
 .metric-grid{grid-template-columns:repeat(2,1fr);}
 .hero-inner{flex-direction:column;align-items:flex-start;}
 .hero-name{font-size:22px;}
+/* Nav mobile */
+.nav-links{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:var(–bg);z-index:300;flex-direction:column;align-items:center;justify-content:center;gap:8px;}
+.nav-links.open{display:flex;}
+.nav-links a{font-size:16px;padding:14px 24px;width:100%;text-align:center;border-radius:10px;}
+.nav-hamburger{display:flex;}
+/* Hero compact */
+.hero{padding:28px 0 22px;}
+.hero-avatar img,.hero-avatar-ph{width:64px;height:64px;}
+.hero-meta{gap:10px;}
+.hm-item{font-size:12px;}
+/* Sections */
+section{padding:28px 0;}
+.sec-hdr{margin-bottom:16px;}
+/* Charts */
+.bar-c{width:48px;}
+.plays{min-width:44px;font-size:10px;}
+.ri{padding:8px 10px;}
+.ri-img,.ri-ph{width:34px;height:34px;}
+/* Period tabs wrapping */
+.period-tabs{gap:4px;}
+.pb{font-size:10px;padding:4px 8px;}
+/* Activity charts */
+.chart-wrap{height:180px!important;}
+.clock-wrap{width:160px;height:160px;}
+/* Calendar */
+.cal-wrap{-webkit-overflow-scrolling:touch;}
+/* Compare */
+.cmp-side{padding:12px;}
+/* Year */
+.year-sel{gap:4px;}
+/* Metric cards */
+.mc{padding:12px 14px;}
+.mc-val{font-size:18px;}
+/* Search */
+.search-input{font-size:13px;}
+/* Lifetime toggle */
+#monthly-mode-tabs{gap:3px;}
+/* Footer */
+footer{padding:20px 0;}
+}
+
+/* Hamburger button – hidden on desktop */
+.nav-hamburger{display:none;background:transparent;border:1px solid var(–border2);border-radius:6px;padding:6px 9px;cursor:pointer;color:var(–text2);font-size:16px;line-height:1;z-index:400;position:relative;}
+.nav-hamburger:hover{border-color:var(–pink);color:var(–pink);}
+.nav-close{display:none;position:fixed;top:16px;right:20px;z-index:400;background:transparent;border:1px solid var(–border2);border-radius:6px;padding:6px 10px;cursor:pointer;color:var(–text2);font-size:18px;}
+@media(max-width:720px){
+.nav-close{display:block;}
 }
 </style>
 
@@ -243,17 +289,19 @@ footer{padding:28px 0;text-align:center;}
 <nav>
   <div class="wrap nav-inner">
     <div class="nav-logo">◈ s1r1us-a / ultimate stats</div>
-    <div class="nav-links">
-      <a href="#overview">Übersicht</a>
-      <a href="#charts-sec">Charts</a>
-      <a href="#activity-sec">Aktivität</a>
-      <a href="#calendar-sec">Kalender</a>
-      <a href="#year-sec">Jahresrückblick</a>
-      <a href="#compare-sec">Vergleich</a>
-      <a href="#recent-sec">Recents</a>
-      <a href="#tags-sec">Tags</a>
+    <div class="nav-links" id="nav-links">
+      <button class="nav-close" onclick="closeNav()">✕</button>
+      <a href="#overview" onclick="closeNav()">Übersicht</a>
+      <a href="#charts-sec" onclick="closeNav()">Charts</a>
+      <a href="#activity-sec" onclick="closeNav()">Aktivität</a>
+      <a href="#calendar-sec" onclick="closeNav()">Kalender</a>
+      <a href="#year-sec" onclick="closeNav()">Jahresrückblick</a>
+      <a href="#compare-sec" onclick="closeNav()">Vergleich</a>
+      <a href="#recent-sec" onclick="closeNav()">Recents</a>
+      <a href="#tags-sec" onclick="closeNav()">Tags</a>
     </div>
     <div class="nav-right">
+      <button class="nav-hamburger" id="nav-hamburger" onclick="openNav()">☰</button>
       <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Light/Dark Mode">🌙</button>
       <button class="export-btn" onclick="exportPNG()">↓ Export PNG</button>
     </div>
@@ -518,6 +566,16 @@ let cmpA='1month',cmpB='3month',selectedYear=null;
 let monthlyInst=null,pieInst=null,trendInst=null;
 let monthlyMode='12'; // '12' or 'lifetime'
 let joinYear=null;
+
+// ── NAV HAMBURGER ──────────────────────────────────────────
+function openNav(){
+  document.getElementById('nav-links').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeNav(){
+  document.getElementById('nav-links').classList.remove('open');
+  document.body.style.overflow='';
+}
 
 // ── THEME ──────────────────────────────────────────────────
 function applyTheme(light){
