@@ -38,7 +38,19 @@ nav{position:sticky;top:0;z-index:200;background:rgba(58,58,66,0.75);backdrop-fi
 .export-btn{font-family:var(--mono);font-size:12px;padding:6px 12px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;transition:all .2s;}
 .export-btn:hover{border-color:var(--pink);color:var(--pink);background:var(--pink4);box-shadow:0 0 12px rgba(214,24,122,0.2);}
 
-/* HERO */
+/* SYNC BANNER */
+#sync-banner{position:sticky;top:49px;z-index:190;width:100%;padding:0;max-height:0;overflow:hidden;transition:max-height .4s ease,padding .4s ease;}
+#sync-banner.visible{max-height:48px;padding:7px 0;}
+.sync-banner-inner{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;padding:8px 16px;border-radius:var(--r);border:1px solid var(--border2);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);}
+.sync-banner-inner.syncing{background:rgba(38,28,54,0.92);border-color:rgba(157,111,255,0.4);color:var(--purple2);}
+.sync-banner-inner.done-new{background:rgba(30,23,40,0.95);border-color:rgba(34,197,94,0.4);color:#22c55e;}
+.sync-banner-inner.done-ok{background:rgba(30,23,40,0.95);border-color:rgba(157,111,255,0.25);color:var(--text3);}
+.sync-banner-inner.err{background:rgba(30,23,40,0.95);border-color:rgba(239,68,68,0.35);color:#ef4444;}
+.sync-sp{width:12px;height:12px;border:2px solid rgba(157,111,255,0.3);border-top-color:var(--purple2);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
+.sync-bar-wrap{flex:1;height:3px;background:rgba(157,111,255,0.15);border-radius:2px;overflow:hidden;max-width:180px;}
+.sync-bar-fill{height:100%;background:linear-gradient(90deg,var(--pink),var(--purple2));border-radius:2px;width:0%;transition:width .4s ease;}
+
+
 .hero{padding:28px 24px;position:relative;background:var(--bg2);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--border2);border-radius:var(--rl);overflow:visible;box-shadow:0 8px 32px rgba(0,0,0,0.2),0 0 0 1px rgba(214,24,122,0.08);}
 .hero-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0.1;filter:blur(20px);z-index:0;transition:opacity .5s;overflow:hidden;}
 .hero::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(214,24,122,0.08) 0%,transparent 60%);pointer-events:none;z-index:0;}
@@ -381,7 +393,19 @@ footer{padding:28px 0;text-align:center;}
   </div>
 </nav>
 
-<!-- HERO -->
+<!-- SYNC BANNER -->
+<div id="sync-banner">
+  <div class="wrap">
+    <div class="sync-banner-inner syncing" id="sync-banner-inner">
+      <div class="sync-sp" id="sync-spinner"></div>
+      <span id="sync-banner-msg">Synchronisiere Archiv...</span>
+      <div class="sync-bar-wrap" id="sync-bar-wrap" style="display:none;">
+        <div class="sync-bar-fill" id="sync-bar-fill"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="wrap" style="padding-top:28px;padding-bottom:0;">
   <div class="hero" id="hero-section">
     <div class="hero-bg" id="hero-bg"></div>
@@ -994,6 +1018,56 @@ async function renderDiversity(){
 }
 
 // ── TOP CHARTS ─────────────────────────────────────────────
+// Gibt den from-Timestamp (Unix Sekunden) für eine Periode zurück, oder null für "Gesamt"
+function periodFromTs(period){
+  const now=Date.now();
+  if(period==='7day') return Math.floor((now-7*864e5)/1000);
+  if(period==='1month'){const d=new Date();d.setMonth(d.getMonth()-1);return Math.floor(d/1000);}
+  if(period==='3month'){const d=new Date();d.setMonth(d.getMonth()-3);return Math.floor(d/1000);}
+  if(period==='6month'){const d=new Date();d.setMonth(d.getMonth()-6);return Math.floor(d/1000);}
+  if(period==='12month'){const d=new Date();d.setFullYear(d.getFullYear()-1);return Math.floor(d/1000);}
+  return null; // overall
+}
+
+// Berechnet Top-Charts aus _archiveData für eine gegebene Periode und Tab
+function calcChartsFromArchive(period,tab){
+  if(!_archiveData) return null;
+  const fromTs=periodFromTs(period);
+  const countMap={};
+  Object.entries(_archiveData).forEach(([key,v])=>{
+    const ts=parseInt(key.split('_')[0]);
+    if(fromTs&&ts<fromTs) return;
+    const artist=(v.artist||'').trim();
+    const track=(v.track||'').trim();
+    const album=(v.album||'').trim();
+    let nameKey,displayName,artistName=artist;
+    if(tab==='artists'){
+      if(!artist) return;
+      nameKey=artist.toLowerCase();
+      displayName=artist;
+    } else if(tab==='tracks'){
+      if(!track) return;
+      nameKey=artist.toLowerCase()+'|||'+track.toLowerCase();
+      displayName=track;
+    } else {
+      if(!album) return;
+      nameKey=artist.toLowerCase()+'|||'+album.toLowerCase();
+      displayName=album;
+    }
+    if(!countMap[nameKey]){
+      countMap[nameKey]={
+        name:displayName,
+        artist:{name:artistName},
+        playcount:0,
+        image:[{'#text':'',size:'medium'}],
+        url:''
+      };
+    }
+    countMap[nameKey].playcount++;
+  });
+  return Object.values(countMap).sort((a,b)=>b.playcount-a.playcount);
+}
+
 async function loadCharts(){
   const key=chartTab+'_'+chartPeriod;
   let items;
@@ -1003,51 +1077,75 @@ async function loadCharts(){
     document.getElementById('show-more-btn').style.display='none';
 
     if(chartPeriod==='today'){
-      // Aggregate today's scrobbles manually via from/to timestamps
-      const now=new Date();
-      const midnight=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-      const fromTs=Math.floor(midnight/1000),toTs=Math.floor(now/1000);
-      const totalD=await lfm('user.getRecentTracks',{from:fromTs,to:toTs,limit:1})
-        .then(d=>parseInt(d?.recenttracks?.['@attr']?.total||0)).catch(()=>0);
-      const pages=Math.min(Math.ceil(totalD/200),5);
-      const allTracks=(await Promise.all(
-        Array.from({length:pages},(_,i)=>
-          lfm('user.getRecentTracks',{from:fromTs,to:toTs,limit:200,page:i+1})
-            .then(d=>d?.recenttracks?.track||[]).catch(()=>[])
-        )
-      )).flat().filter(t=>!t['@attr']?.nowplaying);
+      // Heute: aus Archiv berechnen + nur nowplaying-Track separat von API holen
+      if(!_archiveData){
+        document.getElementById('charts-list').innerHTML='<div class="ld"><div class="sp"></div> Warte auf Archiv-Daten...</div>';
+        await new Promise(r=>{
+          const check=setInterval(()=>{if(_archiveData){clearInterval(check);r();}},200);
+          setTimeout(()=>{clearInterval(check);r();},8000);
+        });
+      }
 
+      const now=new Date();
+      const midnightTs=Math.floor(new Date(now.getFullYear(),now.getMonth(),now.getDate())/1000);
+
+      // Archiv-Einträge von heute aggregieren
       const countMap={};
-      allTracks.forEach(t=>{
-        let nameKey,displayName,artist='',img='',url='';
-        if(chartTab==='artists'){
-          displayName=t.artist?.['#text']||t.artist?.name||'';
-          nameKey=displayName;
-          img=t.image?.find(x=>x.size==='medium')?.['#text']||t.image?.[1]?.['#text']||'';
-        } else if(chartTab==='tracks'){
-          artist=t.artist?.['#text']||t.artist?.name||'';
-          displayName=t.name||'';
-          nameKey=artist+'|||'+displayName;
-          img=t.image?.find(x=>x.size==='medium')?.['#text']||t.image?.[1]?.['#text']||'';
-          url=t.url||'';
-        } else {
-          artist=t.artist?.['#text']||t.artist?.name||'';
-          displayName=t.album?.['#text']||'';
-          nameKey=artist+'|||'+displayName;
-          img=t.image?.find(x=>x.size==='medium')?.['#text']||t.image?.[1]?.['#text']||'';
+      if(_archiveData){
+        Object.entries(_archiveData).forEach(([key,v])=>{
+          const ts=parseInt(key.split('_')[0]);
+          if(ts<midnightTs) return;
+          const artist=(v.artist||'').trim();
+          const track=(v.track||'').trim();
+          const album=(v.album||'').trim();
+          let nameKey,displayName,artistName=artist;
+          if(chartTab==='artists'){
+            if(!artist) return;
+            nameKey=artist.toLowerCase(); displayName=artist;
+          } else if(chartTab==='tracks'){
+            if(!track) return;
+            nameKey=artist.toLowerCase()+'|||'+track.toLowerCase(); displayName=track;
+          } else {
+            if(!album) return;
+            nameKey=artist.toLowerCase()+'|||'+album.toLowerCase(); displayName=album;
+          }
+          if(!countMap[nameKey]) countMap[nameKey]={name:displayName,artist:{name:artistName},playcount:0,image:[{'#text':'',size:'medium'}],url:''};
+          countMap[nameKey].playcount++;
+        });
+      }
+
+      // Nur nowplaying-Track von API holen (1 einziger Call)
+      try{
+        const npD=await fetch(`${API}?method=user.getRecentTracks&user=${USER}&api_key=${KEY}&format=json&limit=1`).then(r=>r.json());
+        const npT=npD?.recenttracks?.track?.[0];
+        if(npT?.['@attr']?.nowplaying){
+          const artist=(npT.artist?.['#text']||npT.artist?.name||'').trim();
+          const track=(npT.name||'').trim();
+          const album=(npT.album?.['#text']||'').trim();
+          let nameKey,displayName,artistName=artist;
+          if(chartTab==='artists'){nameKey=artist.toLowerCase();displayName=artist;}
+          else if(chartTab==='tracks'){nameKey=artist.toLowerCase()+'|||'+track.toLowerCase();displayName=track;}
+          else{nameKey=artist.toLowerCase()+'|||'+album.toLowerCase();displayName=album;}
+          if(displayName){
+            if(!countMap[nameKey]) countMap[nameKey]={name:displayName,artist:{name:artistName},playcount:0,image:[{'#text':'',size:'medium'}],url:''};
+            countMap[nameKey].playcount++;
+          }
         }
-        if(!displayName) return;
-        if(!countMap[nameKey]) countMap[nameKey]={name:displayName,artist:{name:artist},playcount:0,image:[{'#text':img,size:'medium'}],url};
-        countMap[nameKey].playcount++;
-      });
+      }catch(e){}
+
       items=Object.values(countMap).sort((a,b)=>b.playcount-a.playcount);
+
     } else {
-      let method,rk,ik;
-      if(chartTab==='artists'){method='user.getTopArtists';rk='topartists';ik='artist';}
-      else if(chartTab==='tracks'){method='user.getTopTracks';rk='toptracks';ik='track';}
-      else{method='user.getTopAlbums';rk='topalbums';ik='album';}
-      const d=await lfm(method,{period:chartPeriod,limit:50});
-      items=d?.[rk]?.[ik]||[];
+      // Alle anderen Perioden: aus Firebase-Archiv berechnen
+      if(!_archiveData){
+        // Archiv noch nicht geladen – kurz warten und nochmal versuchen
+        document.getElementById('charts-list').innerHTML='<div class="ld"><div class="sp"></div> Warte auf Archiv-Daten...</div>';
+        await new Promise(r=>{
+          const check=setInterval(()=>{if(_archiveData){clearInterval(check);r();}},200);
+          setTimeout(()=>{clearInterval(check);r();},8000); // max 8s warten
+        });
+      }
+      items=calcChartsFromArchive(chartPeriod,chartTab)||[];
     }
     cache['top_'+key]=items;
   }
@@ -1931,6 +2029,14 @@ async function getArchiveCount(){
   }catch(e){return null;}
 }
 
+// Zählt die echten Keys in Firebase (langsamer, nur nach Import nutzen)
+async function getRealArchiveCount(){
+  try{
+    const snap=await db.ref('scrobbles').get();
+    return snap.exists()?Object.keys(snap.val()).length:0;
+  }catch(e){return 0;}
+}
+
 async function loadArchiveStatus(){
   const statusEl=document.getElementById('archive-status');
   statusEl.textContent='Prüfe Firebase-Archiv...';
@@ -1991,8 +2097,11 @@ function updateProgressBar(pct){
 }
 
 function makeScrobbleKey(ts,artist,track){
-  const slug=s=>s.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,24)||'x';
-  return `${ts}_${slug(artist)}_${slug(track)}`;
+  // Timestamp + gekürzte Slugs + einfacher Hash für Kollisionsvermeidung
+  const slug=s=>s.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,20)||'x';
+  const hashStr=s=>{let h=0;for(let i=0;i<s.length;i++){h=(Math.imul(31,h)+s.charCodeAt(i))|0;}return Math.abs(h).toString(36);};
+  const combined=artist.toLowerCase()+'|'+track.toLowerCase();
+  return `${ts}_${slug(artist)}_${slug(track)}_${hashStr(combined)}`;
 }
 
 async function writeBatch(tracks){
@@ -2064,16 +2173,18 @@ async function startFullImport(){
     }
 
     if(!_importAborted){
-      await db.ref('scrobble_meta/count').set(savedCount);
+      const realCount=await getRealArchiveCount();
+      await db.ref('scrobble_meta/count').set(realCount);
       await db.ref('scrobble_meta/last_import').set(Date.now());
       updateProgressBar(100);
-      updateProgressTxt(`✓ Fertig — ${Number(savedCount).toLocaleString('de-DE')} Tracks importiert`);
+      updateProgressTxt(`✓ Fertig — ${Number(realCount).toLocaleString('de-DE')} Tracks importiert`);
       statusEl.innerHTML=
         `✓ Import abgeschlossen<br>`+
-        `<span style="color:var(--pink2);font-size:13px;font-weight:700;">${Number(savedCount).toLocaleString('de-DE')}</span>`+
+        `<span style="color:var(--pink2);font-size:13px;font-weight:700;">${Number(realCount).toLocaleString('de-DE')}</span>`+
         ` <span style="color:var(--text2);">von</span> `+
         `<span style="color:var(--text);">${Number(totalTracks).toLocaleString('de-DE')}</span>`+
-        ` <span style="color:var(--text2);">Scrobbles archiviert</span>`;
+        ` <span style="color:var(--text2);">Scrobbles archiviert</span>`+
+        (realCount<totalTracks?`<br><span style="color:var(--text3);font-size:11px;">(${totalTracks-realCount} nowplaying/Duplikate übersprungen)</span>`:'');
       showToast('✓ Import abgeschlossen','ok');
     } else {
       statusEl.innerHTML=
@@ -2173,9 +2284,31 @@ function abortImport(){
   updateProgressTxt('Wird abgebrochen...');
 }
 
-// ── AUTO DELTA-SYNC ────────────────────────────────────────
-const AUTO_SYNC_INTERVAL=60*60*1000; // 1 Stunde
+// ── SYNC BANNER HELPERS ────────────────────────────────────
+function syncBanner(state,msg,barPct=null){
+  const banner=document.getElementById('sync-banner');
+  const inner=document.getElementById('sync-banner-inner');
+  const msgEl=document.getElementById('sync-banner-msg');
+  const spinner=document.getElementById('sync-spinner');
+  const barWrap=document.getElementById('sync-bar-wrap');
+  const barFill=document.getElementById('sync-bar-fill');
+  if(!banner) return;
+  banner.classList.add('visible');
+  inner.className='sync-banner-inner '+state;
+  msgEl.textContent=msg;
+  spinner.style.display=(state==='syncing')?'block':'none';
+  if(barPct!==null&&barWrap){
+    barWrap.style.display='block';
+    barFill.style.width=barPct+'%';
+  } else if(barWrap){
+    barWrap.style.display='none';
+  }
+  if(state!=='syncing'){
+    setTimeout(()=>banner.classList.remove('visible'), state==='done-new'?5000:3000);
+  }
+}
 
+// ── AUTO DELTA-SYNC ────────────────────────────────────────
 function updateSyncBadge(msg,color){
   const b=document.getElementById('archive-sync-badge');
   if(!b) return;
@@ -2186,46 +2319,58 @@ function updateSyncBadge(msg,color){
 
 async function autoBackgroundSync(){
   try{
-    const snap=await db.ref('scrobble_meta/last_sync').get();
-    const lastSync=snap.exists()?snap.val():null;
     const hasArchive=await getLatestArchivedTs();
     if(!hasArchive) return; // kein Archiv vorhanden, nichts zu syncen
 
-    const now=Date.now();
-    if(lastSync&&(now-lastSync)<AUTO_SYNC_INTERVAL){
-      const mins=Math.round((now-lastSync)/60000);
-      updateSyncBadge(`vor ${mins} Min. aktualisiert`);
-      return;
-    }
-
+    syncBanner('syncing','Prüfe auf neue Scrobbles...');
     updateSyncBadge('🔄 synchronisiert...','var(--pink)');
-    // Stiller Delta-Sync ohne Modal-UI zu überschreiben
+
     const latestTs=await getLatestArchivedTs();
-    if(!latestTs) return;
+    if(!latestTs){syncBanner('done-ok','Kein Archiv vorhanden');return;}
+
     const fromTs=latestTs+1;
     const first=await fetchScrobblePage(fromTs,null,1,1);
     const totalPages=parseInt(first?.recenttracks?.['@attr']?.totalPages||1);
     const totalNew=parseInt(first?.recenttracks?.['@attr']?.total||0);
 
     if(totalNew===0){
-      await db.ref('scrobble_meta/last_sync').set(now);
+      await db.ref('scrobble_meta/last_sync').set(Date.now());
       updateSyncBadge('aktuell ✓','#22c55e');
+      syncBanner('done-ok','Archiv ist aktuell ✓');
       return;
     }
+
+    syncBanner('syncing',`${Number(totalNew).toLocaleString('de-DE')} neue Scrobbles werden gespeichert...`,0);
 
     let saved=0;
     for(let page=1;page<=totalPages;page++){
       const d=await fetchScrobblePage(fromTs,null,page,200);
       const tracks=d?.recenttracks?.track||[];
       saved+=await writeBatch(tracks);
+      const pct=Math.round((page/totalPages)*100);
+      syncBanner('syncing',
+        `Synchronisiere... ${Number(saved).toLocaleString('de-DE')} / ${Number(totalNew).toLocaleString('de-DE')} Scrobbles`,
+        pct
+      );
+      updateSyncBadge(`${pct}%`,'var(--pink)');
       await new Promise(r=>setTimeout(r,IMPORT_DELAY));
     }
+
     const oldCount=await getArchiveCount()||0;
     await db.ref('scrobble_meta/count').set(oldCount+saved);
-    await db.ref('scrobble_meta/last_sync').set(now);
+    await db.ref('scrobble_meta/last_sync').set(Date.now());
     updateSyncBadge(`+${saved} neue Tracks ✓`,'#22c55e');
-    if(saved>0) showToast(`✓ Auto-Sync: +${Number(saved).toLocaleString('de-DE')} neue Tracks`,'ok');
+    syncBanner('done-new',`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles synchronisiert`,100);
+    showToast(`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles`,'ok');
+
+    // Archiv-Cache invalidieren damit neue Daten sichtbar werden
+    _archiveData=null;
+    // Chart-Cache leeren damit neue Scrobbles in den Charts erscheinen
+    Object.keys(cache).filter(k=>k.startsWith('top_')&&!k.endsWith('_today')).forEach(k=>delete cache[k]);
+    loadArchiveSection().catch(()=>{});
+
   }catch(e){
+    syncBanner('err','Sync fehlgeschlagen: '+e.message);
     updateSyncBadge('Sync fehlgeschlagen','#ef4444');
   }
 }
