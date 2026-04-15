@@ -1564,6 +1564,9 @@ document.getElementById('cmp-b-tabs').querySelectorAll('.pb').forEach(b=>b.addEv
 
 // ── SCROBBLE ARCHIVE ───────────────────────────────────────
 let _importAborted=false;
+const IMPORT_DELAY=1200;   // ms zwischen API-Seiten
+const RETRY_MAX=3;         // max Wiederholungen pro Seite
+const RETRY_DELAY=4000;    // ms Pause vor einem Retry
 
 function openArchiveModal(){
   document.getElementById('archive-modal').style.display='flex';
@@ -1587,8 +1590,6 @@ async function getLatestArchivedTs(){
 
 async function getArchiveCount(){
   try{
-    // Firebase RTDB doesn't have a count API without reading all data,
-    // so we store a separate counter
     const snap=await db.ref('scrobble_meta/count').get();
     return snap.exists()?snap.val():null;
   }catch(e){return null;}
@@ -1597,25 +1598,42 @@ async function getArchiveCount(){
 async function loadArchiveStatus(){
   const statusEl=document.getElementById('archive-status');
   statusEl.textContent='Prüfe Firebase-Archiv...';
-  const [latestTs, count]=await Promise.all([getLatestArchivedTs(), getArchiveCount()]);
+  const [latestTs,count]=await Promise.all([getLatestArchivedTs(),getArchiveCount()]);
   if(!latestTs){
     statusEl.innerHTML=`<span style="color:var(--text3);">Noch kein Archiv vorhanden.</span><br>Starte den vollständigen Import um alle Scrobbles zu sichern.`;
   } else {
     const date=new Date(latestTs*1000).toLocaleString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-    const countStr=count!==null?`<br><span style="color:var(--text2);">${Number(count).toLocaleString('de-DE')} Scrobbles</span> gespeichert`:'';
+    const countStr=count!==null?`<br><span style="color:var(--pink2);font-size:13px;font-weight:700;">${Number(count).toLocaleString('de-DE')}</span> <span style="color:var(--text2);">Scrobbles gespeichert</span>`:'';
     statusEl.innerHTML=`Letzter Eintrag: <span style="color:var(--pink);">${date}</span>${countStr}`;
   }
 }
 
+// Fetch mit Retry
 async function fetchScrobblePage(from,to,page,limit=200){
   const url=new URL(API);
   const params={method:'user.getRecentTracks',user:USER,api_key:KEY,format:'json',limit,page,extended:0};
   if(from) params.from=from;
   if(to) params.to=to;
   Object.entries(params).forEach(([k,v])=>url.searchParams.set(k,v));
-  const r=await fetch(url);
-  if(!r.ok) throw new Error('HTTP '+r.status);
-  return r.json();
+
+  let lastErr;
+  for(let attempt=1;attempt<=RETRY_MAX;attempt++){
+    try{
+      const r=await fetch(url);
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const d=await r.json();
+      if(d?.error) throw new Error('Last.fm: '+d.message);
+      return d;
+    }catch(e){
+      lastErr=e;
+      if(_importAborted) throw e;
+      if(attempt<RETRY_MAX){
+        updateProgressTxt(`⚠ Fehler (Versuch ${attempt}/${RETRY_MAX}): ${e.message} — warte ${RETRY_DELAY/1000}s...`);
+        await new Promise(r=>setTimeout(r,RETRY_DELAY));
+      }
+    }
+  }
+  throw lastErr;
 }
 
 function setArchiveBusy(busy){
@@ -1623,11 +1641,23 @@ function setArchiveBusy(busy){
   document.getElementById('archive-delta-btn').style.display=busy?'none':'inline-block';
   document.getElementById('archive-abort-btn').style.display=busy?'inline-block':'none';
   document.getElementById('archive-progress-wrap').style.display=busy?'block':'none';
+  if(!busy){
+    document.getElementById('archive-progress-bar').style.width='0%';
+    document.getElementById('archive-progress-txt').textContent='';
+  }
+}
+
+function updateProgressTxt(txt){
+  document.getElementById('archive-progress-txt').textContent=txt;
+}
+function updateProgressBar(pct){
+  document.getElementById('archive-progress-bar').style.width=pct+'%';
 }
 
 async function writeBatch(tracks){
-  if(!tracks.length) return;
+  if(!tracks.length) return 0;
   const updates={};
+  let count=0;
   tracks.forEach(t=>{
     if(t['@attr']?.nowplaying) return;
     const ts=parseInt(t.date?.uts);
@@ -1638,51 +1668,67 @@ async function writeBatch(tracks){
       album:t.album?.['#text']||'',
       img:t.image?.find(x=>x.size==='medium')?.['#text']||t.image?.[1]?.['#text']||''
     };
+    count++;
   });
   if(Object.keys(updates).length) await db.ref('/').update(updates);
+  return count;
 }
 
 async function startFullImport(){
   _importAborted=false;
   setArchiveBusy(true);
   const statusEl=document.getElementById('archive-status');
-  const barEl=document.getElementById('archive-progress-bar');
-  const txtEl=document.getElementById('archive-progress-txt');
 
   try{
-    statusEl.textContent='Ermittle Gesamtanzahl...';
+    // Alte scrobbles löschen für sauberen Neustart
+    statusEl.innerHTML='🗑 Lösche altes Archiv...';
+    updateProgressTxt('Altes Archiv wird entfernt...');
+    await db.ref('scrobbles').remove();
+    await db.ref('scrobble_meta').remove();
+
+    statusEl.textContent='Ermittle Gesamtanzahl von Last.fm...';
     const first=await fetchScrobblePage(null,null,1,1);
-    const total=parseInt(first?.recenttracks?.['@attr']?.totalPages||1);
+    const totalPages=parseInt(first?.recenttracks?.['@attr']?.totalPages||1);
     const totalTracks=parseInt(first?.recenttracks?.['@attr']?.total||0);
-    statusEl.innerHTML=`Importiere <span style="color:var(--pink);">${Number(totalTracks).toLocaleString('de-DE')}</span> Scrobbles (${total} Seiten)...`;
 
     let done=0,savedCount=0;
-    // Last.fm gibt Seiten in umgekehrter Reihenfolge zurück (neueste zuerst)
-    // Wir iterieren von Seite 1 bis total
-    for(let page=1;page<=total;page++){
+    statusEl.innerHTML=`Importiere <span style="color:var(--pink);">${Number(totalTracks).toLocaleString('de-DE')}</span> Scrobbles über ${totalPages} Seiten...`;
+
+    for(let page=1;page<=totalPages;page++){
       if(_importAborted) break;
+
       const d=await fetchScrobblePage(null,null,page,200);
       const tracks=d?.recenttracks?.track||[];
-      await writeBatch(tracks);
-      savedCount+=tracks.filter(t=>!t['@attr']?.nowplaying&&t.date?.uts).length;
+      const written=await writeBatch(tracks);
+      savedCount+=written;
       done++;
-      const pct=Math.round((done/total)*100);
-      barEl.style.width=pct+'%';
-      txtEl.textContent=`${pct}% — Seite ${done}/${total} — ${Number(savedCount).toLocaleString('de-DE')} Tracks gespeichert`;
-      // Small delay to not hammer the API
-      await new Promise(r=>setTimeout(r,250));
+
+      const pct=Math.round((done/totalPages)*100);
+      updateProgressBar(pct);
+      updateProgressTxt(
+        `${pct}% — Seite ${done}/${totalPages} — `+
+        `${Number(savedCount).toLocaleString('de-DE')} von ${Number(totalTracks).toLocaleString('de-DE')} Tracks gespeichert`
+      );
+
+      await new Promise(r=>setTimeout(r,IMPORT_DELAY));
     }
 
     if(!_importAborted){
-      // Save count meta
       await db.ref('scrobble_meta/count').set(savedCount);
       await db.ref('scrobble_meta/last_import').set(Date.now());
-      barEl.style.width='100%';
-      txtEl.textContent='✓ Import abgeschlossen';
-      statusEl.innerHTML=`✓ <span style="color:#22c55e;">${Number(savedCount).toLocaleString('de-DE')} Scrobbles</span> erfolgreich archiviert.`;
-      showToast('✓ Archiv-Import abgeschlossen','ok');
+      updateProgressBar(100);
+      updateProgressTxt(`✓ Fertig — ${Number(savedCount).toLocaleString('de-DE')} Tracks importiert`);
+      statusEl.innerHTML=
+        `✓ Import abgeschlossen<br>`+
+        `<span style="color:var(--pink2);font-size:13px;font-weight:700;">${Number(savedCount).toLocaleString('de-DE')}</span>`+
+        ` <span style="color:var(--text2);">von</span> `+
+        `<span style="color:var(--text);">${Number(totalTracks).toLocaleString('de-DE')}</span>`+
+        ` <span style="color:var(--text2);">Scrobbles archiviert</span>`;
+      showToast('✓ Import abgeschlossen','ok');
     } else {
-      statusEl.innerHTML=`Import abgebrochen bei Seite ${done}/${total}.`;
+      statusEl.innerHTML=
+        `Import abgebrochen bei Seite ${done}/${totalPages}<br>`+
+        `<span style="color:var(--text2);">${Number(savedCount).toLocaleString('de-DE')} Tracks bisher gespeichert</span>`;
       showToast('Import abgebrochen','err');
     }
   }catch(e){
@@ -1697,8 +1743,6 @@ async function startDeltaSync(){
   _importAborted=false;
   setArchiveBusy(true);
   const statusEl=document.getElementById('archive-status');
-  const barEl=document.getElementById('archive-progress-bar');
-  const txtEl=document.getElementById('archive-progress-txt');
 
   try{
     statusEl.textContent='Prüfe letzten archivierten Eintrag...';
@@ -1710,47 +1754,61 @@ async function startDeltaSync(){
       return;
     }
 
-    const fromTs=latestTs+1; // +1 um den letzten bekannten Track nicht nochmal zu holen
+    const fromTs=latestTs+1;
     const date=new Date(latestTs*1000).toLocaleString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
     statusEl.innerHTML=`Hole neue Tracks seit <span style="color:var(--pink);">${date}</span>...`;
 
-    // Get total new tracks
     const first=await fetchScrobblePage(fromTs,null,1,1);
     const totalPages=parseInt(first?.recenttracks?.['@attr']?.totalPages||1);
     const totalNew=parseInt(first?.recenttracks?.['@attr']?.total||0);
 
     if(totalNew===0){
-      statusEl.innerHTML=`✓ Archiv ist aktuell. Kein neuer Track seit <span style="color:var(--pink);">${date}</span>.`;
+      statusEl.innerHTML=
+        `✓ Archiv ist aktuell<br>`+
+        `<span style="color:var(--text3);">Kein neuer Track seit <span style="color:var(--pink);">${date}</span></span>`;
       setArchiveBusy(false);
       return;
     }
 
-    statusEl.innerHTML=`<span style="color:var(--pink);">${Number(totalNew).toLocaleString('de-DE')}</span> neue Tracks gefunden...`;
-    let savedCount=0;
+    statusEl.innerHTML=
+      `<span style="color:var(--pink);">${Number(totalNew).toLocaleString('de-DE')}</span> neue Tracks gefunden — wird importiert...`;
 
+    let savedCount=0;
     for(let page=1;page<=totalPages;page++){
       if(_importAborted) break;
+
       const d=await fetchScrobblePage(fromTs,null,page,200);
       const tracks=d?.recenttracks?.track||[];
-      await writeBatch(tracks);
-      savedCount+=tracks.filter(t=>!t['@attr']?.nowplaying&&t.date?.uts).length;
+      const written=await writeBatch(tracks);
+      savedCount+=written;
+
       const pct=Math.round((page/totalPages)*100);
-      barEl.style.width=pct+'%';
-      txtEl.textContent=`${pct}% — ${Number(savedCount).toLocaleString('de-DE')} neue Tracks gespeichert`;
-      await new Promise(r=>setTimeout(r,200));
+      updateProgressBar(pct);
+      updateProgressTxt(
+        `${pct}% — Seite ${page}/${totalPages} — `+
+        `${Number(savedCount).toLocaleString('de-DE')} von ${Number(totalNew).toLocaleString('de-DE')} neuen Tracks gespeichert`
+      );
+
+      await new Promise(r=>setTimeout(r,IMPORT_DELAY));
     }
 
     if(!_importAborted){
-      // Update count
       const oldCount=await getArchiveCount()||0;
-      await db.ref('scrobble_meta/count').set(oldCount+savedCount);
+      const newTotal=oldCount+savedCount;
+      await db.ref('scrobble_meta/count').set(newTotal);
       await db.ref('scrobble_meta/last_sync').set(Date.now());
-      barEl.style.width='100%';
-      txtEl.textContent='✓ Delta-Sync abgeschlossen';
-      statusEl.innerHTML=`✓ <span style="color:#22c55e;">${Number(savedCount).toLocaleString('de-DE')}</span> neue Tracks archiviert.`;
+      updateProgressBar(100);
+      updateProgressTxt(`✓ Fertig — ${Number(savedCount).toLocaleString('de-DE')} neue Tracks gespeichert`);
+      statusEl.innerHTML=
+        `✓ Delta-Sync abgeschlossen<br>`+
+        `<span style="color:var(--pink2);font-size:13px;font-weight:700;">+${Number(savedCount).toLocaleString('de-DE')}</span>`+
+        ` <span style="color:var(--text2);">neue Tracks — Gesamt:</span> `+
+        `<span style="color:var(--text);">${Number(newTotal).toLocaleString('de-DE')}</span>`;
       showToast('✓ Delta-Sync abgeschlossen','ok');
     } else {
-      statusEl.innerHTML='Sync abgebrochen.';
+      statusEl.innerHTML=
+        `Sync abgebrochen<br>`+
+        `<span style="color:var(--text2);">${Number(savedCount).toLocaleString('de-DE')} neue Tracks gespeichert</span>`;
     }
   }catch(e){
     statusEl.innerHTML=`<span style="color:#ef4444;">Fehler: ${e.message}</span>`;
@@ -1762,6 +1820,7 @@ async function startDeltaSync(){
 
 function abortImport(){
   _importAborted=true;
+  updateProgressTxt('Wird abgebrochen...');
 }
 
 // ── INIT ───────────────────────────────────────────────────
