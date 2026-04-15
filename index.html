@@ -1555,33 +1555,55 @@ function renderCalendar(dayMap,start,end){
 
 // ── STREAK ────────────────────────────────────────────────
 async function loadStreak(){
-  // Get recent tracks to build day map
   let daySet=new Set();
-  try{
-    const d=await lfm('user.getRecentTracks',{limit:200});
-    const tracks=d?.recenttracks?.track||[];
-    tracks.forEach(t=>{
-      if(t['@attr']?.nowplaying)return;
-      const ts=parseInt(t.date?.uts);if(!ts)return;
+  let dataSource='API';
+
+  // Firebase-Archiv bevorzugen wenn vorhanden — viel akkurater als nur 200 Tracks
+  if(_archiveData){
+    dataSource='Archiv';
+    Object.keys(_archiveData).forEach(key=>{
+      const ts=parseInt(key.split('_')[0]);if(!ts)return;
       const dd=new Date(ts*1000);
       daySet.add(`${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`);
     });
-  }catch(e){}
-  // Calculate current streak from today backwards
+  } else {
+    // Fallback: letzte 200 Scrobbles von Last.fm API
+    try{
+      const d=await lfm('user.getRecentTracks',{limit:200});
+      const tracks=d?.recenttracks?.track||[];
+      tracks.forEach(t=>{
+        if(t['@attr']?.nowplaying)return;
+        const ts=parseInt(t.date?.uts);if(!ts)return;
+        const dd=new Date(ts*1000);
+        daySet.add(`${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`);
+      });
+    }catch(e){}
+  }
+
+  // Streak: von heute rückwärts zählen
   let streak=0,d=new Date();
-  for(let i=0;i<365;i++){
+  // Wenn heute noch kein Scrobble: gestern als Startpunkt erlauben (häufiger Usecase)
+  const todayKey=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  if(!daySet.has(todayKey)) d.setDate(d.getDate()-1); // gestern starten
+  for(let i=0;i<3650;i++){
     const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
     if(daySet.has(key)){streak++;d.setDate(d.getDate()-1);}
     else break;
   }
+
   const activeDays=daySet.size;
+  const lastDay=[...daySet].sort().pop()||'—';
+  const sourceNote=dataSource==='Archiv'
+    ?`Streak & aktive Tage basieren auf dem vollständigen Archiv (${Number(Object.keys(_archiveData).length).toLocaleString('de-DE')} Scrobbles)`
+    :`Streak basiert auf letzten 200 Scrobbles — für genaue Daten Archiv befüllen`;
+
   document.getElementById('streak-content').innerHTML=`
     <div class="metric-grid">
       <div class="mc hi"><div class="mc-label">Aktueller Streak</div><div class="mc-val pink">${streak}</div><div class="mc-sub">Tage in Folge</div></div>
-      <div class="mc"><div class="mc-label">Aktive Tage (letzten 200)</div><div class="mc-val">${activeDays}</div><div class="mc-sub">von ~${Math.ceil(activeDays*1.3)} Tagen</div></div>
-      <div class="mc"><div class="mc-label">Letzter Scrobble</div><div class="mc-val" style="font-size:14px;">${[...daySet].sort().pop()||'—'}</div></div>
+      <div class="mc"><div class="mc-label">Aktive Tage ${dataSource==='Archiv'?'(Gesamt)':'(letzte 200)'}</div><div class="mc-val">${activeDays}</div><div class="mc-sub">Tage mit Scrobbles</div></div>
+      <div class="mc"><div class="mc-label">Letzter Scrobble</div><div class="mc-val" style="font-size:14px;">${lastDay}</div></div>
     </div>
-    <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:10px;">Streak basiert auf letzten 200 Scrobbles</div>
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:10px;">${sourceNote}</div>
   `;
 }
 
@@ -1762,15 +1784,13 @@ async function updateChartsTrackCount(){
   const el=document.getElementById('charts-track-count');
   if(!el) return;
 
-  // Mirror getArchivePeriodFilter exactly — that function is known to work correctly.
-  // Keys are stored as `{unixSeconds}_{artist}_{track}`, so we parse the seconds
-  // portion and compare against a seconds-based threshold.
   const now=new Date();
-  let fromTsSec=null,label='';
+  let fromTsSec=0,label='';
   if(chartPeriod==='today'){
     const midnight=new Date(now.getFullYear(),now.getMonth(),now.getDate());
     fromTsSec=Math.floor(midnight.getTime()/1000);
     label='Heute';
+    delete _chartCountCache['today']; // immer frisch
   } else if(chartPeriod==='7day'){
     fromTsSec=Math.floor((Date.now()-7*864e5)/1000);
     label='7 Tage';
@@ -1786,16 +1806,16 @@ async function updateChartsTrackCount(){
   } else if(chartPeriod==='12month'){
     const d=new Date(now);d.setMonth(d.getMonth()-12);fromTsSec=Math.floor(d.getTime()/1000);
     label='12 Monate';
+  } else if(chartPeriod==='overall'){
+    fromTsSec=0;
+    label='Gesamt';
   } else {
     el.style.display='none';
     return;
   }
 
-  // 'today' cache should never persist across page loads — invalidate every call
-  if(chartPeriod==='today') delete _chartCountCache['today'];
-
   if(_chartCountCache[chartPeriod]!=null){
-    el.textContent=`${Number(_chartCountCache[chartPeriod]).toLocaleString('de-DE')} Tracks · ${label}`;
+    el.textContent=`${Number(_chartCountCache[chartPeriod]).toLocaleString('de-DE')} Scrobbles · ${label}`;
     el.style.display='block';
     return;
   }
@@ -1804,16 +1824,23 @@ async function updateChartsTrackCount(){
   el.style.display='block';
 
   try{
-    const snap=await db.ref('scrobbles').get();
-    if(!snap.exists()){el.style.display='none';return;}
     let count=0;
-    snap.forEach(child=>{
-      // Key format: {unixSeconds}_{artistslug}_{trackslug}
-      const tsSec=parseInt(child.key.split('_')[0]);
-      if(tsSec>=fromTsSec) count++;
-    });
+    // Gecachte Archiv-Daten nutzen wenn bereits geladen – spart Firebase-Read
+    if(_archiveData){
+      Object.keys(_archiveData).forEach(key=>{
+        const tsSec=parseInt(key.split('_')[0]);
+        if(tsSec>=fromTsSec) count++;
+      });
+    } else {
+      const snap=await db.ref('scrobbles').get();
+      if(!snap.exists()){el.style.display='none';return;}
+      snap.forEach(child=>{
+        const tsSec=parseInt(child.key.split('_')[0]);
+        if(tsSec>=fromTsSec) count++;
+      });
+    }
     _chartCountCache[chartPeriod]=count;
-    el.textContent=`${Number(count).toLocaleString('de-DE')} Tracks · ${label}`;
+    el.textContent=`${Number(count).toLocaleString('de-DE')} Scrobbles · ${label}`;
     el.style.display='block';
   }catch(e){
     el.style.display='none';
@@ -1845,7 +1872,12 @@ document.getElementById('monthly-mode-tabs').querySelectorAll('.pb').forEach(b=>
 
 document.getElementById('chart-periods').querySelectorAll('.pb').forEach(b=>b.addEventListener('click',()=>{
   document.getElementById('chart-periods').querySelectorAll('.pb').forEach(x=>x.classList.remove('active'));
-  b.classList.add('active');chartPeriod=b.dataset.p;showCount=10;loadCharts();updateChartsTrackCount();
+  b.classList.add('active');
+  const prev=chartPeriod;
+  chartPeriod=b.dataset.p;
+  // Cache für neue Periode löschen falls _archiveData zwischenzeitlich aktualisiert wurde
+  if(prev!==chartPeriod) delete _chartCountCache[chartPeriod];
+  showCount=10;loadCharts();updateChartsTrackCount();
 }));
 document.querySelectorAll('.ctab').forEach(t=>t.addEventListener('click',()=>{
   document.querySelectorAll('.ctab').forEach(x=>x.classList.remove('active'));
@@ -2212,6 +2244,21 @@ async function loadArchiveSection(){
   const navLink=document.getElementById('nav-archive-link');
   if(navLink) navLink.style.display='';
   badgeEl.textContent=`(${Number(count).toLocaleString('de-DE')} Tracks)`;
+
+  // Archiv-Daten vorladen damit Streak und Track-Count-Badge davon profitieren
+  try{
+    if(!_archiveData){
+      const snap=await db.ref('scrobbles').get();
+      if(snap.exists()){
+        _archiveData=snap.val();
+        // Streak neu rendern mit vollständigen Archiv-Daten
+        loadStreak();
+        // Chart-Count-Cache invalidieren damit er die Archiv-Daten nutzt
+        _chartCountCache={};
+        updateChartsTrackCount();
+      }
+    }
+  }catch(e){}
   // Data loads lazily on first expand
 }
 
@@ -2230,6 +2277,10 @@ async function toggleArchive(){
       const snap=await db.ref('scrobbles').get();
       if(!snap.exists()){listEl.innerHTML='<div style="color:var(--text3);">Kein Archiv.</div>';return;}
       _archiveData=snap.val();
+      // Streak und Badge-Counter mit vollständigen Archiv-Daten aktualisieren
+      loadStreak();
+      _chartCountCache={};
+      updateChartsTrackCount();
     }catch(e){
       listEl.innerHTML='<div class="err">Fehler beim Laden des Archivs.</div>';return;
     }
@@ -2249,6 +2300,8 @@ function archiveFilteredEntries(){
     return true;
   });
 }
+
+let _archiveShowCount=50;
 
 function renderArchiveList(){
   const listEl=document.getElementById('archive-list');
@@ -2272,10 +2325,11 @@ function renderArchiveList(){
     countMap[mapKey].count++;
   });
 
-  const sorted=Object.values(countMap).sort((a,b)=>b.count-a.count).slice(0,50);
+  const sorted=Object.values(countMap).sort((a,b)=>b.count-a.count);
   if(!sorted.length){listEl.innerHTML='<div style="color:var(--text3);font-size:13px;padding:12px;">Keine Einträge für diesen Zeitraum.</div>';return;}
+  const visible=sorted.slice(0,_archiveShowCount);
   const max=sorted[0].count;
-  const html=sorted.map((item,i)=>{
+  const html=visible.map((item,i)=>{
     const pct=Math.round((item.count/max)*100);
     const rc=i===0?'g':i===1?'s':i===2?'b':'';
     return `<div class="ri ${i===0?'rank1':i<3?'top3':''}" style="cursor:default;">
@@ -2288,7 +2342,12 @@ function renderArchiveList(){
       </div>
     </div>`;
   }).join('');
-  listEl.innerHTML=`<div class="rlist">${html}</div>`;
+
+  const moreBtn=sorted.length>_archiveShowCount
+    ?`<button class="show-more" onclick="_archiveShowCount+=50;renderArchiveList()">+ Mehr anzeigen (${sorted.length-_archiveShowCount} weitere)</button>`
+    :'';
+
+  listEl.innerHTML=`<div class="rlist">${html}</div>${moreBtn}`;
 }
 
 // Period + Tab listeners für Archiv-Sektion
@@ -2296,12 +2355,14 @@ document.getElementById('archive-period-tabs').querySelectorAll('.pb').forEach(b
   document.getElementById('archive-period-tabs').querySelectorAll('.pb').forEach(x=>x.classList.remove('active'));
   b.classList.add('active');
   archivePeriod=b.dataset.ap;
+  _archiveShowCount=50;
   renderArchiveList();
 }));
 document.getElementById('archive-ctabs').querySelectorAll('.ctab').forEach(t=>t.addEventListener('click',()=>{
   document.getElementById('archive-ctabs').querySelectorAll('.ctab').forEach(x=>x.classList.remove('active'));
   t.classList.add('active');
   archiveTab=t.dataset.at;
+  _archiveShowCount=50;
   renderArchiveList();
 }));
 
