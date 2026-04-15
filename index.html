@@ -11,44 +11,38 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <style>
 :root {
-  --bg:#090909;--bg2:#111;--bg3:#1a1a1a;--bg4:#222;--bg5:#2a2a2a;
-  --border:rgba(255,255,255,0.06);--border2:rgba(255,255,255,0.11);--border3:rgba(255,255,255,0.18);
-  --text:#efefef;--text2:#888;--text3:#4a4a4a;
-  --pink:#d6187a;--pink2:#f03fa0;--pink3:rgba(214,24,122,0.13);--pink4:rgba(214,24,122,0.06);
+  --bg:#3a3a42;--bg2:rgba(66,66,73,0.7);--bg3:rgba(76,76,86,0.8);--bg4:#575762;--bg5:#63636f;
+  --border:rgba(214,24,122,0.18);--border2:rgba(214,24,122,0.32);--border3:rgba(214,24,122,0.52);
+  --text:#f6f4f8;--text2:#c8c4d4;--text3:#9e9aaa;
+  --pink:#d6187a;--pink2:#f03fa0;--pink3:rgba(214,24,122,0.18);--pink4:rgba(214,24,122,0.09);
+  --purple:#8b5cf6;--purple2:#a78bfa;--purple3:rgba(139,92,246,0.15);
   --mono:'Space Mono',monospace;--sans:'DM Sans',sans-serif;
   --r:10px;--rl:16px;
+  --glass:rgba(255,255,255,0.04);
 }
-body.light {
-  --bg:#f5f5f5;--bg2:#ffffff;--bg3:#ebebeb;--bg4:#ddd;--bg5:#d0d0d0;
-  --border:rgba(0,0,0,0.08);--border2:rgba(0,0,0,0.14);--border3:rgba(0,0,0,0.22);
-  --text:#111111;--text2:#555;--text3:#aaa;
-  --pink:#d6187a;--pink2:#f03fa0;--pink3:rgba(214,24,122,0.1);--pink4:rgba(214,24,122,0.05);
-}
-*{box-sizing:border-box;margin:0;padding:0;transition:background-color .25s,border-color .25s,color .15s;}
+*{box-sizing:border-box;margin:0;padding:0;}
+*:not(canvas):not(svg):not(script):not(style):not(link):not(meta):not(head):not(html):not(body > script){transition:background-color .25s,border-color .25s,color .15s;}
 html{scroll-behavior:smooth;}
-body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6;}
-::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:2px;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6;background-image:radial-gradient(ellipse at 20% 20%,rgba(214,24,122,0.08) 0%,transparent 50%),radial-gradient(ellipse at 80% 80%,rgba(139,92,246,0.08) 0%,transparent 50%),radial-gradient(ellipse at 60% 10%,rgba(240,63,160,0.05) 0%,transparent 40%);background-attachment:fixed;}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--pink),var(--purple));border-radius:2px;}
 .wrap{max-width:1140px;margin:0 auto;padding:0 24px;}
 
 /* NAV */
-nav{position:sticky;top:0;z-index:200;background:rgba(9,9,9,0.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:12px 0;}
-body.light nav{background:rgba(245,245,245,0.92);}
+nav{position:sticky;top:0;z-index:200;background:rgba(58,58,66,0.75);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--border2);padding:12px 0;box-shadow:0 1px 0 rgba(214,24,122,0.15),0 4px 24px rgba(0,0,0,0.2);}
 .nav-inner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
-.nav-logo{font-family:var(--mono);font-size:12px;color:var(--pink);letter-spacing:0.06em;}
+.nav-logo{font-family:var(--mono);font-size:12px;background:linear-gradient(90deg,var(--pink2),var(--purple2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:0.06em;}
 .nav-links{display:flex;gap:2px;flex-wrap:wrap;}
 .nav-links a{font-size:11px;color:var(--text2);text-decoration:none;padding:5px 9px;border-radius:6px;transition:all .2s;font-family:var(--mono);}
-.nav-links a:hover{color:var(--text);background:var(--bg3);}
+.nav-links a:hover{color:var(--pink2);background:var(--pink4);text-shadow:0 0 12px rgba(240,63,160,0.4);}
 .nav-right{display:flex;gap:8px;align-items:center;}
 .export-btn{font-family:var(--mono);font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;transition:all .2s;}
-.export-btn:hover{border-color:var(--pink);color:var(--pink);}
-.theme-btn{font-family:var(--mono);font-size:14px;width:32px;height:32px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;}
-.theme-btn:hover{border-color:var(--pink);color:var(--pink);}
+.export-btn:hover{border-color:var(--pink);color:var(--pink);background:var(--pink4);box-shadow:0 0 12px rgba(214,24,122,0.2);}
 
 /* HERO */
-.hero{padding:44px 0 36px;border-bottom:1px solid var(--border);position:relative;overflow:hidden;}
-.hero-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0.07;filter:blur(20px);z-index:0;transition:opacity .5s;}
-.hero::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(214,24,122,0.04) 0%,transparent 60%);pointer-events:none;z-index:0;}
-.hero-inner{position:relative;z-index:1;display:flex;align-items:center;gap:24px;}
+.hero{padding:28px 24px;position:relative;background:var(--bg2);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid var(--border2);border-radius:var(--rl);overflow:visible;box-shadow:0 8px 32px rgba(0,0,0,0.2),0 0 0 1px rgba(214,24,122,0.08);}
+.hero-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0.1;filter:blur(20px);z-index:0;transition:opacity .5s;overflow:hidden;}
+.hero::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(214,24,122,0.08) 0%,transparent 60%);pointer-events:none;z-index:0;}
+.hero-inner{position:relative;z-index:1;display:flex;align-items:center;gap:24px;padding-left:12px;}
 .hero-avatar{position:relative;flex-shrink:0;}
 .hero-avatar img,.hero-avatar-ph{width:84px;height:84px;border-radius:50%;border:2px solid var(--pink);display:block;}
 .hero-avatar-ph{background:var(--bg3);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:26px;color:var(--pink);}
@@ -68,10 +62,10 @@ body.light nav{background:rgba(245,245,245,0.92);}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
 /* SECTIONS */
-section{padding:40px 0;border-bottom:1px solid var(--border);}
+section{padding:40px 0;border-bottom:1px solid var(--border2);}
 .sec-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
-.sec-title{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--text3);text-transform:uppercase;display:flex;align-items:center;gap:8px;}
-.sec-title::before{content:'';display:block;width:3px;height:14px;background:linear-gradient(180deg,var(--pink2),var(--pink));border-radius:1px;box-shadow:0 0 8px rgba(214,24,122,.4);}
+.sec-title{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;display:flex;align-items:center;gap:8px;background:linear-gradient(90deg,var(--pink2),var(--purple2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.sec-title::before{content:'';display:block;width:3px;height:14px;background:linear-gradient(180deg,var(--pink2),var(--purple));border-radius:1px;box-shadow:0 0 10px rgba(214,24,122,.5);flex-shrink:0;}
 
 /* SCROLL REVEAL */
 .reveal{opacity:0;transform:translateY(18px);transition:opacity .55s ease,transform .55s ease;}
@@ -79,35 +73,38 @@ section{padding:40px 0;border-bottom:1px solid var(--border);}
 
 /* METRICS */
 .metric-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;}
-.mc{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;transition:border-color .25s,transform .2s,box-shadow .2s;position:relative;overflow:hidden;}
-.mc::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.02) 0%,transparent 60%);pointer-events:none;}
-.mc:hover{border-color:var(--border2);transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.2);}
-.mc.hi{border-color:rgba(214,24,122,.35);background:var(--pink3);box-shadow:0 0 20px rgba(214,24,122,.08);}
-.mc.hi::before{background:linear-gradient(135deg,rgba(214,24,122,0.06) 0%,transparent 60%);}
-.mc-label{font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;}
+.mc{background:var(--bg2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;transition:border-color .25s,transform .2s,box-shadow .2s;position:relative;overflow:hidden;}
+.mc::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--glass) 0%,transparent 60%);pointer-events:none;}
+.mc:hover{border-color:var(--border3);transform:translateY(-3px);box-shadow:0 12px 32px rgba(214,24,122,0.18),0 0 0 1px rgba(214,24,122,0.1);}
+.mc.hi{border-color:rgba(214,24,122,.55);background:var(--pink3);box-shadow:0 0 32px rgba(214,24,122,.2),0 0 0 1px rgba(214,24,122,0.15);}
+.mc.hi::before{background:linear-gradient(135deg,rgba(214,24,122,0.1) 0%,transparent 60%);}
+.mc-label{font-size:10px;color:var(--text2);font-family:var(--mono);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;}
 .mc-val{font-family:var(--mono);font-size:21px;font-weight:700;color:var(--text);}
-.mc-val.pink{color:var(--pink);}
+.mc-val.pink{background:linear-gradient(90deg,var(--pink),var(--pink2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 .mc-sub{font-size:11px;color:var(--text3);margin-top:3px;}
 
 /* PERIOD & CONTENT TABS */
 .period-tabs{display:flex;gap:5px;flex-wrap:wrap;}
-.pb{font-family:var(--mono);font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;transition:all .2s;}
-.pb:hover{border-color:var(--border2);color:var(--text);}
-.pb.active{background:var(--pink);border-color:var(--pink);color:#fff;}
-.ctabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:20px;}
+.pb{font-family:var(--mono);font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;transition:all .2s;}
+.pb:hover{border-color:var(--border3);color:var(--text);}
+.pb.active{background:linear-gradient(90deg,var(--pink),var(--pink2));border-color:transparent;color:#fff;box-shadow:0 2px 12px rgba(214,24,122,0.35);}
+.ctabs{display:flex;gap:0;border-bottom:1px solid var(--border2);margin-bottom:20px;}
 .ctab{font-family:var(--mono);font-size:12px;padding:8px 16px;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .2s;}
-.ctab.active{color:var(--pink);border-bottom-color:var(--pink);}
+.ctab.active{color:var(--pink2);border-bottom-color:var(--pink);}
 .ctab:hover{color:var(--text);}
 
 /* RANKED LIST */
 .rlist{display:flex;flex-direction:column;gap:5px;}
-.ri{display:flex;align-items:center;gap:11px;padding:9px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);transition:all .22s;text-decoration:none;color:inherit;}
-.ri:hover{border-color:var(--border2);background:var(--bg3);transform:translateX(3px);}
-.ri.top3{border-color:rgba(214,24,122,.2);background:linear-gradient(90deg,rgba(214,24,122,0.04),transparent);}
-.ri.top3:hover{border-color:rgba(214,24,122,.4);background:linear-gradient(90deg,rgba(214,24,122,0.08),var(--bg3));}
-.ri.rank1{border-color:rgba(214,24,122,.35);background:linear-gradient(90deg,rgba(214,24,122,0.07),transparent);box-shadow:0 2px 12px rgba(214,24,122,.08);}
+.ri{display:flex;align-items:center;gap:11px;padding:9px 12px;background:var(--bg2);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid var(--border);border-radius:var(--r);transition:all .22s;text-decoration:none;color:inherit;border-left:3px solid transparent;}
+.ri:hover{border-color:var(--border3);background:var(--bg3);transform:translateX(4px);box-shadow:0 4px 20px rgba(214,24,122,0.14);}
+.ri.top3{border-color:rgba(214,24,122,.25);background:linear-gradient(90deg,rgba(214,24,122,0.06),transparent);}
+.ri.top3:hover{border-color:rgba(214,24,122,.45);background:linear-gradient(90deg,rgba(214,24,122,0.12),var(--bg3));}
+.ri.rank1{border-color:rgba(214,24,122,.4);border-left-color:#f59e0b;background:linear-gradient(90deg,rgba(245,158,11,0.08),transparent);box-shadow:0 2px 20px rgba(245,158,11,.1);}
+.ri.rank1:hover{box-shadow:0 4px 28px rgba(245,158,11,.18);}
+.ri.rank2{border-left-color:#9ca3af;}
+.ri.rank3{border-left-color:#d97706;}
 .rn{font-family:var(--mono);font-size:12px;color:var(--text3);min-width:22px;text-align:right;flex-shrink:0;}
-.rn.g{color:#f59e0b;text-shadow:0 0 8px rgba(245,158,11,.4);}.rn.s{color:#9ca3af;}.rn.b{color:#d97706;}
+.rn.g{color:#f59e0b;text-shadow:0 0 10px rgba(245,158,11,.5);}.rn.s{color:#d1d5db;text-shadow:0 0 8px rgba(209,213,219,.3);}.rn.b{color:#d97706;text-shadow:0 0 8px rgba(217,119,6,.3);}
 .ri-img{width:38px;height:38px;border-radius:6px;object-fit:cover;background:var(--bg4);flex-shrink:0;}
 .ri-ph{width:38px;height:38px;border-radius:6px;background:var(--bg4);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text3);}
 .ri-info{flex:1;min-width:0;}
@@ -115,19 +112,19 @@ section{padding:40px 0;border-bottom:1px solid var(--border);}
 .ri-sub{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;}
 .ri-right{display:flex;align-items:center;gap:9px;flex-shrink:0;}
 .bar-c{width:72px;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;}
-.bar-f{height:100%;background:linear-gradient(90deg,var(--pink),var(--pink2));border-radius:2px;transition:width .4s ease;}
+.bar-f{height:100%;background:linear-gradient(90deg,var(--pink),var(--purple2));border-radius:2px;transition:width .6s cubic-bezier(.4,0,.2,1);}
 .plays{font-family:var(--mono);font-size:11px;color:var(--text2);min-width:54px;text-align:right;}
 
 /* SEARCH */
 .search-wrap{position:relative;margin-bottom:16px;}
-.search-input{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:9px 14px 9px 36px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;transition:border-color .2s;}
-.search-input:focus{border-color:var(--pink);}
+.search-input{width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:9px 14px 9px 36px;font-family:var(--mono);font-size:12px;color:var(--text);outline:none;transition:border-color .2s;}
+.search-input:focus{border-color:var(--pink);box-shadow:0 0 0 2px rgba(214,24,122,0.1);}
 .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:13px;color:var(--text3);}
 
 /* SORT */
 .sort-wrap{display:flex;gap:6px;align-items:center;}
-.sort-btn{font-family:var(--mono);font-size:11px;padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;transition:all .2s;}
-.sort-btn.active{color:var(--text);border-color:var(--border2);background:var(--bg3);}
+.sort-btn{font-family:var(--mono);font-size:11px;padding:4px 8px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;transition:all .2s;}
+.sort-btn.active{color:var(--text);border-color:var(--border3);background:var(--bg3);}
 
 /* CHARTS */
 .chart-wrap{position:relative;width:100%;}
@@ -160,7 +157,7 @@ section{padding:40px 0;border-bottom:1px solid var(--border);}
 
 /* COMPARISON */
 .cmp-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-.cmp-side{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px;}
+.cmp-side{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r);padding:16px;}
 .cmp-title{font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:12px;text-transform:uppercase;letter-spacing:.06em;}
 
 /* YEAR REVIEW */
@@ -180,25 +177,25 @@ section{padding:40px 0;border-bottom:1px solid var(--border);}
 
 /* TAGS */
 .tags-wrap{display:flex;flex-wrap:wrap;gap:7px;}
-.tag{font-family:var(--mono);font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);transition:all .22s;cursor:default;}
-.tag:hover{border-color:var(--pink);color:var(--pink);background:var(--pink3);transform:translateY(-2px);box-shadow:0 4px 12px rgba(214,24,122,.15);}
+.tag{font-family:var(--mono);font-size:11px;padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);backdrop-filter:blur(8px);color:var(--text2);transition:all .22s;cursor:default;}
+.tag:hover{border-color:var(--purple);color:var(--purple2);background:var(--purple3);transform:translateY(-2px);box-shadow:0 4px 14px rgba(139,92,246,.2);}
 .tag.lg{font-size:13px;padding:7px 16px;color:var(--text);border-color:var(--border2);}
 .tag.lg:hover{transform:translateY(-2px);}
 
 /* DIVERSITY */
 .div-meter{height:8px;background:var(--bg3);border-radius:4px;overflow:hidden;margin-top:8px;}
-.div-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--pink),#8b5cf6);}
+.div-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--pink),var(--purple));}
 
 /* SHOW MORE */
-.show-more{font-family:var(--mono);font-size:11px;padding:8px;border-radius:var(--r);border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;margin-top:10px;transition:all .2s;width:100%;}
-.show-more:hover{border-color:var(--border2);color:var(--text);}
+.show-more{font-family:var(--mono);font-size:11px;padding:8px;border-radius:var(--r);border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;margin-top:10px;transition:all .2s;width:100%;}
+.show-more:hover{border-color:var(--purple);color:var(--purple2);background:var(--purple3);box-shadow:0 0 16px rgba(139,92,246,0.15);}
 
 /* GRID UTILS */
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
 .g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
 
 /* LOADING / ERROR */
-.ld{display:flex;align-items:center;gap:8px;color:var(--text3);font-family:var(--mono);font-size:12px;padding:16px 0;}
+.ld{display:flex;align-items:center;gap:8px;color:var(--text2);font-family:var(--mono);font-size:12px;padding:16px 0;}
 .sp{width:14px;height:14px;border:2px solid var(--bg4);border-top-color:var(--pink);border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;}
 @keyframes spin{to{transform:rotate(360deg)}}
 .err{color:#ef4444;font-family:var(--mono);font-size:12px;padding:10px 12px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;}
@@ -213,32 +210,46 @@ section{padding:40px 0;border-bottom:1px solid var(--border);}
 /* FOOTER */
 footer{padding:28px 0;text-align:center;}
 
+/* ARTIST DRILL-DOWN MODAL */
+.adm-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s;}
+.adm-overlay.open{opacity:1;pointer-events:all;}
+.adm-box{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rl);width:100%;max-width:560px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,0.4),0 0 0 1px rgba(214,24,122,0.1);transform:translateY(16px);transition:transform .25s;}
+.adm-overlay.open .adm-box{transform:translateY(0);}
+.adm-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid var(--border2);flex-shrink:0;}
+.adm-title{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:380px;}
+.adm-sub{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:3px;}
+.adm-close{background:none;border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-size:14px;cursor:pointer;padding:4px 9px;transition:all .2s;flex-shrink:0;}
+.adm-close:hover{border-color:var(--pink);color:var(--pink);}
+.adm-body{overflow-y:auto;padding:14px 16px;flex:1;}
+.adm-body::-webkit-scrollbar{width:3px;}
+.adm-body::-webkit-scrollbar-thumb{background:linear-gradient(180deg,var(--pink),var(--purple));border-radius:2px;}
+
 /* TOAST */
-#db-toast{position:fixed;bottom:20px;right:20px;z-index:999;font-family:var(--mono);font-size:11px;padding:9px 14px;border-radius:8px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);display:none;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);max-width:280px;transition:opacity .3s;}
+#db-toast{position:fixed;bottom:20px;right:20px;z-index:999;font-family:var(--mono);font-size:11px;padding:9px 14px;border-radius:8px;border:1px solid var(--border3);background:var(--bg2);backdrop-filter:blur(16px);color:var(--text2);display:none;align-items:center;gap:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);max-width:280px;transition:opacity .3s;}
 #db-toast.show{display:flex;}
 #db-toast.ok{border-color:rgba(34,197,94,.4);color:#22c55e;}
 #db-toast.err{border-color:rgba(239,68,68,.4);color:#ef4444;}
 .toast-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
 .ft{font-family:var(--mono);font-size:11px;color:var(--text3);}
-.ft a{color:var(--pink);text-decoration:none;}
+.ft a{background:linear-gradient(90deg,var(--pink),var(--purple2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;text-decoration:none;}
 
 /* NOW PLAYING CARD */
-.np-card{position:relative;border-radius:var(--rl);overflow:hidden;border:1px solid var(--border2);background:var(--bg2);}
-.np-card-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:blur(28px);opacity:0.18;transform:scale(1.1);z-index:0;transition:all .8s ease;}
+.np-card{position:relative;border-radius:var(--rl);overflow:hidden;border:1px solid var(--border2);background:var(--bg2);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 8px 32px rgba(0,0,0,0.2),0 0 0 1px rgba(214,24,122,0.06);}
+.np-card-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:blur(28px);opacity:0.22;transform:scale(1.1);z-index:0;transition:all .8s ease;}
 .np-card-inner{position:relative;z-index:1;display:flex;align-items:center;gap:20px;padding:20px 24px;}
-.np-cover{width:90px;height:90px;border-radius:10px;object-fit:cover;flex-shrink:0;box-shadow:0 8px 32px rgba(0,0,0,0.5);border:1px solid var(--border2);}
+.np-cover{width:90px;height:90px;border-radius:10px;object-fit:cover;flex-shrink:0;box-shadow:0 8px 32px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.06);border:1px solid var(--border2);}
 .np-cover-ph{width:90px;height:90px;border-radius:10px;flex-shrink:0;background:var(--bg4);display:flex;align-items:center;justify-content:center;font-size:28px;color:var(--text3);border:1px solid var(--border);}
 .np-info{flex:1;min-width:0;}
 .np-status{display:flex;align-items:center;gap:7px;margin-bottom:8px;}
-.np-live-badge{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--pink);background:var(--pink3);border:1px solid rgba(214,24,122,.3);padding:3px 9px;border-radius:20px;letter-spacing:.08em;}
+.np-live-badge{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--pink);background:var(--pink3);border:1px solid rgba(214,24,122,.3);padding:3px 9px;border-radius:20px;letter-spacing:.08em;box-shadow:0 0 12px rgba(214,24,122,0.15);}
 .np-live-dot{width:6px;height:6px;background:var(--pink);border-radius:50%;animation:pulse 1.2s infinite;flex-shrink:0;}
 .np-last-badge{font-family:var(--mono);font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:20px;}
 .np-track{font-size:18px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3;}
-.np-artist{font-family:var(--mono);font-size:13px;color:var(--pink);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.np-artist{font-family:var(--mono);font-size:13px;background:linear-gradient(90deg,var(--pink),var(--purple2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .np-album{font-size:12px;color:var(--text2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .np-loved{color:var(--pink);font-size:14px;margin-left:6px;}
 .np-refresh{font-family:var(--mono);font-size:10px;color:var(--text3);flex-shrink:0;cursor:pointer;padding:6px;border-radius:6px;border:1px solid var(--border);background:transparent;transition:all .2s;}
-.np-refresh:hover{border-color:var(--border2);color:var(--text);}
+.np-refresh:hover{border-color:var(--pink);color:var(--pink);box-shadow:0 0 8px rgba(214,24,122,0.2);}
 
 @media(max-width:720px){
   .np-card-inner{gap:14px;padding:16px;}
@@ -285,6 +296,9 @@ footer{padding:28px 0;text-align:center;}
   .search-input{font-size:13px;}
   /* Lifetime toggle */
   #monthly-mode-tabs{gap:3px;}
+  /* Chart glass mobile */
+  .chart-glass{padding:14px 16px;}
+  .chart-glass-hdr{margin-bottom:12px;}
   /* Footer */
   footer{padding:20px 0;}
 }
@@ -296,6 +310,52 @@ footer{padding:28px 0;text-align:center;}
 @media(max-width:720px){
   .nav-close{display:block;}
 }
+
+/* CHART LABELS */
+.chart-label{font-family:var(--mono);font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.chart-label-simple{font-family:var(--mono);font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;}
+
+/* CHART GLASS BOXES */
+.chart-glass{background:var(--bg2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;position:relative;overflow:hidden;transition:border-color .25s,box-shadow .25s;}
+.chart-glass::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--glass) 0%,transparent 60%);pointer-events:none;}
+.chart-glass:hover{border-color:var(--border2);box-shadow:0 8px 28px rgba(214,24,122,0.1),0 0 0 1px rgba(214,24,122,0.06);}
+.chart-glass-hdr{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+.chart-glass-title{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);}
+.chart-glass-sub{font-family:var(--mono);font-size:10px;color:var(--text3);}
+.chart-glass{display:flex;flex-direction:column;}
+.chart-glass--clock{display:flex;flex-direction:column;min-height:220px;}
+
+/* INLINE ACTION BUTTONS */
+.action-btn{font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:5px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;transition:all .2s;}
+.action-btn:hover{border-color:var(--pink);color:var(--pink);}
+.action-btn-sm{font-family:var(--mono);font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;transition:all .2s;}
+.action-btn-sm:hover{border-color:var(--pink);color:var(--pink);}
+
+/* ARCHIVE MODAL */
+.modal-overlay{display:flex;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;}
+.modal-box{background:var(--bg3);border:1px solid var(--border3);border-radius:var(--rl);padding:28px 32px;max-width:480px;width:calc(100% - 40px);font-family:var(--mono);}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+.modal-title{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text);font-weight:700;}
+.modal-close{background:transparent;border:1px solid var(--border2);color:var(--text2);border-radius:6px;padding:4px 10px;cursor:pointer;font-family:var(--mono);font-size:12px;transition:all .2s;}
+.modal-close:hover{border-color:var(--pink);color:var(--pink);}
+.modal-status{font-size:11px;color:var(--text2);margin-bottom:16px;line-height:1.7;}
+.modal-progress{display:none;margin-bottom:16px;}
+.modal-progress-bar-bg{height:4px;background:var(--bg5);border-radius:2px;overflow:hidden;margin-bottom:8px;}
+.modal-progress-bar{height:100%;width:0%;background:linear-gradient(90deg,var(--pink),var(--pink2));border-radius:2px;transition:width .3s;}
+.modal-progress-txt{font-size:10px;color:var(--text2);}
+.modal-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.modal-btn-primary{font-family:var(--mono);font-size:11px;padding:7px 14px;border-radius:7px;border:1px solid rgba(214,24,122,.5);background:var(--pink3);color:var(--pink2);cursor:pointer;transition:all .2s;}
+.modal-btn-primary:hover{background:var(--pink);color:#fff;border-color:var(--pink);}
+.modal-btn-secondary{font-family:var(--mono);font-size:11px;padding:7px 14px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;transition:all .2s;}
+.modal-btn-secondary:hover{border-color:var(--pink);color:var(--pink);}
+.modal-btn-danger{display:none;font-family:var(--mono);font-size:11px;padding:7px 14px;border-radius:7px;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.08);color:#ef4444;cursor:pointer;transition:all .2s;}
+.modal-hint{margin-top:14px;font-size:10px;color:var(--text2);line-height:1.6;}
+.modal-hint b{color:var(--text);}
+.modal-sync-badge{display:none;font-size:10px;color:var(--text2);background:var(--bg4);border:1px solid var(--border2);border-radius:20px;padding:2px 8px;}
+
+/* SECTION INLINE INFO */
+.sec-info{font-family:var(--mono);font-size:11px;color:var(--text2);}
+.sec-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 </style>
 </head>
 <body>
@@ -308,28 +368,27 @@ footer{padding:28px 0;text-align:center;}
       <a href="#overview" onclick="closeNav()">Übersicht</a>
       <a href="#charts-sec" onclick="closeNav()">Charts</a>
       <a href="#activity-sec" onclick="closeNav()">Aktivität</a>
-      <a href="#calendar-sec" onclick="closeNav()">Kalender</a>
-      <a href="#year-sec" onclick="closeNav()">Jahresrückblick</a>
+      <a href="#calendar-sec" onclick="closeNav()">Kalender & Jahr</a>
       <a href="#compare-sec" onclick="closeNav()">Vergleich</a>
       <a href="#recent-sec" onclick="closeNav()">Recents</a>
-      <a href="#archive-sec" onclick="closeNav()">Archiv</a>
+      <a href="#archive-sec" onclick="closeNav()" id="nav-archive-link" style="display:none;">Archiv</a>
       <a href="#tags-sec" onclick="closeNav()">Tags</a>
     </div>
     <div class="nav-right">
       <button class="nav-hamburger" id="nav-hamburger" onclick="openNav()">☰</button>
-      <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Light/Dark Mode">🌙</button>
       <button class="export-btn" onclick="exportPNG()">↓ Export PNG</button>
     </div>
   </div>
 </nav>
 
 <!-- HERO -->
-<div class="wrap">
+<div class="wrap" style="padding-top:28px;padding-bottom:0;">
   <div class="hero" id="hero-section">
     <div class="hero-bg" id="hero-bg"></div>
     <div class="hero-inner">
       <div class="hero-avatar">
         <div class="hero-avatar-ph" id="avatar-el">S</div>
+        <div class="online-dot" id="online-dot" style="display:none;"></div>
       </div>
       <div>
         <div class="hero-name">s1r1us-a</div>
@@ -351,7 +410,7 @@ footer{padding:28px 0;text-align:center;}
 <!-- OVERVIEW -->
 <section id="overview">
   <div class="wrap">
-    <div class="sec-hdr"><div class="sec-title">Übersicht</div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><div id="cache-info" style="font-family:var(--mono);font-size:10px;color:var(--text3);"></div><button onclick="clearCache()" style="font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--pink)';this.style.color='var(--pink)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">↻ Daten holen</button><button id="archive-btn" onclick="openArchiveModal()" style="font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:5px;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--pink)';this.style.color='var(--pink)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">🗄 Archiv</button></div></div>
+    <div class="sec-hdr"><div class="sec-title">Übersicht</div><div class="sec-actions"><div id="cache-info" class="sec-info"></div><button onclick="clearCache()" class="action-btn">↻ Daten holen</button><button id="archive-btn" onclick="openArchiveModal()" class="action-btn">🗄 Archiv</button></div></div>
     <div class="metric-grid" id="overview-grid"><div class="ld"><div class="sp"></div></div></div>
   </div>
 </section>
@@ -369,19 +428,20 @@ footer{padding:28px 0;text-align:center;}
   <div class="wrap">
     <div class="sec-hdr">
       <div class="sec-title">Top Charts</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <div class="sec-actions">
+        <div id="charts-track-count" style="display:none;font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:6px;background:var(--pink3);border:1px solid rgba(214,24,122,.25);color:var(--pink2);white-space:nowrap;"></div>
         <div class="sort-wrap">
           <button class="sort-btn active" id="sb-plays" onclick="setSort('plays')">Plays</button>
           <button class="sort-btn" id="sb-alpha" onclick="setSort('alpha')">A–Z</button>
         </div>
         <div class="period-tabs" id="chart-periods">
-          <button class="pb active" data-p="overall">Gesamt</button>
+          <button class="pb" data-p="overall">Gesamt</button>
           <button class="pb" data-p="12month">12 Mo</button>
           <button class="pb" data-p="6month">6 Mo</button>
           <button class="pb" data-p="3month">3 Mo</button>
           <button class="pb" data-p="1month">1 Mo</button>
           <button class="pb" data-p="7day">7 Tage</button>
-          <button class="pb" data-p="today">Heute</button>
+          <button class="pb active" data-p="today">Heute</button>
         </div>
       </div>
     </div>
@@ -403,10 +463,10 @@ footer{padding:28px 0;text-align:center;}
 <section id="activity-sec">
   <div class="wrap">
     <div class="sec-hdr"><div class="sec-title">Aktivität</div></div>
-    <div class="g2" style="margin-bottom:32px;">
-      <div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-          <span id="monthly-chart-label">Scrobbles pro Monat (12 Monate)</span>
+    <div class="g2" style="margin-bottom:16px;">
+      <div class="chart-glass">
+        <div class="chart-glass-hdr">
+          <span class="chart-glass-title" id="monthly-chart-label">Scrobbles pro Monat (12 Monate)</span>
           <div class="period-tabs" id="monthly-mode-tabs">
             <button class="pb active" data-m="12">12 Monate</button>
             <button class="pb" data-m="lifetime">Lifetime ∞</button>
@@ -416,37 +476,49 @@ footer{padding:28px 0;text-align:center;}
         <div class="chart-wrap" style="height:200px;"><canvas id="monthlyChart" role="img" aria-label="Monatliche Scrobbles"></canvas></div>
         <div id="lifetime-stats" class="metric-grid" style="margin-top:12px;display:none;"></div>
       </div>
-      <div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;">Top-Künstler Anteile</div>
+      <div class="chart-glass">
+        <div class="chart-glass-hdr">
+          <span class="chart-glass-title">Top-Künstler Anteile</span>
+        </div>
         <div class="chart-wrap" style="height:200px;"><canvas id="pieChart" role="img" aria-label="Künstler Anteile"></canvas></div>
-        <div id="pie-legend" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;"></div>
+        <div id="pie-legend" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;"></div>
       </div>
     </div>
-    <div class="g2" style="margin-bottom:32px;">
-      <div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;">Wochentag-Verteilung</div>
-        <div id="wd-chart"><div class="ld"><div class="sp"></div></div></div>
+    <div class="g2" style="margin-bottom:16px;">
+      <div class="chart-glass">
+        <div class="chart-glass-hdr">
+          <span class="chart-glass-title">Wochentag-Verteilung</span>
+        </div>
+        <div id="wd-chart" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;"><div class="ld"><div class="sp"></div></div></div>
       </div>
-      <div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;">Tageszeit-Radial (letzte 200)</div>
-        <div style="display:flex;justify-content:center;">
-          <canvas id="clockChart" width="220" height="220" role="img" aria-label="Aktivität nach Tageszeit"></canvas>
+      <div class="chart-glass chart-glass--clock" style="min-height:220px;">
+        <div class="chart-glass-hdr">
+          <span class="chart-glass-title">Tageszeit-Radial</span>
+          <span class="chart-glass-sub">letzte 200 Scrobbles</span>
+        </div>
+        <div style="display:flex;justify-content:center;align-items:center;flex:1;padding:8px 0;">
+          <canvas id="clockChart" role="img" aria-label="Aktivität nach Tageszeit"></canvas>
         </div>
       </div>
     </div>
-    <div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;">Top-3 Künstler Verlauf (12 Monate)</div>
+    <div class="chart-glass" style="margin-bottom:0;">
+      <div class="chart-glass-hdr">
+        <span class="chart-glass-title">Top-3 Künstler Verlauf (12 Monate)</span>
+      </div>
       <div class="chart-wrap" style="height:220px;"><canvas id="trendChart" role="img" aria-label="Künstler Verlauf"></canvas></div>
     </div>
   </div>
 </section>
 
-<!-- CALENDAR HEATMAP -->
+<!-- CALENDAR HEATMAP + JAHRESRÜCKBLICK -->
 <section id="calendar-sec">
   <div class="wrap">
     <div class="sec-hdr">
       <div class="sec-title">Jahres-Heatmap</div>
-      <div id="cal-loading" style="font-family:var(--mono);font-size:11px;color:var(--text3);">Wird geladen...</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="year-sel" id="year-sel" style="margin-bottom:0;"></div>
+        <div id="cal-loading" class="sec-info"></div>
+      </div>
     </div>
     <div id="cal-container"><div class="ld"><div class="sp"></div> Lade Kalender-Daten...</div></div>
     <div class="cal-legend">
@@ -458,6 +530,7 @@ footer{padding:28px 0;text-align:center;}
       <div class="cal-leg-box" style="background:var(--pink)"></div>
       <span>Mehr</span>
     </div>
+    <div id="year-content" style="margin-top:24px;"><div class="ld"><div class="sp"></div></div></div>
   </div>
 </section>
 
@@ -469,28 +542,19 @@ footer{padding:28px 0;text-align:center;}
   </div>
 </section>
 
-<!-- JAHRESRÜCKBLICK -->
-<section id="year-sec">
-  <div class="wrap">
-    <div class="sec-hdr"><div class="sec-title">Jahresrückblick</div></div>
-    <div class="year-sel" id="year-sel"></div>
-    <div id="year-content"><div class="ld"><div class="sp"></div></div></div>
-  </div>
-</section>
-
 <!-- VERGLEICH -->
 <section id="compare-sec">
   <div class="wrap">
     <div class="sec-hdr">
       <div class="sec-title">Zeitraum-Vergleich</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <div class="sec-actions">
         <div class="period-tabs" id="cmp-a-tabs">
           <button class="pb active" data-p="1month">1 Mo</button>
           <button class="pb" data-p="3month">3 Mo</button>
           <button class="pb" data-p="6month">6 Mo</button>
           <button class="pb" data-p="12month">12 Mo</button>
         </div>
-        <span style="font-family:var(--mono);font-size:11px;color:var(--text3);">vs</span>
+        <span class="sec-info">vs</span>
         <div class="period-tabs" id="cmp-b-tabs">
           <button class="pb active" data-p="3month">3 Mo</button>
           <button class="pb" data-p="6month">6 Mo</button>
@@ -508,7 +572,7 @@ footer{padding:28px 0;text-align:center;}
   <div class="wrap">
     <div class="sec-hdr">
       <div class="sec-title">Zuletzt gehört</div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text3);" id="recent-total"></div>
+      <div class="sec-info" id="recent-total"></div>
     </div>
     <div id="recent-list"><div class="ld"><div class="sp"></div></div></div>
   </div>
@@ -519,7 +583,7 @@ footer{padding:28px 0;text-align:center;}
   <div class="wrap">
     <div class="sec-hdr">
       <div class="sec-title">Loved Tracks</div>
-      <div style="font-family:var(--mono);font-size:11px;color:var(--text3);" id="loved-total"></div>
+      <div class="sec-info" id="loved-total"></div>
     </div>
     <div id="loved-list"><div class="ld"><div class="sp"></div></div></div>
   </div>
@@ -540,32 +604,30 @@ footer{padding:28px 0;text-align:center;}
 </footer>
 
 <!-- ARCHIVE MODAL -->
-<div id="archive-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
-  <div style="background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rl);padding:28px 32px;max-width:480px;width:calc(100% - 40px);font-family:var(--mono);">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div style="font-size:13px;color:var(--text);font-weight:700;">🗄 Scrobble-Archiv</div>
-        <div id="archive-sync-badge" style="display:none;font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:2px 8px;"></div>
+<div id="archive-modal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-hdr">
+      <div class="modal-title">
+        🗄 Scrobble-Archiv
+        <div id="archive-sync-badge" class="modal-sync-badge"></div>
       </div>
-      <button onclick="closeArchiveModal()" style="background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:6px;padding:4px 10px;cursor:pointer;font-family:var(--mono);font-size:12px;transition:all .2s;" onmouseover="this.style.borderColor='var(--pink)'" onmouseout="this.style.borderColor='var(--border)'">✕</button>
+      <button onclick="closeArchiveModal()" class="modal-close">✕</button>
     </div>
-    <div id="archive-status" style="font-size:11px;color:var(--text2);margin-bottom:16px;line-height:1.7;">
-      Lädt Archiv-Info...
-    </div>
-    <div id="archive-progress-wrap" style="display:none;margin-bottom:16px;">
-      <div style="height:4px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:8px;">
-        <div id="archive-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--pink),var(--pink2));border-radius:2px;transition:width .3s;"></div>
+    <div id="archive-status" class="modal-status">Lädt Archiv-Info...</div>
+    <div id="archive-progress-wrap" class="modal-progress">
+      <div class="modal-progress-bar-bg">
+        <div id="archive-progress-bar" class="modal-progress-bar"></div>
       </div>
-      <div id="archive-progress-txt" style="font-size:10px;color:var(--text3);">0%</div>
+      <div id="archive-progress-txt" class="modal-progress-txt">0%</div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button id="archive-import-btn" onclick="startFullImport()" style="font-family:var(--mono);font-size:11px;padding:7px 14px;border-radius:7px;border:1px solid rgba(214,24,122,.4);background:var(--pink3);color:var(--pink2);cursor:pointer;transition:all .2s;">⬇ Vollständiger Import</button>
-      <button id="archive-delta-btn" onclick="startDeltaSync()" style="font-family:var(--mono);font-size:11px;padding:7px 14px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;transition:all .2s;">↻ Delta-Sync</button>
-      <button id="archive-abort-btn" onclick="abortImport()" style="display:none;font-family:var(--mono);font-size:11px;padding:7px 14px;border-radius:7px;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.08);color:#ef4444;cursor:pointer;transition:all .2s;">✕ Abbrechen</button>
+    <div class="modal-actions">
+      <button id="archive-import-btn" onclick="startFullImport()" class="modal-btn-primary">⬇ Vollständiger Import</button>
+      <button id="archive-delta-btn" onclick="startDeltaSync()" class="modal-btn-secondary">↻ Delta-Sync</button>
+      <button id="archive-abort-btn" onclick="abortImport()" class="modal-btn-danger">✕ Abbrechen</button>
     </div>
-    <div style="margin-top:14px;font-size:10px;color:var(--text3);line-height:1.6;">
-      <b style="color:var(--text2);">Vollständiger Import</b> — holt alle Scrobbles einmalig von Last.fm und speichert sie in Firebase.<br>
-      <b style="color:var(--text2);">Delta-Sync</b> — holt nur neue Tracks seit dem letzten gespeicherten Eintrag.
+    <div class="modal-hint">
+      <b>Vollständiger Import</b> — holt alle Scrobbles einmalig von Last.fm und speichert sie in Firebase.<br>
+      <b>Delta-Sync</b> — holt nur neue Tracks seit dem letzten gespeicherten Eintrag.
     </div>
   </div>
 </div>
@@ -573,25 +635,44 @@ footer{padding:28px 0;text-align:center;}
 <!-- ARCHIVE OFFLINE VIEW SECTION -->
 <section id="archive-sec" style="display:none;">
   <div class="wrap">
-    <div class="sec-hdr">
-      <div class="sec-title">Archiv <span id="archive-sec-badge" style="font-size:10px;color:var(--text3);margin-left:6px;"></span></div>
-      <div style="display:flex;gap:8px;align-items:center;">
+    <div class="sec-hdr" style="cursor:pointer;" onclick="toggleArchive()">
+      <div class="sec-title">Archiv <span id="archive-sec-badge" class="sec-info" style="margin-left:6px;"></span></div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span id="archive-toggle-icon" style="font-family:var(--mono);font-size:12px;color:var(--text3);transition:transform .3s;">▼</span>
+      </div>
+    </div>
+    <div id="archive-body" style="display:none;">
+      <div class="sec-actions" style="margin-bottom:16px;">
         <div class="period-tabs" id="archive-period-tabs">
           <button class="pb active" data-ap="all">Gesamt</button>
           <button class="pb" data-ap="year">Dieses Jahr</button>
           <button class="pb" data-ap="month">Dieser Monat</button>
         </div>
-        <button onclick="exportArchiveCSV()" style="font-family:var(--mono);font-size:11px;padding:5px 10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='var(--pink)';this.style.color='var(--pink)'" onmouseout="this.style.borderColor='var(--border2)';this.style.color='var(--text2)'">↓ CSV Export</button>
+        <button onclick="event.stopPropagation();exportArchiveCSV(event)" class="action-btn-sm">↓ CSV Export</button>
       </div>
+      <div class="ctabs" id="archive-ctabs">
+        <div class="ctab active" data-at="tracks">Tracks</div>
+        <div class="ctab" data-at="artists">Künstler</div>
+        <div class="ctab" data-at="albums">Alben</div>
+      </div>
+      <div id="archive-list"><div class="ld"><div class="sp"></div> Lade Archiv...</div></div>
     </div>
-    <div class="ctabs" id="archive-ctabs">
-      <div class="ctab active" data-at="tracks">Tracks</div>
-      <div class="ctab" data-at="artists">Künstler</div>
-      <div class="ctab" data-at="albums">Alben</div>
-    </div>
-    <div id="archive-list"><div class="ld"><div class="sp"></div> Lade Archiv...</div></div>
   </div>
 </section>
+
+<!-- ARTIST DRILL-DOWN MODAL -->
+<div class="adm-overlay" id="adm-overlay" onclick="closeArtistDrillDown(event)">
+  <div class="adm-box">
+    <div class="adm-head">
+      <div>
+        <div class="adm-title" id="adm-title">Künstler</div>
+        <div class="adm-sub" id="adm-sub"></div>
+      </div>
+      <button class="adm-close" onclick="closeArtistDrillDown(null)">✕</button>
+    </div>
+    <div class="adm-body" id="adm-body"><div class="ld"><div class="sp"></div> Lade...</div></div>
+  </div>
+</div>
 
 <div id="db-toast"><div class="toast-dot"></div><span id="db-toast-msg"></span></div>
 
@@ -612,10 +693,11 @@ const FB_CONFIG={
 firebase.initializeApp(FB_CONFIG);
 const db=firebase.database();
 
-let cache={},chartPeriod='overall',chartTab='artists',sortMode='plays',allItems=[],showCount=15;
+let cache={},chartPeriod='today',chartTab='artists',sortMode='plays',allItems=[],showCount=10;
 let cmpA='1month',cmpB='3month',selectedYear=null;
 let monthlyInst=null,pieInst=null,trendInst=null;
 let monthlyMode='12'; // '12' or 'lifetime'
+let monthlyLoadId=0; // cancel token for race condition prevention
 let joinYear=null;
 
 // ── NAV HAMBURGER ──────────────────────────────────────────
@@ -633,26 +715,6 @@ const revealObs=new IntersectionObserver((entries)=>{
   entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');revealObs.unobserve(e.target);}});
 },{threshold:0.08});
 document.querySelectorAll('section').forEach(s=>{s.classList.add('reveal');revealObs.observe(s);});
-
-// ── THEME ──────────────────────────────────────────────────
-function applyTheme(light){
-  document.body.classList.toggle('light',light);
-  document.getElementById('theme-btn').textContent=light?'☀️':'🌙';
-}
-function toggleTheme(){
-  const isLight=document.body.classList.contains('light');
-  applyTheme(!isLight);
-  localStorage.setItem('lfm_theme',!isLight?'light':'dark');
-  // Re-render canvas clock so bg/text colors update
-  const lastRecent=window._lastRecentTracks;
-  if(lastRecent) renderClock(lastRecent);
-  // Re-render Chart.js charts so axis/tooltip colors update
-  loadCharts();
-  loadPie();
-  loadTrend();
-}
-// Load saved theme on startup
-(()=>{const t=localStorage.getItem('lfm_theme');if(t==='light')applyTheme(true);})();
 
 // ── CACHE ──────────────────────────────────────────────────
 function loadCache(){try{const d=localStorage.getItem(CACHE_KEY);if(d){const p=JSON.parse(d);const age=(Date.now()-p.ts)/60000;if(age<30){cache=p.data;// always drop today's chart cache – it changes throughout the day
@@ -687,6 +749,13 @@ function fmtTime(mins){
   if(d<365) return d.toLocaleString('de-DE')+' Tage';
   return (d/365).toFixed(1)+' Jahre';
 }
+function fmtHours(mins){
+  const h=Math.floor(mins/60);
+  const d=Math.floor(h/24);
+  if(h<24) return h.toLocaleString('de-DE')+' Std';
+  if(d<365) return d.toLocaleString('de-DE')+' Tage ('+h.toLocaleString('de-DE')+' Std)';
+  return (d/365).toFixed(1)+' Jahre ('+h.toLocaleString('de-DE')+' Std)';
+}
 function timeAgo(ts){
   const s=Math.floor((Date.now()-ts*1000)/1000);
   if(s<60) return 'gerade';
@@ -700,9 +769,8 @@ function imgEl(src,cls='ri-img'){return src?`<img src="${src}" class="${cls}" al
 function chartColors(){
   const s=getComputedStyle(document.body);
   const tick=s.getPropertyValue('--text3').trim()||'#4a4a4a';
-  const isLight=document.body.classList.contains('light');
-  const grid=isLight?'rgba(0,0,0,0.06)':'rgba(255,255,255,0.04)';
-  const tooltip={backgroundColor:isLight?'#fff':'#111',borderColor:isLight?'#ddd':'#333',borderWidth:1,titleColor:isLight?'#111':'#f0f0f0',bodyColor:isLight?'#555':'#888',titleFont:{family:'Space Mono'}};
+  const grid='rgba(255,255,255,0.04)';
+  const tooltip={backgroundColor:'#111',borderColor:'#333',borderWidth:1,titleColor:'#f0f0f0',bodyColor:'#888',titleFont:{family:'Space Mono'}};
   return{tick,grid,tooltip};
 }
 let _toastTimer=null;
@@ -730,7 +798,7 @@ function animateCounter(el,target,dur=1200){
 }
 
 // ── HERO ───────────────────────────────────────────────────
-async function loadHero(){
+async function loadHero(npTrack){
   const d=await lfm('user.getInfo');
   const u=d.user;
   const img=u.image?.find(x=>x.size==='extralarge')?.['#text']||u.image?.[2]?.['#text'];
@@ -754,13 +822,14 @@ async function loadHero(){
     <div class="badge">${fmt(parseInt(u.track_count||0))} Tracks</div>
     <div class="badge">${fmt(parseInt(u.album_count||0))} Alben</div>
   `;
-  // Now playing
+  // Now playing — gebruik de track die al geladen is door loadNowPlayingCard
   try{
-    const np=await lfm('user.getRecentTracks',{limit:1});
-    const t=np?.recenttracks?.track?.[0];
+    const t=npTrack;
     if(t?.['@attr']?.nowplaying){
-      document.getElementById('hero-np').innerHTML=`<div class="now-playing-hero"><div class="np-dot"></div><span class="np-text">Jetzt:</span> ${t.name} — ${t.artist?.['#text']||''}</div>`;
+      document.getElementById('hero-np').innerHTML=`<div class="now-playing-hero"><div class="np-dot"></div><span class="np-text">Jetzt:</span> ${t.name} — ${t.artist?.name||t.artist?.['#text']||''}</div>`;
       document.querySelector('.hero-avatar')?.classList.add('is-playing');
+      const dotEl=document.getElementById('online-dot');
+      if(dotEl) dotEl.style.display='block';
       if(t.image?.[2]?.['#text']){
         document.getElementById('hero-bg').style.backgroundImage=`url(${t.image[2]['#text']})`;
         document.getElementById('hero-bg').style.opacity='0.1';
@@ -774,10 +843,11 @@ async function loadHero(){
 let npRefreshTimer=null;
 
 async function loadNowPlayingCard(){
+  let t=null;
   try{
     const d=await fetch(`${API}?method=user.getRecentTracks&user=${USER}&api_key=${KEY}&format=json&limit=1&extended=1`).then(r=>r.json());
-    const t=d?.recenttracks?.track?.[0];
-    if(!t){document.getElementById('np-card-wrap').innerHTML='';return;}
+    t=d?.recenttracks?.track?.[0];
+    if(!t){document.getElementById('np-card-wrap').innerHTML='';return null;}
 
     const isLive=!!t['@attr']?.nowplaying;
     const src=t.image?.find(x=>x.size==='extralarge')?.['#text']||t.image?.find(x=>x.size==='large')?.['#text']||t.image?.[2]?.['#text']||'';
@@ -817,6 +887,7 @@ async function loadNowPlayingCard(){
   // Auto-refresh alle 30s
   clearTimeout(npRefreshTimer);
   npRefreshTimer=setTimeout(loadNowPlayingCard,30000);
+  return t;
 }
 
 // ── OVERVIEW ───────────────────────────────────────────────
@@ -825,7 +896,7 @@ function renderOverview({total,days,u}){
   const g=document.getElementById('overview-grid');
   g.innerHTML=`
     <div class="mc hi"><div class="mc-label">Gesamt Scrobbles</div><div class="mc-val pink counter" id="cnt-total">0</div></div>
-    <div class="mc"><div class="mc-label">Gesch. Hörzeit</div><div class="mc-val">${fmtTime(estMins)}</div><div class="mc-sub">≈ ${fmtTime(estMins/days)} / Tag</div></div>
+    <div class="mc"><div class="mc-label">Gesch. Hörzeit</div><div class="mc-val">${fmtHours(estMins)}</div><div class="mc-sub">≈ ${fmtTime(estMins/days)} / Tag</div></div>
     <div class="mc"><div class="mc-label">Ø pro Tag</div><div class="mc-val counter" id="cnt-day">0</div><div class="mc-sub">Tracks täglich</div></div>
     <div class="mc"><div class="mc-label">Ø pro Woche</div><div class="mc-val counter" id="cnt-week">0</div></div>
     <div class="mc"><div class="mc-label">Ø pro Monat</div><div class="mc-val counter" id="cnt-month">0</div></div>
@@ -849,24 +920,65 @@ function renderOverview({total,days,u}){
 
 // ── DIVERSITY ──────────────────────────────────────────────
 async function renderDiversity(){
-  const d=await lfm('user.getTopArtists',{period:'overall',limit:50});
-  const artists=d?.topartists?.artist||[];
+  const [artistData, tagData] = await Promise.all([
+    lfm('user.getTopArtists',{period:'overall',limit:50}),
+    lfm('user.getTopTags',{limit:20})
+  ]);
+  const artists=artistData?.topartists?.artist||[];
   if(!artists.length){document.getElementById('diversity-content').innerHTML='<div class="err">Keine Daten</div>';return;}
+
+  // HHI Score
   const total=artists.reduce((s,a)=>s+parseInt(a.playcount),0);
   const hhi=artists.reduce((s,a)=>{const sh=parseInt(a.playcount)/total;return s+sh*sh;},0);
   const score=Math.round((1-hhi)*100);
   const label=score>80?'Sehr vielseitig':score>60?'Vielseitig':score>40?'Ausgewogen':score>20?'Fokussiert':'Sehr fokussiert';
+
+  // Tags/Genres — filter out noise tags
+  const NOISE=['seen live','favorites','favourite','my favorites','love','loved','awesome','good','best','all','music','new'];
+  const tags=(tagData?.toptags?.tag||[])
+    .filter(t=>!NOISE.some(n=>t.name.toLowerCase().includes(n)))
+    .slice(0,12);
+  const maxTagCount=parseInt(tags[0]?.count)||1;
+
+  // Summary sentence
+  const top3Tags=tags.slice(0,3).map(t=>t.name);
+  const mid3Tags=tags.slice(3,6).map(t=>t.name);
+  let summary='';
+  if(top3Tags.length){
+    summary=`Du hörst hauptsächlich <strong>${top3Tags.join(', ')}</strong>`;
+    if(mid3Tags.length) summary+=` — gelegentlich auch ${mid3Tags.join(', ')}`;
+    summary+='.';
+  }
+
   document.getElementById('diversity-content').innerHTML=`
-    <div class="mc hi" style="margin-bottom:12px;">
-      <div class="mc-label">Diversitäts-Score</div>
-      <div class="mc-val pink">${score}/100</div>
-      <div class="mc-sub">${label}</div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start;margin-bottom:16px;">
+      <div class="mc hi" style="min-width:130px;">
+        <div class="mc-label">Diversitäts-Score</div>
+        <div class="mc-val pink">${score}/100</div>
+        <div class="mc-sub">${label}</div>
+      </div>
+      <div style="padding-top:4px;">
+        <div class="div-meter" style="margin-bottom:6px;"><div class="div-fill" style="width:${score}%"></div></div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:10px;">Herfindahl-Index · Top-50 Künstler</div>
+        ${summary?`<div style="font-size:13px;color:var(--text2);line-height:1.6;">${summary}</div>`:''}
+      </div>
     </div>
-    <div class="div-meter"><div class="div-fill" style="width:${score}%"></div></div>
-    <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:8px;">Basiert auf Top-50 Künstlern (Herfindahl-Index)</div>
-    <div style="margin-top:14px;">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:6px;">Top-3 Anteil</div>
-      ${artists.slice(0,3).map(a=>{
+    ${tags.length?`
+    <div style="margin-bottom:16px;">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.07em;">Genre-Verteilung</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${tags.map(t=>{
+          const w=parseInt(t.count);
+          const rel=Math.round((w/maxTagCount)*100);
+          const size=rel>75?13:rel>40?12:11;
+          const op=rel>75?1:rel>40?.8:.6;
+          return `<span style="font-family:var(--mono);font-size:${size}px;padding:4px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);opacity:${op};transition:opacity .2s;" title="${w} Plays">${t.name}</span>`;
+        }).join('')}
+      </div>
+    </div>`:''}
+    <div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.07em;">Top-5 Künstler-Anteil</div>
+      ${artists.slice(0,5).map(a=>{
         const pct=((parseInt(a.playcount)/total)*100).toFixed(1);
         return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
           <div style="font-size:12px;color:var(--text2);min-width:110px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${a.name}</div>
@@ -937,7 +1049,7 @@ async function loadCharts(){
     cache['top_'+key]=items;
   }
   allItems=items;
-  showCount=15;
+  showCount=10;
   renderCharts();
 }
 
@@ -955,18 +1067,38 @@ function renderCharts(){
     const src=item.image?.find(x=>x.size==='medium')?.['#text']||item.image?.[1]?.['#text'];
     const href=item.url||`https://www.last.fm/user/${USER}`;
     const rc=rankCls(i);
-    return `<a class="ri ${i===0?'rank1':i<3?'top3':''} fi" href="${href}" target="_blank" rel="noopener">
+    const rankCls2=i===0?'rank1':i===1?'rank2':i===2?'rank3 top3':i<5?'top3':'';
+    if(chartTab==='artists'){
+      const safeN=name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      return `<div class="ri ${rankCls2} fi" style="cursor:pointer;" onclick="openArtistDrillDown('${safeN}')">
+        <span class="rn ${rc}">${i+1}</span>
+        ${imgEl(src)}
+        <div class="ri-info"><div class="ri-name">${name}</div></div>
+        <div class="ri-right">
+          <div class="bar-c"><div class="bar-f" style="width:0%" data-pct="${pct}"></div></div>
+          <span class="plays">${fmt(plays)} ▶</span>
+        </div>
+      </div>`;
+    }
+    return `<a class="ri ${rankCls2} fi" href="${href}" target="_blank" rel="noopener">
       <span class="rn ${rc}">${i+1}</span>
       ${imgEl(src)}
       <div class="ri-info"><div class="ri-name">${name}</div>${sub?`<div class="ri-sub">${sub}</div>`:''}</div>
       <div class="ri-right">
-        <div class="bar-c"><div class="bar-f" style="width:${pct}%"></div></div>
+        <div class="bar-c"><div class="bar-f" style="width:0%" data-pct="${pct}"></div></div>
         <span class="plays">${fmt(plays)} ▶</span>
       </div>
     </a>`;
   }).join('');
   document.getElementById('charts-list').innerHTML=`<div class="rlist">${html||'<div style="color:var(--text3);font-size:13px;padding:12px;">Keine Ergebnisse.</div>'}</div>`;
   document.getElementById('show-more-btn').style.display=items.length>showCount?'block':'none';
+  // Animate bars from 0 to target
+  requestAnimationFrame(()=>{
+    document.querySelectorAll('#charts-list .bar-f[data-pct]').forEach(el=>{
+      const pct=el.dataset.pct;
+      setTimeout(()=>{el.style.width=pct+'%';},30);
+    });
+  });
 }
 function showMore(){showCount+=15;renderCharts();}
 function setSort(m){sortMode=m;document.getElementById('sb-plays').classList.toggle('active',m==='plays');document.getElementById('sb-alpha').classList.toggle('active',m==='alpha');renderCharts();}
@@ -1105,7 +1237,7 @@ function renderLifetimeChart(monthData){
 }
 
 // ── MONTHLY CHART ──────────────────────────────────────────
-async function loadMonthly(){
+async function loadMonthly(loadId){
   const labels=[],ranges=[];
   for(let i=11;i>=0;i--){
     const d=new Date();d.setMonth(d.getMonth()-i);
@@ -1118,6 +1250,7 @@ async function loadMonthly(){
     lfm('user.getRecentTracks',{from:r.from,to:r.to,limit:1})
       .then(d=>parseInt(d?.recenttracks?.['@attr']?.total||0)).catch(()=>0)
   ));
+  if(loadId!==undefined&&loadId!==monthlyLoadId) return results;
   if(monthlyInst) monthlyInst.destroy();
   const ctx=document.getElementById('monthlyChart');
   const cc=chartColors();
@@ -1139,11 +1272,10 @@ async function loadPie(){
   const top=(d?.topartists?.artist||[]).slice(0,7);
   const total=top.reduce((s,a)=>s+parseInt(a.playcount),0);
   if(pieInst) pieInst.destroy();
-  const isLight=document.body.classList.contains('light');
   const cc=chartColors();
   pieInst=new Chart(document.getElementById('pieChart'),{
     type:'doughnut',
-    data:{labels:top.map(a=>a.name),datasets:[{data:top.map(a=>parseInt(a.playcount)),backgroundColor:COLORS,borderColor:isLight?'#f5f5f5':'#090909',borderWidth:3,hoverOffset:6}]},
+    data:{labels:top.map(a=>a.name),datasets:[{data:top.map(a=>parseInt(a.playcount)),backgroundColor:COLORS,borderColor:'#3a3a42',borderWidth:3,hoverOffset:6}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
       plugins:{legend:{display:false},tooltip:{...cc.tooltip,
         callbacks:{label:c=>{const pct=((c.parsed/total)*100).toFixed(1);return ` ${fmt(c.parsed)} Plays (${pct}%)`;}}}}}
@@ -1158,10 +1290,24 @@ async function loadPie(){
 function renderWeekday(tracks){
   const days=['So','Mo','Di','Mi','Do','Fr','Sa'],counts=new Array(7).fill(0);
   tracks.forEach(t=>{if(t['@attr']?.nowplaying)return;const ts=parseInt(t.date?.uts);if(ts)counts[new Date(ts*1000).getDay()]++;});
-  const max=Math.max(...counts);
+  const max=Math.max(...counts)||1;
+  const total=counts.reduce((s,v)=>s+v,0);
+  const topDay=days[counts.indexOf(max)];
   document.getElementById('wd-chart').innerHTML=`
-    <div class="wd-bars">${counts.map((c,i)=>`<div class="wd-bw"><div class="wd-c">${c}</div><div class="wd-b ${c===max?'mx':''}" style="height:${max?Math.round((c/max)*70):0}px"></div><div class="wd-l">${days[i]}</div></div>`).join('')}</div>
-    <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:6px;">Aus letzten 200 Scrobbles</div>
+    <div class="wd-bars" style="height:110px;align-items:flex-end;padding-bottom:0;">${counts.map((c,i)=>{
+      const pct=total>0?Math.round((c/total)*100):0;
+      const isMx=c===max&&c>0;
+      const barH=c>0?Math.max(6,Math.round((c/max)*80)):3;
+      return `<div class="wd-bw" style="gap:3px;">
+        <div class="wd-c" style="opacity:${c>0?1:0.3};color:${isMx?'var(--pink2)':'var(--text2)'};">${c>0?pct+'%':'—'}</div>
+        <div class="wd-b ${isMx?'mx':''}" style="height:${barH}px;opacity:${c===0?0.18:isMx?1:0.55};${isMx?'box-shadow:0 0 10px rgba(214,24,122,0.5);':''}border-radius:3px 3px 0 0;" title="${days[i]}: ${c} Plays${c>0?' ('+pct+'%)':''}"></div>
+        <div class="wd-l" style="opacity:${c===0?0.35:1};color:${isMx?'var(--pink2)':'var(--text3)'};">${days[i]}</div>
+      </div>`;
+    }).join('')}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:10px;">
+      <span>Letzte 200 Scrobbles · ${total} gesamt</span>
+      ${max>0?`<span style="color:var(--pink2);">Peak: ${topDay} (${max})</span>`:''}
+    </div>
   `;
 }
 
@@ -1171,47 +1317,65 @@ function renderClock(tracks){
   tracks.forEach(t=>{if(t['@attr']?.nowplaying)return;const ts=parseInt(t.date?.uts);if(ts)hours[new Date(ts*1000).getHours()]++;});
   const max=Math.max(...hours)||1;
   const canvas=document.getElementById('clockChart');
+  // Responsive: fit canvas to its container
+  const container=canvas.parentElement;
+  const size=Math.min(container.clientWidth||240,240);
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=size*dpr;
+  canvas.height=size*dpr;
+  canvas.style.width=size+'px';
+  canvas.style.height=size+'px';
   const ctx=canvas.getContext('2d');
-  const W=220,H=220,cx=W/2,cy=H/2,R=85,innerR=35;
+  ctx.scale(dpr,dpr);
+  const W=size,H=size,cx=W/2,cy=H/2;
+  const R=cx*0.72,innerR=cx*0.28;
   const style=getComputedStyle(document.body);
-  const bgColor=style.getPropertyValue('--bg').trim()||'#090909';
-  const textColor=style.getPropertyValue('--text3').trim()||'#4a4a4a';
+  const textColor=style.getPropertyValue('--text3').trim()||'#9e9aaa';
+  const text2Color=style.getPropertyValue('--text2').trim()||'#c8c4d4';
   ctx.clearRect(0,0,W,H);
-  ctx.fillStyle=bgColor;
-  ctx.fillRect(0,0,W,H);
+  // subtle bg ring
+  ctx.beginPath();ctx.arc(cx,cy,R+18,0,Math.PI*2);
+  ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=1;ctx.stroke();
   // draw segments
   hours.forEach((c,i)=>{
     const startAngle=(i/24)*Math.PI*2-Math.PI/2;
     const endAngle=((i+1)/24)*Math.PI*2-Math.PI/2;
     const r=innerR+(c/max)*(R-innerR);
-    const alpha=0.15+0.85*(c/max);
+    const alpha=c>0?0.15+0.85*(c/max):0.06;
     ctx.beginPath();
     ctx.moveTo(cx+innerR*Math.cos(startAngle),cy+innerR*Math.sin(startAngle));
     ctx.arc(cx,cy,r,startAngle,endAngle);
     ctx.lineTo(cx+innerR*Math.cos(endAngle),cy+innerR*Math.sin(endAngle));
     ctx.arc(cx,cy,innerR,endAngle,startAngle,true);
     ctx.closePath();
-    ctx.fillStyle=`rgba(214,24,122,${alpha.toFixed(2)})`;
+    ctx.fillStyle=c>0?`rgba(214,24,122,${alpha.toFixed(2)})`:`rgba(255,255,255,${alpha.toFixed(2)})`;
     ctx.fill();
   });
+  // inner circle bg
+  ctx.beginPath();ctx.arc(cx,cy,innerR-1,0,Math.PI*2);
+  ctx.fillStyle='rgba(58,58,66,0.9)';ctx.fill();
   // hour labels
-  ctx.fillStyle=textColor;ctx.font='8px Space Mono';ctx.textAlign='center';ctx.textBaseline='middle';
+  const fontSize=Math.max(7,Math.round(size*0.055));
+  ctx.fillStyle=textColor;ctx.font=`${fontSize}px Space Mono`;ctx.textAlign='center';ctx.textBaseline='middle';
   [0,6,12,18].forEach(h=>{
     const angle=(h/24)*Math.PI*2-Math.PI/2;
-    const lx=cx+(R+14)*Math.cos(angle),ly=cy+(R+14)*Math.sin(angle);
+    const lx=cx+(R+fontSize+4)*Math.cos(angle),ly=cy+(R+fontSize+4)*Math.sin(angle);
     ctx.fillText(String(h).padStart(2,'0')+':00',lx,ly);
   });
-  // center text
-  ctx.fillStyle=textColor;ctx.font='9px Space Mono';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText('Tageszeit',cx,cy);
+  // center label
+  const totalPlays=hours.reduce((s,v)=>s+v,0);
+  ctx.fillStyle=text2Color;ctx.font=`bold ${Math.round(size*0.09)}px Space Mono`;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(totalPlays,cx,cy-6);
+  ctx.fillStyle=textColor;ctx.font=`${Math.round(size*0.055)}px Space Mono`;
+  ctx.fillText('plays',cx,cy+10);
 }
 
 // ── TREND CHART ────────────────────────────────────────────
 async function loadTrend(){
-  // Get top 3 artists overall first
   const topD=await lfm('user.getTopArtists',{period:'overall',limit:3});
   const top3=(topD?.topartists?.artist||[]).slice(0,3);
   if(!top3.length) return;
+
   const labels=[],ranges=[];
   for(let i=11;i>=0;i--){
     const d=new Date();d.setMonth(d.getMonth()-i);
@@ -1220,24 +1384,47 @@ async function loadTrend(){
     const to=new Date(d.getFullYear(),d.getMonth()+1,0,23,59,59);
     ranges.push({from:Math.floor(from/1000),to:Math.floor(to/1000)});
   }
-  // For trend: use weekly top tracks to approximate (simplified: use monthly overall plays)
-  // We'll approximate by getting top artists per month and finding our top3 count
+
   const datasets=top3.map((artist,ai)=>({
-    label:artist.name,data:[],
+    label:artist.name,data:new Array(12).fill(0),
     borderColor:COLORS[ai],backgroundColor:'transparent',
     borderWidth:2,tension:0.3,pointRadius:3,pointBackgroundColor:COLORS[ai]
   }));
-  // Simplified: use overall play trajectory (linear estimate with monthly data)
-  // Real per-month per-artist needs many API calls; we'll load incrementally
-  const monthResults=await Promise.all(ranges.map(r=>
-    lfm('user.getRecentTracks',{from:r.from,to:r.to,limit:200})
-      .then(d=>d?.recenttracks?.track||[]).catch(()=>[])
-  ));
-  monthResults.forEach((tracks,mi)=>{
-    const counts={};
-    tracks.forEach(t=>{if(t['@attr']?.nowplaying)return;const n=t.artist?.['#text']||t.artist?.name;if(n)counts[n]=(counts[n]||0)+1;});
-    top3.forEach((a,ai)=>datasets[ai].data.push(counts[a.name]||0));
-  });
+
+  // Try Firebase archive first
+  let usedArchive=false;
+  try{
+    const snap=await db.ref('scrobbles').orderByKey()
+      .startAt(String(ranges[0].from))
+      .get();
+    if(snap.exists()){
+      snap.forEach(child=>{
+        const ts=parseInt(child.key.split('_')[0]);
+        if(!ts)return;
+        const mi=ranges.findIndex(r=>ts>=r.from&&ts<=r.to);
+        if(mi<0)return;
+        const artist=child.val()?.artist||'';
+        top3.forEach((a,ai)=>{
+          if(artist.toLowerCase()===a.name.toLowerCase()) datasets[ai].data[mi]++;
+        });
+      });
+      usedArchive=true;
+    }
+  }catch(e){console.warn('Trend Firebase fallback:',e);}
+
+  // Fallback: API calls in parallel
+  if(!usedArchive){
+    const monthResults=await Promise.all(ranges.map(r=>
+      lfm('user.getRecentTracks',{from:r.from,to:r.to,limit:1000})
+        .then(d=>d?.recenttracks?.track||[]).catch(()=>[])
+    ));
+    monthResults.forEach((tracks,mi)=>{
+      const counts={};
+      tracks.forEach(t=>{if(t['@attr']?.nowplaying)return;const n=t.artist?.['#text']||t.artist?.name;if(n)counts[n]=(counts[n]||0)+1;});
+      top3.forEach((a,ai)=>datasets[ai].data[mi]=counts[a.name]||0);
+    });
+  }
+
   if(trendInst) trendInst.destroy();
   const cc=chartColors();
   trendInst=new Chart(document.getElementById('trendChart'),{
@@ -1247,7 +1434,6 @@ async function loadTrend(){
       scales:{x:{ticks:{color:cc.tick,font:{family:'Space Mono',size:9},maxRotation:45},grid:{color:cc.grid},border:{display:false}},
                y:{ticks:{color:cc.tick,font:{family:'Space Mono',size:9}},grid:{color:cc.grid},border:{display:false}}}}
   });
-  // custom legend
   const leg=document.createElement('div');
   leg.style.cssText='display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;';
   leg.innerHTML=top3.map((a,i)=>`<span style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:${COLORS[i]};"><span style="width:20px;height:2px;background:${COLORS[i]};display:inline-block;"></span>${a.name}</span>`).join('');
@@ -1256,36 +1442,53 @@ async function loadTrend(){
 
 // ── CALENDAR HEATMAP ───────────────────────────────────────
 async function loadCalendar(){
-  const dayMap={};
   const now=new Date();
   const yearAgo=new Date(now);yearAgo.setFullYear(now.getFullYear()-1);yearAgo.setDate(yearAgo.getDate()+1);
-  // Load month by month
-  const months=[];
-  for(let i=11;i>=0;i--){
-    const d=new Date();d.setMonth(d.getMonth()-i);
-    months.push({y:d.getFullYear(),m:d.getMonth()});
-  }
-  document.getElementById('cal-loading').textContent='Lade... 0/12';
-  for(let mi=0;mi<months.length;mi++){
-    const {y,m}=months[mi];
-    const from=new Date(y,m,1),to=new Date(y,m+1,0,23,59,59);
-    let page=1,total_pages=1;
-    do{
-      const d=await lfm('user.getRecentTracks',{from:Math.floor(from/1000),to:Math.floor(to/1000),limit:200,page});
-      const tracks=d?.recenttracks?.track||[];
-      total_pages=parseInt(d?.recenttracks?.['@attr']?.totalPages||1);
-      tracks.forEach(t=>{
-        if(t['@attr']?.nowplaying)return;
-        const ts=parseInt(t.date?.uts);if(!ts)return;
+  const yearAgoTs=Math.floor(yearAgo/1000);
+  const dayMap={};
+
+  // Try Firebase archive first – only fetch keys (no value read needed)
+  // Key format: {timestamp}_{artist}_{track}
+  try{
+    const calLoading=document.getElementById('cal-loading');
+    calLoading.textContent='Lade aus Archiv...';
+    const snap=await db.ref('scrobbles').orderByKey()
+      .startAt(String(yearAgoTs))
+      .get();
+    if(snap.exists()){
+      snap.forEach(child=>{
+        const ts=parseInt(child.key.split('_')[0]);
+        if(!ts||ts<yearAgoTs) return;
         const dd=new Date(ts*1000);
         const key=`${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`;
         dayMap[key]=(dayMap[key]||0)+1;
       });
-      page++;
-      if(page>total_pages)break;
-    }while(page<=3); // cap at 3 pages per month to avoid too many calls
-    document.getElementById('cal-loading').textContent=`Lade... ${mi+1}/12`;
-  }
+      calLoading.textContent=`Archiv · ${Object.keys(dayMap).length} Tage`;
+      setTimeout(()=>{calLoading.textContent='';},2000);
+      renderCalendar(dayMap,yearAgo,now);
+      return;
+    }
+  }catch(e){console.warn('Firebase calendar fallback:',e);}
+
+  // Fallback: Last.fm API – fetch recent tracks in parallel batches
+  document.getElementById('cal-loading').textContent='Lade via API...';
+  try{
+    const pages=5;
+    const results=await Promise.all(
+      Array.from({length:pages},(_,i)=>
+        lfm('user.getRecentTracks',{limit:200,page:i+1}).catch(()=>null)
+      )
+    );
+    results.forEach(d=>{
+      (d?.recenttracks?.track||[]).forEach(t=>{
+        if(t['@attr']?.nowplaying)return;
+        const ts=parseInt(t.date?.uts);if(!ts||ts<yearAgoTs)return;
+        const dd=new Date(ts*1000);
+        const key=`${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`;
+        dayMap[key]=(dayMap[key]||0)+1;
+      });
+    });
+  }catch(e){console.warn('Calendar API fallback failed:',e);}
   document.getElementById('cal-loading').textContent='';
   renderCalendar(dayMap,yearAgo,now);
 }
@@ -1483,6 +1686,7 @@ async function loadCompare(){
   }
   const [sideA,sideB]=await Promise.all([getSide(cmpA),getSide(cmpB)]);
   const periodLabel={'overall':'Gesamt','12month':'12 Monate','6month':'6 Monate','3month':'3 Monate','1month':'1 Monat','7day':'7 Tage'};
+  const dupWarning=cmpA===cmpB?`<div style="font-family:var(--mono);font-size:11px;color:#f59e0b;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:8px 12px;margin-bottom:14px;">⚠ Beide Zeiträume sind identisch (${periodLabel[cmpA]}) — der Vergleich zeigt dieselben Daten.</div>`:'';
   function renderSide(side,label){
     return `<div class="cmp-side">
       <div class="cmp-title">${label}</div>
@@ -1492,7 +1696,7 @@ async function loadCompare(){
       <div class="rlist">${side.tracks.slice(0,5).map((t,i)=>`<div class="ri" style="padding:6px 10px;"><span class="rn ${rankCls(i)}">${i+1}</span>${imgEl(t.image?.find(x=>x.size==='medium')?.['#text']||t.image?.[1]?.['#text'])}<div class="ri-info"><div class="ri-name">${t.name}</div><div class="ri-sub">${t.artist?.name||''}</div></div><span class="plays">${fmt(parseInt(t.playcount||0))}</span></div>`).join('')}</div>
     </div>`;
   }
-  document.getElementById('compare-content').innerHTML=`<div class="cmp-grid">${renderSide(sideA,periodLabel[cmpA])}${renderSide(sideB,periodLabel[cmpB])}</div>`;
+  document.getElementById('compare-content').innerHTML=`${dupWarning}<div class="cmp-grid">${renderSide(sideA,periodLabel[cmpA])}${renderSide(sideB,periodLabel[cmpB])}</div>`;
 }
 
 // ── RECENT ─────────────────────────────────────────────────
@@ -1551,34 +1755,101 @@ async function exportPNG(){
   btn.textContent='↓ Export PNG';btn.disabled=false;
 }
 
+// ── CHARTS TRACK COUNT (Firebase) ─────────────────────────
+let _chartCountCache={};
+
+async function updateChartsTrackCount(){
+  const el=document.getElementById('charts-track-count');
+  if(!el) return;
+
+  // Mirror getArchivePeriodFilter exactly — that function is known to work correctly.
+  // Keys are stored as `{unixSeconds}_{artist}_{track}`, so we parse the seconds
+  // portion and compare against a seconds-based threshold.
+  const now=new Date();
+  let fromTsSec=null,label='';
+  if(chartPeriod==='today'){
+    const midnight=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    fromTsSec=Math.floor(midnight.getTime()/1000);
+    label='Heute';
+  } else if(chartPeriod==='7day'){
+    fromTsSec=Math.floor((Date.now()-7*864e5)/1000);
+    label='7 Tage';
+  } else if(chartPeriod==='1month'){
+    const d=new Date(now);d.setMonth(d.getMonth()-1);fromTsSec=Math.floor(d.getTime()/1000);
+    label='1 Monat';
+  } else if(chartPeriod==='3month'){
+    const d=new Date(now);d.setMonth(d.getMonth()-3);fromTsSec=Math.floor(d.getTime()/1000);
+    label='3 Monate';
+  } else if(chartPeriod==='6month'){
+    const d=new Date(now);d.setMonth(d.getMonth()-6);fromTsSec=Math.floor(d.getTime()/1000);
+    label='6 Monate';
+  } else if(chartPeriod==='12month'){
+    const d=new Date(now);d.setMonth(d.getMonth()-12);fromTsSec=Math.floor(d.getTime()/1000);
+    label='12 Monate';
+  } else {
+    el.style.display='none';
+    return;
+  }
+
+  // 'today' cache should never persist across page loads — invalidate every call
+  if(chartPeriod==='today') delete _chartCountCache['today'];
+
+  if(_chartCountCache[chartPeriod]!=null){
+    el.textContent=`${Number(_chartCountCache[chartPeriod]).toLocaleString('de-DE')} Tracks · ${label}`;
+    el.style.display='block';
+    return;
+  }
+
+  el.textContent='…';
+  el.style.display='block';
+
+  try{
+    const snap=await db.ref('scrobbles').get();
+    if(!snap.exists()){el.style.display='none';return;}
+    let count=0;
+    snap.forEach(child=>{
+      // Key format: {unixSeconds}_{artistslug}_{trackslug}
+      const tsSec=parseInt(child.key.split('_')[0]);
+      if(tsSec>=fromTsSec) count++;
+    });
+    _chartCountCache[chartPeriod]=count;
+    el.textContent=`${Number(count).toLocaleString('de-DE')} Tracks · ${label}`;
+    el.style.display='block';
+  }catch(e){
+    el.style.display='none';
+  }
+}
+
 // ── EVENT LISTENERS ────────────────────────────────────────
 document.getElementById('monthly-mode-tabs').querySelectorAll('.pb').forEach(b=>b.addEventListener('click',async()=>{
   document.getElementById('monthly-mode-tabs').querySelectorAll('.pb').forEach(x=>x.classList.remove('active'));
   b.classList.add('active');
   monthlyMode=b.dataset.m;
+  const myId=++monthlyLoadId;
   const statsEl=document.getElementById('lifetime-stats');
   if(monthlyMode==='lifetime'){
     document.getElementById('monthly-chart-label').textContent='Scrobbles Lifetime';
     statsEl.style.display='grid';
     if(joinYear){
       const data=await loadLifetimeData(joinYear);
+      if(myId!==monthlyLoadId) return;
       renderLifetimeChart(data);
     }
   } else {
     document.getElementById('monthly-chart-label').textContent='Scrobbles pro Monat (12 Monate)';
     statsEl.style.display='none';
     document.getElementById('lifetime-progress').style.display='none';
-    loadMonthly();
+    await loadMonthly(myId);
   }
 }));
 
 document.getElementById('chart-periods').querySelectorAll('.pb').forEach(b=>b.addEventListener('click',()=>{
   document.getElementById('chart-periods').querySelectorAll('.pb').forEach(x=>x.classList.remove('active'));
-  b.classList.add('active');chartPeriod=b.dataset.p;showCount=15;loadCharts();
+  b.classList.add('active');chartPeriod=b.dataset.p;showCount=10;loadCharts();updateChartsTrackCount();
 }));
 document.querySelectorAll('.ctab').forEach(t=>t.addEventListener('click',()=>{
   document.querySelectorAll('.ctab').forEach(x=>x.classList.remove('active'));
-  t.classList.add('active');chartTab=t.dataset.t;showCount=15;loadCharts();
+  t.classList.add('active');chartTab=t.dataset.t;showCount=10;loadCharts();
 }));
 document.getElementById('cmp-a-tabs').querySelectorAll('.pb').forEach(b=>b.addEventListener('click',()=>{
   document.getElementById('cmp-a-tabs').querySelectorAll('.pb').forEach(x=>x.classList.remove('active'));
@@ -1596,11 +1867,13 @@ const RETRY_MAX=3;         // max Wiederholungen pro Seite
 const RETRY_DELAY=4000;    // ms Pause vor einem Retry
 
 function openArchiveModal(){
-  document.getElementById('archive-modal').style.display='flex';
+  const m=document.getElementById('archive-modal');
+  m.style.opacity='1';m.style.pointerEvents='all';
   loadArchiveStatus();
 }
 function closeArchiveModal(){
-  document.getElementById('archive-modal').style.display='none';
+  const m=document.getElementById('archive-modal');
+  m.style.opacity='0';m.style.pointerEvents='none';
 }
 document.getElementById('archive-modal').addEventListener('click',function(e){
   if(e.target===this) closeArchiveModal();
@@ -1926,19 +2199,33 @@ async function autoBackgroundSync(){
 let _archiveData=null; // cache der geladenen Daten
 let archivePeriod='all',archiveTab='tracks';
 
+let _archiveLoaded=false;
+
 async function loadArchiveSection(){
   const sec=document.getElementById('archive-sec');
-  const listEl=document.getElementById('archive-list');
   const badgeEl=document.getElementById('archive-sec-badge');
 
   const count=await getArchiveCount();
   if(!count){sec.style.display='none';return;}
 
   sec.style.display='block';
+  const navLink=document.getElementById('nav-archive-link');
+  if(navLink) navLink.style.display='';
   badgeEl.textContent=`(${Number(count).toLocaleString('de-DE')} Tracks)`;
-  listEl.innerHTML='<div class="ld"><div class="sp"></div> Lade Archiv-Daten...</div>';
+  // Data loads lazily on first expand
+}
 
-  if(!_archiveData){
+async function toggleArchive(){
+  const body=document.getElementById('archive-body');
+  const icon=document.getElementById('archive-toggle-icon');
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'block';
+  icon.style.transform=isOpen?'':'rotate(180deg)';
+
+  if(!isOpen&&!_archiveLoaded){
+    _archiveLoaded=true;
+    const listEl=document.getElementById('archive-list');
+    listEl.innerHTML='<div class="ld"><div class="sp"></div> Lade Archiv-Daten...</div>';
     try{
       const snap=await db.ref('scrobbles').get();
       if(!snap.exists()){listEl.innerHTML='<div style="color:var(--text3);">Kein Archiv.</div>';return;}
@@ -1946,8 +2233,8 @@ async function loadArchiveSection(){
     }catch(e){
       listEl.innerHTML='<div class="err">Fehler beim Laden des Archivs.</div>';return;
     }
+    renderArchiveList();
   }
-  renderArchiveList();
 }
 
 function archiveFilteredEntries(){
@@ -2019,7 +2306,7 @@ document.getElementById('archive-ctabs').querySelectorAll('.ctab').forEach(t=>t.
 }));
 
 // ── RUNDE 4: CSV EXPORT ───────────────────────────────────
-async function exportArchiveCSV(){
+async function exportArchiveCSV(event){
   const btn=event.currentTarget;
   const origText=btn.textContent;
   btn.textContent='Wird erstellt...';btn.disabled=true;
@@ -2055,16 +2342,100 @@ async function exportArchiveCSV(){
   btn.textContent=origText;btn.disabled=false;
 }
 
+// ── ARTIST DRILL-DOWN ──────────────────────────────────────
+function getArchivePeriodFilter(){
+  const now=new Date();
+  if(chartPeriod==='today'){
+    const midnight=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    return ts=>ts>=midnight.getTime();
+  }
+  if(chartPeriod==='7day'){const d=new Date(now-7*864e5);return ts=>ts>=d.getTime();}
+  if(chartPeriod==='1month'){const d=new Date(now);d.setMonth(d.getMonth()-1);return ts=>ts>=d.getTime();}
+  if(chartPeriod==='3month'){const d=new Date(now);d.setMonth(d.getMonth()-3);return ts=>ts>=d.getTime();}
+  if(chartPeriod==='6month'){const d=new Date(now);d.setMonth(d.getMonth()-6);return ts=>ts>=d.getTime();}
+  if(chartPeriod==='12month'){const d=new Date(now);d.setMonth(d.getMonth()-12);return ts=>ts>=d.getTime();}
+  return ()=>true; // overall
+}
+
+const PERIOD_LABEL={'overall':'Gesamt','12month':'12 Monate','6month':'6 Monate','3month':'3 Monate','1month':'1 Monat','7day':'7 Tage','today':'Heute'};
+
+async function openArtistDrillDown(artistName){
+  const overlay=document.getElementById('adm-overlay');
+  const titleEl=document.getElementById('adm-title');
+  const subEl=document.getElementById('adm-sub');
+  const bodyEl=document.getElementById('adm-body');
+
+  titleEl.textContent=artistName;
+  subEl.textContent='Lädt...';
+  bodyEl.innerHTML='<div class="ld"><div class="sp"></div> Lade Archiv-Daten...</div>';
+  overlay.classList.add('open');
+  document.body.style.overflow='hidden';
+
+  // Archiv laden falls noch nicht gecacht
+  if(!_archiveData){
+    try{
+      const snap=await db.ref('scrobbles').get();
+      if(snap.exists()) _archiveData=snap.val();
+      else{bodyEl.innerHTML='<div class="err">Kein Archiv gefunden.</div>';return;}
+    }catch(e){bodyEl.innerHTML='<div class="err">Fehler: '+e.message+'</div>';return;}
+  }
+
+  const periodFilter=getArchivePeriodFilter();
+  const trackMap={};
+  Object.entries(_archiveData).forEach(([key,v])=>{
+    const ts=parseInt(key.split('_')[0])*1000;
+    if(!periodFilter(ts)) return;
+    const a=(v.artist||'').trim();
+    if(a.toLowerCase()!==artistName.toLowerCase()) return;
+    const t=(v.track||'').trim();
+    if(!t) return;
+    trackMap[t]=(trackMap[t]||0)+1;
+  });
+
+  const sorted=Object.entries(trackMap).sort((a,b)=>b[1]-a[1]);
+  const total=sorted.reduce((s,[,c])=>s+c,0);
+  subEl.textContent=`${PERIOD_LABEL[chartPeriod]||chartPeriod} · ${Number(total).toLocaleString('de-DE')} Plays · ${sorted.length} Tracks`;
+
+  if(!sorted.length){
+    bodyEl.innerHTML='<div style="color:var(--text3);font-size:13px;padding:12px;">Keine Tracks für diesen Zeitraum gefunden.</div>';
+    return;
+  }
+
+  const max=sorted[0][1];
+  const html=sorted.map(([track,count],i)=>{
+    const pct=Math.round((count/max)*100);
+    const rc=i===0?'g':i===1?'s':i===2?'b':'';
+    const rankCls2=i===0?'rank1':i<3?'top3':'';
+    return `<div class="ri ${rankCls2}" style="cursor:default;">
+      <span class="rn ${rc}">${i+1}</span>
+      <div class="ri-ph">♪</div>
+      <div class="ri-info"><div class="ri-name">${track}</div></div>
+      <div class="ri-right">
+        <div class="bar-c"><div class="bar-f" style="width:${pct}%"></div></div>
+        <span class="plays">${Number(count).toLocaleString('de-DE')} ▶</span>
+      </div>
+    </div>`;
+  }).join('');
+  bodyEl.innerHTML=`<div class="rlist">${html}</div>`;
+}
+
+function closeArtistDrillDown(e){
+  if(e&&e.target!==document.getElementById('adm-overlay')) return;
+  document.getElementById('adm-overlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+
 // ── INIT ───────────────────────────────────────────────────
 (async()=>{
   loadCache();
   try{
-    const ud=await loadHero();
+    const npTrack=await loadNowPlayingCard();
+    const ud=await loadHero(npTrack);
     joinYear=ud.joined.getFullYear();
-    loadNowPlayingCard();
     renderOverview(ud);
     renderDiversity();
     loadCharts();
+    updateChartsTrackCount();
     loadTags();
     loadLoved();
     loadCompare();
