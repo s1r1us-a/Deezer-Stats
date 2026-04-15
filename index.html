@@ -1675,6 +1675,17 @@ async function writeBatch(tracks){
 }
 
 async function startFullImport(){
+  // Bestätigung wenn bereits ein Archiv vorhanden
+  const existingTs=await getLatestArchivedTs();
+  if(existingTs){
+    const count=await getArchiveCount();
+    const countStr=count?` (${Number(count).toLocaleString('de-DE')} Scrobbles)`:'';
+    const confirmed=confirm(
+      `⚠ Es existiert bereits ein Archiv${countStr}.\n\nEin vollständiger Import löscht alle gespeicherten Daten und beginnt von vorne.\n\nFür neue Tracks nutze stattdessen "Delta-Sync".\n\nWirklich neu importieren?`
+    );
+    if(!confirmed) return;
+  }
+
   _importAborted=false;
   setArchiveBusy(true);
   const statusEl=document.getElementById('archive-status');
