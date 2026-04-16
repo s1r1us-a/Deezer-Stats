@@ -2956,10 +2956,7 @@ async function autoBackgroundSync(){
       const tracks=d?.recenttracks?.track||[];
       saved+=await writeBatch(tracks);
       const pct=Math.round((page/totalPages)*100);
-      syncBanner('syncing',
-        `Seite ${page}/${totalPages} — ${Number(saved).toLocaleString('de-DE')} / ${Number(totalNew).toLocaleString('de-DE')} Scrobbles`,
-        pct
-      );
+      syncBanner('syncing', `Scrobbles werden geladen... ${page}/${totalPages}`, pct);
       updateSyncBadge(`${pct}%`,'var(--pink)');
       await new Promise(r=>setTimeout(r,0)); // DOM rendern lassen
       await new Promise(r=>setTimeout(r,IMPORT_DELAY));
