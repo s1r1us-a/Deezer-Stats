@@ -829,14 +829,29 @@ body > div.wrap:first-of-type{background:transparent;border:none;box-shadow:none
 .hero:has(.hero-avatar.is-playing) .hero-waveform{opacity:0.85;}
 
 /* ═══ FUN-FACTS SEKTION ═══ */
-#funfacts-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
-  gap:14px;
-}
+/* FUN FACTS SLIDER */
+#ff-slider{position:relative;user-select:none;}
+#ff-card-wrap{position:relative;min-height:130px;}
+#ff-card-wrap.ff-out-left{animation:ff-out-left .3s cubic-bezier(.4,0,.2,1) both;}
+#ff-card-wrap.ff-out-right{animation:ff-out-right .3s cubic-bezier(.4,0,.2,1) both;}
+#ff-card-wrap.ff-in-right{animation:ff-in-right .38s cubic-bezier(.4,0,.2,1) both;}
+#ff-card-wrap.ff-in-left{animation:ff-in-left .38s cubic-bezier(.4,0,.2,1) both;}
+@keyframes ff-out-left{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(-44px)}}
+@keyframes ff-out-right{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(44px)}}
+@keyframes ff-in-right{from{opacity:0;transform:translateX(44px)}to{opacity:1;transform:translateX(0)}}
+@keyframes ff-in-left{from{opacity:0;transform:translateX(-44px)}to{opacity:1;transform:translateX(0)}}
+#ff-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:16px;}
+.ff-nav-btn{font-family:var(--mono);font-size:18px;line-height:1;color:var(--text2);background:rgba(255,255,255,0.55);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.85);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;flex-shrink:0;}
+.ff-nav-btn:hover{border-color:var(--pink);color:var(--pink);box-shadow:0 0 12px rgba(232,39,154,0.2);}
+#ff-dots{display:flex;gap:6px;align-items:center;}
+.ff-dot{width:6px;height:6px;border-radius:3px;background:rgba(232,39,154,0.2);cursor:pointer;transition:all .28s;flex-shrink:0;}
+.ff-dot.active{width:22px;background:linear-gradient(90deg,var(--pink),var(--purple2));box-shadow:0 0 8px rgba(232,39,154,0.35);}
+.ff-dot:hover:not(.active){background:rgba(232,39,154,0.4);}
+.ff-progress{height:2px;background:rgba(232,39,154,0.12);border-radius:1px;margin-top:10px;overflow:hidden;}
+.ff-progress-bar{height:100%;background:linear-gradient(90deg,var(--pink),var(--purple2));border-radius:1px;width:0%;transition:width linear;}
 .ff-card{
   position:relative;
-  padding:22px 24px;
+  padding:26px 28px;
   border-radius:var(--r);
   background:rgba(255,255,255,0.62);
   backdrop-filter:blur(20px);
@@ -847,7 +862,6 @@ body > div.wrap:first-of-type{background:transparent;border:none;box-shadow:none
     inset 0 -1px 0 rgba(232,39,154,0.08),
     0 8px 24px -10px rgba(180,80,180,0.18);
   overflow:hidden;
-  transition:transform 0.3s cubic-bezier(0.4,0,0.2,1),box-shadow 0.3s;
   isolation:isolate;
 }
 .ff-card::before{
@@ -856,51 +870,18 @@ body > div.wrap:first-of-type{background:transparent;border:none;box-shadow:none
   background-blend-mode:overlay,normal;
   pointer-events:none;
 }
-.ff-card::after{
-  content:'';position:absolute;inset:0;
-  background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,0.5) 50%,transparent 65%);
-  transform:translateX(-100%);
-  transition:transform 0.9s cubic-bezier(0.4,0,0.2,1);
-  pointer-events:none;z-index:1;
-}
-.ff-card:hover::after{transform:translateX(100%);}
-.ff-card:hover{transform:translateY(-3px);box-shadow:inset 0 1px 0 rgba(255,255,255,1),0 16px 40px -10px rgba(232,39,154,0.22);}
-.ff-icon{
-  font-size:26px;
-  margin-bottom:10px;
-  display:block;
-  filter:drop-shadow(0 2px 8px rgba(232,39,154,0.3));
-}
-.ff-headline{
-  font-family:var(--sans);
-  font-size:15px;
-  font-weight:600;
-  color:var(--text);
-  line-height:1.35;
-  position:relative;
-  z-index:2;
-}
-.ff-highlight{
-  background:linear-gradient(90deg,var(--pink),var(--purple2));
-  -webkit-background-clip:text;background-clip:text;
-  -webkit-text-fill-color:transparent;
-  font-weight:700;
-}
-.ff-sub{
-  font-family:var(--mono);
-  font-size:11px;
-  color:var(--text3);
-  margin-top:6px;
-  letter-spacing:0.04em;
-  position:relative;
-  z-index:2;
-}
+.ff-icon{font-size:30px;margin-bottom:12px;display:block;filter:drop-shadow(0 2px 8px rgba(232,39,154,0.3));}
+.ff-headline{font-family:var(--sans);font-size:15px;font-weight:600;color:var(--text);line-height:1.4;position:relative;z-index:2;}
+.ff-highlight{background:linear-gradient(90deg,var(--pink),var(--purple2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:700;}
+.ff-sub{font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:8px;letter-spacing:.04em;position:relative;z-index:2;}
+.ff-counter{font-family:var(--mono);font-size:10px;color:var(--text3);position:absolute;top:14px;right:16px;z-index:2;}
 #funfacts-content{min-height:120px;}
 
 /* Prefers-reduced-motion: auch Phase 2 Animations bändigen */
 @media(prefers-reduced-motion:reduce){
-  .ld,.metric-grid > *,.top5-grid > *,.rlist > *,.streak-grid > *,#funfacts-grid > *,.hero-waveform .wf-bar{animation:none!important;}
-  .metric-grid > *,.top5-grid > *,.rlist > *,.streak-grid > *,#funfacts-grid > *{opacity:1;transform:none;}
+  .ld,.metric-grid > *,.top5-grid > *,.rlist > *,.streak-grid > *,.hero-waveform .wf-bar{animation:none!important;}
+  .metric-grid > *,.top5-grid > *,.rlist > *,.streak-grid > *{opacity:1;transform:none;}
+  #ff-card-wrap,#ff-card-wrap.ff-out-left,#ff-card-wrap.ff-out-right,#ff-card-wrap.ff-in-right,#ff-card-wrap.ff-in-left{animation:none!important;opacity:1;transform:none;}
 }
 </style>
 </head>
@@ -3486,10 +3467,44 @@ document.addEventListener('keydown',(e)=>{
     const facts = [];
     const WDAYS = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
 
-    // Top-Artist-Ratio
+    // Künstler-Map
     const artists = {};
     scrobbles.forEach(s => { if(s.artist) artists[s.artist] = (artists[s.artist]||0) + 1; });
     const artistList = Object.entries(artists).sort((a,b) => b[1]-a[1]);
+
+    // Track-Map
+    const tracks = {};
+    scrobbles.forEach(s => {
+      if(!s.track || !s.artist) return;
+      const k = s.artist + ' — ' + s.track;
+      tracks[k] = (tracks[k]||0) + 1;
+    });
+
+    // Album-Map
+    const albums = {};
+    scrobbles.forEach(s => {
+      if(!s.album || !s.artist) return;
+      const k = s.artist + ' — ' + s.album;
+      albums[k] = (albums[k]||0) + 1;
+    });
+
+    // Stunden-Map
+    const hours = {};
+    scrobbles.forEach(s => {
+      const h = new Date(s.ts).getHours();
+      hours[h] = (hours[h]||0) + 1;
+    });
+
+    // Tage-Map
+    const perDay = {};
+    scrobbles.forEach(s => {
+      const d = new Date(s.ts);
+      const k = `${d.getFullYear()}-${String(d.getMonth()).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      perDay[k] = (perDay[k]||0) + 1;
+    });
+    const sortedDays = Object.keys(perDay).sort();
+
+    // ── 1. Top-Artist-Ratio ──
     if(artistList.length >= 3){
       const [topA, topACount] = artistList[0];
       const avg = scrobbles.length / artistList.length;
@@ -3501,7 +3516,18 @@ document.addEventListener('keydown',(e)=>{
       });
     }
 
-    // Wochentag-Begleiter
+    // ── 2. Erster Scrobble ──
+    const first = scrobbles[0];
+    if(first && first.track){
+      const firstDate = new Date(first.ts).toLocaleDateString('de-DE', {day:'numeric', month:'long', year:'numeric'});
+      facts.push({
+        icon: '🌱',
+        headline: `Dein erster Scrobble: <span class="ff-highlight">${escFF(first.track)}</span> von <span class="ff-highlight">${escFF(first.artist)}</span>`,
+        sub: `Am ${firstDate} fing alles an`
+      });
+    }
+
+    // ── 3. Wochentag-Begleiter ──
     const weekdayArtist = {};
     scrobbles.forEach(s => {
       if(!s.artist) return;
@@ -3522,12 +3548,7 @@ document.addEventListener('keydown',(e)=>{
       });
     }
 
-    // Tageszeit
-    const hours = {};
-    scrobbles.forEach(s => {
-      const h = new Date(s.ts).getHours();
-      hours[h] = (hours[h]||0) + 1;
-    });
+    // ── 4. Tageszeit ──
     const topHour = Object.entries(hours).sort((a,b) => b[1]-a[1])[0];
     if(topHour){
       const h = parseInt(topHour[0]);
@@ -3544,13 +3565,19 @@ document.addEventListener('keydown',(e)=>{
       });
     }
 
-    // Dauerbrenner
-    const tracks = {};
-    scrobbles.forEach(s => {
-      if(!s.track || !s.artist) return;
-      const k = s.artist + ' — ' + s.track;
-      tracks[k] = (tracks[k]||0) + 1;
-    });
+    // ── 5. Nacht-Anteil ──
+    const nightPlays = scrobbles.filter(s => { const h = new Date(s.ts).getHours(); return h >= 0 && h < 5; }).length;
+    const nightPct = Math.round((nightPlays / scrobbles.length) * 100);
+    if(nightPlays >= 10){
+      const label = nightPct >= 20 ? 'echte Nachteule 🦉' : nightPct >= 10 ? 'gelegentlicher Nachtmensch' : 'leichter Nachthocker';
+      facts.push({
+        icon: '🌃',
+        headline: `<span class="ff-highlight">${nightPct}%</span> deiner Scrobbles laufen zwischen Mitternacht und 5:00 Uhr — du bist ein ${label}.`,
+        sub: `${nightPlays.toLocaleString('de-DE')} Nacht-Plays insgesamt`
+      });
+    }
+
+    // ── 6. Dauerbrenner (Track) ──
     const topT = Object.entries(tracks).sort((a,b) => b[1]-a[1])[0];
     if(topT && topT[1] >= 3){
       facts.push({
@@ -3560,20 +3587,65 @@ document.addEventListener('keydown',(e)=>{
       });
     }
 
-    // Längste Streak
-    const daySet = new Set();
+    // ── 7. Top Album ──
+    const topAlbum = Object.entries(albums).sort((a,b) => b[1]-a[1])[0];
+    if(topAlbum && topAlbum[1] >= 3){
+      facts.push({
+        icon: '💿',
+        headline: `Dein meistgehörtes Album: <span class="ff-highlight">${escFF(topAlbum[0])}</span>`,
+        sub: `${topAlbum[1].toLocaleString('de-DE')} Plays`
+      });
+    }
+
+    // ── 8. Wochenende vs. Werktag ──
+    let weekendPlays = 0, weekdayPlays = 0, weekendDays = 0, weekdayDaysSet = new Set(), weekendDaysSet = new Set();
     scrobbles.forEach(s => {
       const d = new Date(s.ts);
-      daySet.add(`${d.getFullYear()}-${String(d.getMonth()).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`);
+      const wd = d.getDay();
+      const dk = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      if(wd === 0 || wd === 6){ weekendPlays++; weekendDaysSet.add(dk); }
+      else { weekdayPlays++; weekdayDaysSet.add(dk); }
     });
-    const sortedDays = [...daySet].sort();
+    const weDays = weekendDaysSet.size || 1;
+    const wdDays = weekdayDaysSet.size || 1;
+    const weAvg = Math.round(weekendPlays / weDays);
+    const wdAvg = Math.round(weekdayPlays / wdDays);
+    if(weekendPlays >= 10 && weekdayPlays >= 10){
+      const isWeekender = weAvg > wdAvg;
+      const diff = Math.round(Math.abs(weAvg - wdAvg));
+      facts.push({
+        icon: isWeekender ? '🎉' : '💼',
+        headline: isWeekender
+          ? `Du hörst am <span class="ff-highlight">Wochenende</span> mehr Musik — <span class="ff-highlight">${weAvg}</span> vs. ${wdAvg} Tracks/Tag.`
+          : `Du hörst an <span class="ff-highlight">Werktagen</span> mehr Musik — <span class="ff-highlight">${wdAvg}</span> vs. ${weAvg} Tracks/Tag.`,
+        sub: `Unterschied: ${diff} Tracks/Tag · ${weekendPlays.toLocaleString('de-DE')} We-Plays, ${weekdayPlays.toLocaleString('de-DE')} Werktag-Plays`
+      });
+    }
+
+    // ── 9. Vergessener Künstler ──
+    if(scrobbles.length >= 100){
+      const cut = Math.floor(scrobbles.length * 0.25);
+      const earlyArtists = {};
+      scrobbles.slice(0, cut).forEach(s => { if(s.artist) earlyArtists[s.artist] = (earlyArtists[s.artist]||0) + 1; });
+      const recentArtists = new Set(scrobbles.slice(-cut).map(s => s.artist).filter(Boolean));
+      const forgotten = Object.entries(earlyArtists)
+        .filter(([a, c]) => c >= 5 && !recentArtists.has(a))
+        .sort((a,b) => b[1]-a[1])[0];
+      if(forgotten){
+        facts.push({
+          icon: '👻',
+          headline: `Du hast <span class="ff-highlight">${escFF(forgotten[0])}</span> fast vergessen — früher ${forgotten[1]}× gehört, zuletzt kaum noch.`,
+          sub: 'Vielleicht mal wieder reinhören?'
+        });
+      }
+    }
+
+    // ── 10. Längste Streak ──
     let longest = 1, cur = 1;
     for(let i = 1; i < sortedDays.length; i++){
       const [py,pm,pd] = sortedDays[i-1].split('-').map(Number);
       const [cy,cm,cd] = sortedDays[i].split('-').map(Number);
-      const prevDate = new Date(py, pm, pd);
-      const curDate = new Date(cy, cm, cd);
-      const diff = Math.round((curDate - prevDate) / 86400000);
+      const diff = Math.round((new Date(cy,cm,cd) - new Date(py,pm,pd)) / 86400000);
       if(diff === 1){ cur++; longest = Math.max(longest, cur); }
       else { cur = 1; }
     }
@@ -3585,18 +3657,11 @@ document.addEventListener('keydown',(e)=>{
       });
     }
 
-    // Marathon-Tag
-    const perDay = {};
-    scrobbles.forEach(s => {
-      const d = new Date(s.ts);
-      const k = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      perDay[k] = (perDay[k]||0) + 1;
-    });
+    // ── 11. Marathon-Tag ──
     const topDay = Object.entries(perDay).sort((a,b) => b[1]-a[1])[0];
     if(topDay && topDay[1] >= 20){
       const [y,m,d] = topDay[0].split('-').map(Number);
-      const dateObj = new Date(y, m, d);
-      const datStr = dateObj.toLocaleDateString('de-DE', { day:'numeric', month:'long', year:'numeric' });
+      const datStr = new Date(y, m, d).toLocaleDateString('de-DE', {day:'numeric', month:'long', year:'numeric'});
       const hrs = Math.round(topDay[1] * 3.5 / 60 * 10) / 10;
       facts.push({
         icon: '🏃',
@@ -3605,15 +3670,48 @@ document.addEventListener('keydown',(e)=>{
       });
     }
 
-    // Erstes vs. aktuellstes Jahr: Geschmacksentwicklung
-    if(artistList.length >= 5 && sortedDays.length >= 60){
-      const firstTs = scrobbles[0].ts;
-      const lastTs = scrobbles[scrobbles.length - 1].ts;
-      const earliest = Math.min(...scrobbles.map(s => s.ts));
-      const yearsSpan = (lastTs - earliest) / (1000*60*60*24*365);
-      if(yearsSpan >= 1){
+    // ── 12. Mono-Session (längste Künstler-Serie hintereinander) ──
+    if(scrobbles.length >= 20){
+      const GAP = 45 * 60 * 1000; // 45 min Pause = neue Session
+      let bestArtist = '', bestCount = 0, curArtist = '', curCount = 0;
+      for(let i = 0; i < scrobbles.length; i++){
+        const s = scrobbles[i];
+        const gap = i > 0 ? s.ts - scrobbles[i-1].ts : 0;
+        if(s.artist === curArtist && gap < GAP){
+          curCount++;
+        } else {
+          curArtist = s.artist; curCount = 1;
+        }
+        if(curCount > bestCount){ bestCount = curCount; bestArtist = curArtist; }
+      }
+      if(bestCount >= 5){
         facts.push({
           icon: '🎯',
+          headline: `Dein Rekord: <span class="ff-highlight">${bestCount} Tracks</span> am Stück nur von <span class="ff-highlight">${escFF(bestArtist)}</span>.`,
+          sub: 'Längste ununterbrochene Ein-Künstler-Session'
+        });
+      }
+    }
+
+    // ── 13. Entdeckungsrate ──
+    if(sortedDays.length >= 7){
+      const rate = (artistList.length / sortedDays.length).toFixed(1).replace('.', ',');
+      const label = parseFloat(rate.replace(',','.')) >= 3 ? 'sehr neugierig' : parseFloat(rate.replace(',','.')) >= 1.5 ? 'gut gemischt' : 'loyaler Stammhörer';
+      facts.push({
+        icon: '🔭',
+        headline: `Im Schnitt <span class="ff-highlight">${rate} neue Künstler</span> pro Hörtag — du bist ein ${label}.`,
+        sub: `${artistList.length} einzigartige Künstler · ${sortedDays.length} aktive Tage`
+      });
+    }
+
+    // ── 14. Jahres-Reise (nur wenn > 1 Jahr) ──
+    if(artistList.length >= 5 && sortedDays.length >= 60){
+      const earliest = scrobbles[0].ts;
+      const latest = scrobbles[scrobbles.length - 1].ts;
+      const yearsSpan = (latest - earliest) / (1000*60*60*24*365);
+      if(yearsSpan >= 1){
+        facts.push({
+          icon: '🗺️',
           headline: `Seit dem ersten Scrobble: <span class="ff-highlight">${yearsSpan.toFixed(1).replace('.', ',')} Jahre</span> Musik-Reise.`,
           sub: `${scrobbles.length.toLocaleString('de-DE')} Plays, ${artistList.length.toLocaleString('de-DE')} Künstler`
         });
@@ -3630,14 +3728,112 @@ document.addEventListener('keydown',(e)=>{
       container.innerHTML = '<div class="sec-info" style="padding:20px 0;">Nicht genug Daten für Fun Facts. Importiere erst mehr Scrobbles.</div>';
       return;
     }
-    const html = facts.map(f => `
-      <div class="ff-card">
+
+    let current = 0;
+    let timer = null;
+    let isAnimating = false;
+    const INTERVAL = 4000;
+
+    function buildCard(f, idx){
+      return `<div class="ff-card">
+        <span class="ff-counter">${idx+1} / ${facts.length}</span>
         <span class="ff-icon">${f.icon}</span>
         <div class="ff-headline">${f.headline}</div>
         <div class="ff-sub">${escFF(f.sub)}</div>
-      </div>
-    `).join('');
-    container.innerHTML = `<div id="funfacts-grid">${html}</div>`;
+      </div>`;
+    }
+
+    const dotsHTML = facts.map((_,i) => `<span class="ff-dot${i===0?' active':''}"></span>`).join('');
+
+    container.innerHTML = `
+      <div id="ff-slider">
+        <div id="ff-card-wrap">${buildCard(facts[0], 0)}</div>
+        <div class="ff-progress"><div class="ff-progress-bar" id="ff-prog"></div></div>
+        <div id="ff-nav">
+          <button class="ff-nav-btn" id="ff-prev" aria-label="Zurück">‹</button>
+          <div id="ff-dots">${dotsHTML}</div>
+          <button class="ff-nav-btn" id="ff-next" aria-label="Weiter">›</button>
+        </div>
+      </div>`;
+
+    const wrap = () => document.getElementById('ff-card-wrap');
+    const prog = () => document.getElementById('ff-prog');
+
+    function updateDots(){
+      container.querySelectorAll('.ff-dot').forEach((d,i) => d.classList.toggle('active', i===current));
+    }
+
+    function startProgress(){
+      const bar = prog();
+      if(!bar) return;
+      bar.style.transition = 'none';
+      bar.style.width = '0%';
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          bar.style.transition = `width ${INTERVAL}ms linear`;
+          bar.style.width = '100%';
+        });
+      });
+    }
+
+    function goTo(next, dir){
+      if(isAnimating) return;
+      isAnimating = true;
+      const w = wrap();
+      if(!w){ isAnimating=false; return; }
+
+      w.classList.add(dir >= 0 ? 'ff-out-left' : 'ff-out-right');
+      setTimeout(() => {
+        current = ((next % facts.length) + facts.length) % facts.length;
+        w.innerHTML = buildCard(facts[current], current);
+        w.classList.remove('ff-out-left','ff-out-right');
+        w.classList.add(dir >= 0 ? 'ff-in-right' : 'ff-in-left');
+        updateDots();
+        setTimeout(() => {
+          w.classList.remove('ff-in-right','ff-in-left');
+          isAnimating = false;
+        }, 420);
+      }, 300);
+    }
+
+    function next(){ goTo(current + 1, 1); resetTimer(); }
+    function prev(){ goTo(current - 1, -1); resetTimer(); }
+
+    function resetTimer(){
+      clearInterval(timer);
+      startProgress();
+      timer = setInterval(next, INTERVAL);
+    }
+
+    document.getElementById('ff-next').addEventListener('click', next);
+    document.getElementById('ff-prev').addEventListener('click', prev);
+
+    container.querySelectorAll('.ff-dot').forEach((dot, i) => {
+      dot.addEventListener('click', () => {
+        if(i === current) return;
+        goTo(i, i > current ? 1 : -1);
+        resetTimer();
+      });
+    });
+
+    // Pause on hover
+    const slider = document.getElementById('ff-slider');
+    slider.addEventListener('mouseenter', () => {
+      clearInterval(timer);
+      const bar = prog();
+      if(bar) bar.style.transition = 'none';
+    });
+    slider.addEventListener('mouseleave', resetTimer);
+
+    // Swipe support
+    let touchStartX = 0;
+    slider.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].clientX; }, {passive:true});
+    slider.addEventListener('touchend', e => {
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      if(Math.abs(dx) > 40){ dx < 0 ? next() : prev(); }
+    }, {passive:true});
+
+    resetTimer();
   }
 
   async function loadFunFacts(){
