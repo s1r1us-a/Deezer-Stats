@@ -1002,7 +1002,7 @@ async function renderDiversity(){
       const fbCount=firebaseCounts?firebaseCounts[a.name.toLowerCase()]:null;
       const playsStr=fbCount!=null
         ? `${Number(fbCount).toLocaleString('de-DE')} Titel gespielt`
-        : `${Number(a.playcount).toLocaleString('de-DE')} Plays (Last.fm)`;
+        : `<span class="top5-loading"><span class="sp" style="width:9px;height:9px;border-width:1.5px;display:inline-block;vertical-align:middle;margin-right:4px;"></span>Lädt...</span>`;
       return `<div class="top5-card ${rankClass[i]}">
         <div class="top5-rank ${rankNumClass[i]}">${i+1}</div>
         <div class="top5-info">
@@ -1017,7 +1017,7 @@ async function renderDiversity(){
     }).join('');
   }
 
-  // Initial render ohne Firebase-Daten
+  // Initial render mit Ladeindikator
   document.getElementById('diversity-content').innerHTML=`
     <div style="display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start;margin-bottom:20px;">
       <div class="mc hi" style="min-width:130px;">
