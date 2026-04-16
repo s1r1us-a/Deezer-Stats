@@ -2059,7 +2059,7 @@ document.getElementById('cmp-b-tabs').querySelectorAll('.pb').forEach(b=>b.addEv
 
 // ── SCROBBLE ARCHIVE ───────────────────────────────────────
 let _importAborted=false;
-const IMPORT_DELAY=1200;   // ms zwischen API-Seiten
+const IMPORT_DELAY=500;    // ms zwischen API-Seiten
 const RETRY_MAX=3;         // max Wiederholungen pro Seite
 const RETRY_DELAY=4000;    // ms Pause vor einem Retry
 
@@ -2413,10 +2413,11 @@ async function autoBackgroundSync(){
       saved+=await writeBatch(tracks);
       const pct=Math.round((page/totalPages)*100);
       syncBanner('syncing',
-        `Synchronisiere... ${Number(saved).toLocaleString('de-DE')} / ${Number(totalNew).toLocaleString('de-DE')} Scrobbles`,
+        `Seite ${page}/${totalPages} — ${Number(saved).toLocaleString('de-DE')} / ${Number(totalNew).toLocaleString('de-DE')} Scrobbles`,
         pct
       );
       updateSyncBadge(`${pct}%`,'var(--pink)');
+      await new Promise(r=>setTimeout(r,0)); // DOM rendern lassen
       await new Promise(r=>setTimeout(r,IMPORT_DELAY));
     }
 
