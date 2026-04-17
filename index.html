@@ -1330,18 +1330,19 @@ async function getArchiveData(){
     _archivePromise=db.ref('scrobbles').get().then(snap=>{
       if(snap.exists()){
         _archiveData=snap.val();
-        updateTodayTime();
-        loadStreak();
-        _chartCountCache={};
-        updateChartsTrackCount();
-        // Overview & Hero neu rendern — jetzt mit echten Archiv-Zahlen
-        // (statt dem Last.fm-Fallback, der beim ersten Render genutzt wurde)
+        // WICHTIG: Erst rendern, dann Stats befüllen — sonst überschreibt
+        // renderOverview() das gerade aktualisierte mc-today-time Element.
         try{
           if(_lastHeroData){
             renderHero(_lastHeroData, isLfmDown());
             renderOverview({total:_lastHeroData.playcount||0,days:_lastHeroData._days||0,u:_lastHeroData});
           }
         }catch(e){console.warn('Re-render after archive load failed:',e);}
+        // Jetzt ist das Grid aktuell — Stats befüllen
+        updateTodayTime();
+        loadStreak();
+        _chartCountCache={};
+        updateChartsTrackCount();
       }
       return _archiveData||null;
     }).catch(()=>null);
@@ -1667,6 +1668,9 @@ function renderOverview({total,days,u}){
     animateCounter(document.getElementById('cnt-artists'),artistC);
     animateCounter(document.getElementById('cnt-tracks'),trackC);
     animateCounter(document.getElementById('cnt-albums'),albumC);
+    // "Heute gehört" direkt mit befüllen wenn Archiv schon verfügbar —
+    // sonst würde es bis zum nächsten Archiv-Load-Callback "wird geladen…" bleiben.
+    if(_archiveData) updateTodayTime();
   },100);
 }
 
@@ -3281,7 +3285,7 @@ function abortImport(){
 }
 
 // ── SYNC BANNER HELPERS ────────────────────────────────────
-function syncBanner(state,msg,barPct=null){
+function syncBanner(state,msg,barPct=null,html=false){
   const banner=document.getElementById('sync-banner');
   const inner=document.getElementById('sync-banner-inner');
   const msgEl=document.getElementById('sync-banner-msg');
@@ -3291,7 +3295,8 @@ function syncBanner(state,msg,barPct=null){
   if(!banner) return;
   banner.classList.add('visible');
   inner.className='sync-banner-inner '+state;
-  msgEl.textContent=msg;
+  // HTML-Modus nur bei kontrolliert konstruierten Nachrichten verwenden (z.B. Health-Check)
+  if(html) msgEl.innerHTML=msg; else msgEl.textContent=msg;
   spinner.style.display=(state==='syncing')?'block':'none';
   if(barPct!==null&&barWrap){
     barWrap.style.display='block';
@@ -3313,8 +3318,67 @@ function updateSyncBadge(msg,color){
   b.style.color=color||'var(--text3)';
 }
 
+// ── POST-SYNC REFRESH ─────────────────────────────────────
+// Aktualisiert alle UI-Komponenten, die von Scrobble-Daten abhängen —
+// ohne Full Page Reload. Wird nach jedem erfolgreichen Sync aufgerufen.
+async function refreshAfterSync(){
+  try{
+    // Last.fm-Cache leeren für Calls, die sich bei neuen Scrobbles ändern
+    // (user.getRecentTracks, user.getInfo, Top-Listen)
+    Object.keys(cache).forEach(k=>{
+      if(k.startsWith('user.getRecentTracks')||
+         k.startsWith('user.getInfo')||
+         k.startsWith('user.getTopArtists')||
+         k.startsWith('user.getTopTracks')||
+         k.startsWith('user.getTopAlbums')||
+         k.startsWith('user.getTopTags')){
+        delete cache[k];
+      }
+    });
+
+    // 1) Archiv neu laden — triggert intern updateTodayTime, loadStreak,
+    //    updateChartsTrackCount und das Re-Rendering von Hero/Overview
+    await getArchiveData();
+
+    // 2) Charts neu rendern (Cache wurde bereits oben geleert)
+    try{ loadCharts(); }catch(e){}
+
+    // 3) Recent-Sektion neu laden
+    try{
+      const recent = await loadRecent();
+      window._lastRecentTracks = recent;
+    }catch(e){}
+
+    // 4) Now-Playing-Card sofort aktualisieren
+    try{ loadNowPlayingCard(); }catch(e){}
+
+    // 5) Heatmap neu laden
+    try{ loadCalendar(); }catch(e){}
+
+    // 6) Jahresrückblick (aktuelles Jahr) neu laden
+    try{
+      const curYear = new Date().getFullYear();
+      if(selectedYear === null || selectedYear === curYear){
+        loadYearReview(curYear);
+      }
+    }catch(e){}
+
+    // 7) Archiv-Section aktualisieren (Badge, und Liste falls geöffnet)
+    try{
+      await loadArchiveSection();
+      if(_archiveLoaded) renderArchiveList();
+    }catch(e){}
+
+    // 8) Diversity & Compare (nutzen Last.fm-Top-Listen, aber die könnten
+    //    sich nach einem Sync auch minimal verschoben haben)
+    try{ renderDiversity(); }catch(e){}
+  }catch(e){console.warn('refreshAfterSync failed:',e);}
+}
+
+
 // Lock gegen parallele Auto-Syncs (periodischer + visibilitychange + manuell)
 let _autoSyncRunning=false;
+
 async function autoBackgroundSync(silent=false){
   if(_autoSyncRunning) return; // bereits aktiv — nicht überlappen
   // Wenn manueller Import/Delta-Sync läuft, ebenfalls nicht stören
@@ -3377,7 +3441,8 @@ async function autoBackgroundSync(silent=false){
     _archiveData=null;
     // Chart-Cache leeren damit neue Scrobbles in den Charts erscheinen
     Object.keys(cache).filter(k=>k.startsWith('top_')&&!k.endsWith('_today')).forEach(k=>delete cache[k]);
-    loadArchiveSection().catch(()=>{});
+    // Alle UI-Komponenten neu laden — ohne full page reload
+    await refreshAfterSync();
 
   }catch(e){
     // Bei stillem Periodic-Sync nicht mit Banner nerven — könnte nur Netzwerkfehler sein
@@ -3417,7 +3482,8 @@ async function checkArchiveHealth(){
       const pct = Math.round((archiveCount/lfmCount)*100);
       syncBanner('err',
         `⚠ Archiv ist ${drift} Scrobbles hinter Last.fm (${pct}% synchronisiert). `+
-        `<a href="#" onclick="openArchiveModal();return false;" style="color:var(--pink);text-decoration:underline;">Vollständigen Import starten</a>`
+        `<a href="#" onclick="openArchiveModal();return false;" style="color:var(--pink);text-decoration:underline;">Vollständigen Import starten</a>`,
+        null, true  // html=true — Link wird gerendert statt als Text angezeigt
       );
       console.warn(`Archive health: ${archiveCount}/${lfmCount} (drift ${drift})`);
     }
