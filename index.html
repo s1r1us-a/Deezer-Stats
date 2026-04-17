@@ -1269,6 +1269,26 @@ firebase.initializeApp(FB_CONFIG);
 const db=firebase.database();
 
 let cache={},chartPeriod='today',chartTab='artists',sortMode='plays',allItems=[],showCount=10;
+
+// ── ARCHIVE DATA CACHE ────────────────────────────────────
+// Zentraler Firebase-Fetch: läuft nur einmal, alle weiteren Aufrufe warten auf dasselbe Promise
+let _archivePromise=null;
+async function getArchiveData(){
+  if(_archiveData) return _archiveData;
+  if(!_archivePromise){
+    _archivePromise=db.ref('scrobbles').get().then(snap=>{
+      if(snap.exists()){
+        _archiveData=snap.val();
+        updateTodayTime();
+        loadStreak();
+        _chartCountCache={};
+        updateChartsTrackCount();
+      }
+      return _archiveData||null;
+    }).catch(()=>null);
+  }
+  return _archivePromise;
+}
 let cmpA='1month',cmpB='3month',selectedYear=null;
 let monthlyInst=null,pieInst=null,trendInst=null;
 let monthlyMode='12'; // '12' or 'lifetime'
@@ -1603,11 +1623,7 @@ async function renderDiversity(){
 
   // Firebase-Daten nachladen und Plays aktualisieren
   try{
-    let archiveSnap=_archiveData;
-    if(!archiveSnap){
-      const snap=await db.ref('scrobbles').get();
-      if(snap.exists()) archiveSnap=snap.val();
-    }
+    const archiveSnap=await getArchiveData();
     if(archiveSnap){
       // Zähle Plays pro Künstler (case-insensitive)
       const firebaseCounts={};
@@ -2652,19 +2668,12 @@ async function updateChartsTrackCount(){
   try{
     let count=0;
     // Gecachte Archiv-Daten nutzen wenn bereits geladen – spart Firebase-Read
-    if(_archiveData){
-      Object.keys(_archiveData).forEach(key=>{
-        const tsSec=parseInt(key.split('_')[0]);
-        if(tsSec>=fromTsSec) count++;
-      });
-    } else {
-      const snap=await db.ref('scrobbles').get();
-      if(!snap.exists()){el.style.display='none';return;}
-      snap.forEach(child=>{
-        const tsSec=parseInt(child.key.split('_')[0]);
-        if(tsSec>=fromTsSec) count++;
-      });
-    }
+    const archData=await getArchiveData();
+    if(!archData){el.style.display='none';return;}
+    Object.keys(archData).forEach(key=>{
+      const tsSec=parseInt(key.split('_')[0]);
+      if(tsSec>=fromTsSec) count++;
+    });
     _chartCountCache[chartPeriod]=count;
     el.textContent=`${Number(count).toLocaleString('de-DE')} Scrobbles · ${label}`;
     el.style.display='block';
@@ -3120,16 +3129,7 @@ async function loadArchiveSection(){
   // Archiv-Daten vorladen damit Streak und Track-Count-Badge davon profitieren
   try{
     if(!_archiveData){
-      const snap=await db.ref('scrobbles').get();
-      if(snap.exists()){
-        _archiveData=snap.val();
-        // Streak neu rendern mit vollständigen Archiv-Daten
-        loadStreak();
-        // Chart-Count-Cache invalidieren damit er die Archiv-Daten nutzt
-        _chartCountCache={};
-        updateChartsTrackCount();
-        updateTodayTime();
-      }
+      await getArchiveData();
     }
   }catch(e){}
   // Data loads lazily on first expand
@@ -3147,14 +3147,8 @@ async function toggleArchive(){
     const listEl=document.getElementById('archive-list');
     listEl.innerHTML='<div class="ld"><div class="sp"></div> Lade Archiv-Daten...</div>';
     try{
-      const snap=await db.ref('scrobbles').get();
-      if(!snap.exists()){listEl.innerHTML='<div style="color:var(--text3);">Kein Archiv.</div>';return;}
-      _archiveData=snap.val();
-      // Streak und Badge-Counter mit vollständigen Archiv-Daten aktualisieren
-      loadStreak();
-      _chartCountCache={};
-      updateChartsTrackCount();
-      updateTodayTime();
+      const archToggleData=await getArchiveData();
+      if(!archToggleData){listEl.innerHTML='<div style="color:var(--text3);">Kein Archiv.</div>';return;}
     }catch(e){
       listEl.innerHTML='<div class="err">Fehler beim Laden des Archivs.</div>';return;
     }
@@ -3246,13 +3240,8 @@ async function exportArchiveCSV(event){
   const origText=btn.textContent;
   btn.textContent='Wird erstellt...';btn.disabled=true;
   try{
-    let data=_archiveData;
-    if(!data){
-      const snap=await db.ref('scrobbles').get();
-      if(!snap.exists()) throw new Error('Kein Archiv gefunden');
-      data=snap.val();
-      _archiveData=data;
-    }
+    const data=await getArchiveData();
+    if(!data) throw new Error('Kein Archiv gefunden');
     const rows=[['Datum','Uhrzeit','Künstler','Track','Album']];
     Object.entries(data)
       .sort(([a],[b])=>parseInt(a)-parseInt(b))
@@ -3309,9 +3298,8 @@ async function openArtistDrillDown(artistName){
   // Archiv laden falls noch nicht gecacht
   if(!_archiveData){
     try{
-      const snap=await db.ref('scrobbles').get();
-      if(snap.exists()) { _archiveData=snap.val(); updateTodayTime(); }
-      else{bodyEl.innerHTML='<div class="err">Kein Archiv gefunden.</div>';return;}
+      const admData=await getArchiveData();
+      if(!admData){bodyEl.innerHTML='<div class="err">Kein Archiv gefunden.</div>';return;}
     }catch(e){bodyEl.innerHTML='<div class="err">Fehler: '+e.message+'</div>';return;}
   }
 
@@ -3982,13 +3970,17 @@ document.addEventListener('keydown',(e)=>{
 
     try {
       if(status) status.textContent = 'Analysiere...';
-      const snap = await firebase.database().ref('scrobbles').once('value');
-      if(!snap.exists()){
-        container.innerHTML = '<div class="sec-info" style="padding:20px 0;">Kein Archiv gefunden. Nutze „🗄 Archiv" in der Übersicht, um Scrobbles zu importieren.</div>';
-        if(status) status.textContent = '';
-        return;
+      let data = typeof _archiveData !== 'undefined' && _archiveData ? _archiveData : null;
+      if(!data){
+        const snap = await firebase.database().ref('scrobbles').once('value');
+        if(!snap.exists()){
+          container.innerHTML = '<div class="sec-info" style="padding:20px 0;">Kein Archiv gefunden. Nutze „🗄 Archiv" in der Übersicht, um Scrobbles zu importieren.</div>';
+          if(status) status.textContent = '';
+          return;
+        }
+        data = snap.val();
+        if(typeof _archiveData !== 'undefined') _archiveData = data;
       }
-      const data = snap.val();
       const scrobbles = Object.entries(data).map(([key, v]) => ({
         ts: parseInt(key.split('_')[0]) * 1000,
         artist: (v && v.artist ? String(v.artist) : '').trim(),
