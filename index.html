@@ -1837,7 +1837,10 @@ async function loadCharts(){
       }
       items=calcChartsFromArchive(chartPeriod,chartTab)||[];
     }
-    cache['top_'+key]=items;
+    // Cache nur setzen wenn Archiv-Daten wirklich verfügbar sind —
+    // sonst würde ein leeres Ergebnis aus einem Race-Condition-Timeout
+    // permanent eingefroren und der Button zeigt für immer "Keine Ergebnisse".
+    if(_archiveData) cache['top_'+key]=items;
   }
   allItems=items;
   showCount=10;
@@ -3057,8 +3060,9 @@ async function startDeltaSync(){
     }
 
     if(!_importAborted){
-      const oldCount=await getArchiveCount()||0;
-      const newTotal=oldCount+savedCount;
+      // Counter aus echter Key-Anzahl ermitteln statt inkrementell —
+      // damit driftet der Counter nicht mehr bei fehlgeschlagenen Writes oder Duplikaten.
+      const newTotal=await getRealArchiveCount();
       await db.ref('scrobble_meta/count').set(newTotal);
       await db.ref('scrobble_meta/last_sync').set(Date.now());
       updateProgressBar(100);
@@ -3157,8 +3161,10 @@ async function autoBackgroundSync(){
       await new Promise(r=>setTimeout(r,IMPORT_DELAY));
     }
 
-    const oldCount=await getArchiveCount()||0;
-    await db.ref('scrobble_meta/count').set(oldCount+saved);
+    // Counter aus echter Key-Anzahl ermitteln statt inkrementell —
+    // damit driftet der Counter nicht mehr bei fehlgeschlagenen Writes oder Duplikaten.
+    const realTotal=await getRealArchiveCount();
+    await db.ref('scrobble_meta/count').set(realTotal);
     await db.ref('scrobble_meta/last_sync').set(Date.now());
     updateSyncBadge(`+${saved} neue Tracks ✓`,'#22c55e');
     syncBanner('done-new',`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles synchronisiert`,100);
