@@ -1014,7 +1014,7 @@ body > div.wrap:first-of-type{background:transparent;border:none;box-shadow:none
 <!-- OVERVIEW -->
 <section id="overview">
   <div class="wrap">
-    <div class="sec-hdr"><div class="sec-title">Übersicht</div><div class="sec-actions"><div id="cache-info" class="sec-info"></div><button onclick="clearCache()" class="action-btn">↻ Daten holen</button><button id="archive-btn" onclick="openArchiveModal()" class="action-btn">🗄 Archiv</button></div></div>
+    <div class="sec-hdr"><div class="sec-title">Übersicht</div><div class="sec-actions"><div id="cache-info" class="sec-info"></div><button id="archive-btn" onclick="openArchiveModal()" class="action-btn">🗄 Archiv</button></div></div>
     <div class="metric-grid" id="overview-grid">
       <div class="skel skel-mc hi"></div>
       <div class="skel skel-mc"></div>
@@ -1323,6 +1323,7 @@ let cache={},chartPeriod='today',chartTab='artists',sortMode='plays',allItems=[]
 // ── ARCHIVE DATA CACHE ────────────────────────────────────
 // Zentraler Firebase-Fetch: läuft nur einmal, alle weiteren Aufrufe warten auf dasselbe Promise
 let _archivePromise=null;
+let _lastHeroData=null; // zuletzt gerenderte Hero-Meta für Re-Render nach Archiv-Load
 async function getArchiveData(){
   if(_archiveData) return _archiveData;
   if(!_archivePromise){
@@ -1333,6 +1334,14 @@ async function getArchiveData(){
         loadStreak();
         _chartCountCache={};
         updateChartsTrackCount();
+        // Overview & Hero neu rendern — jetzt mit echten Archiv-Zahlen
+        // (statt dem Last.fm-Fallback, der beim ersten Render genutzt wurde)
+        try{
+          if(_lastHeroData){
+            renderHero(_lastHeroData, isLfmDown());
+            renderOverview({total:_lastHeroData.playcount||0,days:_lastHeroData._days||0,u:_lastHeroData});
+          }
+        }catch(e){console.warn('Re-render after archive load failed:',e);}
       }
       return _archiveData||null;
     }).catch(()=>null);
@@ -1365,9 +1374,22 @@ document.querySelectorAll('section').forEach(s=>{s.classList.add('reveal');revea
 function loadCache(){try{const d=localStorage.getItem(CACHE_KEY);if(d){const p=JSON.parse(d);const age=(Date.now()-p.ts)/60000;if(age<30){cache=p.data;// always drop today's chart cache – it changes throughout the day
 Object.keys(cache).filter(k=>k.startsWith('top_')&&k.endsWith('_today')).forEach(k=>delete cache[k]);document.getElementById('cache-info').textContent='Cache: vor '+Math.round(age)+' Min';return;}}}catch(e){}}
 function saveCache(){try{localStorage.setItem(CACHE_KEY,JSON.stringify({ts:Date.now(),data:cache}));}catch(e){}}
-function clearCache(){localStorage.removeItem(CACHE_KEY);cache={};location.reload();}
 
 // ── API ────────────────────────────────────────────────────
+// ── LAST.FM OFFLINE-STATUS ────────────────────────────────
+// Nach 2 aufeinanderfolgenden Fehlern gilt Last.fm als "down" — dann werden
+// UI-Teile, die davon abhängen, dezent ausgeblendet oder zeigen Hinweise.
+let _lfmFailCount=0;
+let _lfmDown=false;
+const _lfmListeners=new Set();
+function setLfmDown(down){
+  if(_lfmDown===down) return;
+  _lfmDown=down;
+  _lfmListeners.forEach(fn=>{try{fn(down);}catch(e){}});
+}
+function onLfmStatusChange(fn){_lfmListeners.add(fn);}
+function isLfmDown(){return _lfmDown;}
+
 async function lfm(method,params={}){
   const k=method+JSON.stringify(params);
   if(cache[k]) return cache[k];
@@ -1377,11 +1399,26 @@ async function lfm(method,params={}){
   url.searchParams.set('api_key',KEY);
   url.searchParams.set('format','json');
   Object.entries(params).forEach(([a,b])=>url.searchParams.set(a,b));
-  const r=await fetch(url);
-  if(!r.ok) throw new Error('HTTP '+r.status);
-  const d=await r.json();
-  cache[k]=d;
-  return d;
+  try{
+    const r=await fetch(url);
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    cache[k]=d;
+    // Erfolgreicher Call → Offline-Counter resetten
+    _lfmFailCount=0;
+    if(_lfmDown) setLfmDown(false);
+    return d;
+  }catch(e){
+    _lfmFailCount++;
+    if(_lfmFailCount>=2 && !_lfmDown) setLfmDown(true);
+    throw e;
+  }
+}
+
+// Variante die bei Fehler nicht throwt, sondern null zurückgibt —
+// für Call-Sites, die graceful degradation brauchen.
+async function lfmSafe(method,params={}){
+  try{return await lfm(method,params);}catch(e){return null;}
 }
 
 // ── FORMAT ─────────────────────────────────────────────────
@@ -1437,30 +1474,76 @@ function animateCounter(el,target,dur=1200){
 }
 
 // ── HERO ───────────────────────────────────────────────────
-async function loadHero(npTrack){
-  const d=await lfm('user.getInfo');
-  const u=d.user;
-  const img=u.image?.find(x=>x.size==='extralarge')?.['#text']||u.image?.[2]?.['#text'];
+// Render-Helper — funktioniert mit Last.fm-Daten ODER gecachten user_meta.
+// Alle Felder sind flexibel, damit derselbe Code beide Quellen abdeckt.
+function renderHero(meta, offline=false){
+  const img=meta.avatar_url||meta.image_ex||'';
   if(img){
-    document.getElementById('avatar-el').outerHTML=`<img src="${img}" width="84" height="84" style="border-radius:50%;border:2px solid var(--pink);display:block;" alt="Avatar" id="avatar-el">`;
+    const avEl=document.getElementById('avatar-el');
+    if(avEl) avEl.outerHTML=`<img src="${img}" width="84" height="84" style="border-radius:50%;border:2px solid var(--pink);display:block;" alt="Avatar" id="avatar-el">`;
     document.getElementById('hero-bg').style.backgroundImage=`url(${img})`;
     document.getElementById('hero-bg').style.opacity='0.08';
   }
-  document.getElementById('hero-rn').textContent=u.realname||'';
-  const joined=new Date(u.registered?.unixtime*1000);
-  const days=Math.floor((Date.now()-joined)/86400000);
-  const total=parseInt(u.playcount);
-  const joinStr=joined.toLocaleDateString('de-DE',{year:'numeric',month:'long',day:'numeric'});
-  const country=u.country&&u.country!=='None'?escapeHTML(u.country):null;
+  document.getElementById('hero-rn').textContent=meta.realname||'';
+  const joined=meta.registered_uts?new Date(meta.registered_uts*1000):null;
+  const days=joined?Math.floor((Date.now()-joined)/86400000):0;
+  // Scrobble-Gesamtzahl: bevorzugt aus Firebase-Archiv (offline-fähig & konsistent)
+  const archiveCount=_archiveData?Object.keys(_archiveData).length:null;
+  const total=archiveCount!==null?archiveCount:(parseInt(meta.playcount)||0);
+  const joinStr=joined?joined.toLocaleDateString('de-DE',{year:'numeric',month:'long',day:'numeric'}):'—';
+  const country=meta.country&&meta.country!=='None'?escapeHTML(meta.country):null;
+  // Discovery-Counts: aus Archiv falls vorhanden, sonst aus Meta
+  const disc=getArchiveDiscoveryCounts();
+  const artistC=disc?disc.artist_count:(parseInt(meta.artist_count)||0);
+  const trackC=disc?disc.track_count:(parseInt(meta.track_count)||0);
+  const albumC=disc?disc.album_count:(parseInt(meta.album_count)||0);
+  const offlineBadge=offline?`<div class="hm-item" style="color:var(--text3);font-size:11px;" title="Last.fm nicht erreichbar — Daten aus Archiv">⚠ Offline</div>`:'';
   document.getElementById('hero-meta').innerHTML=`
     <div class="hm-item">🎵 <span>${fmt(total)}</span> Scrobbles</div>
     <div class="hm-item">📅 seit <span>${joinStr}</span></div>
     <div class="hm-item">🗓 <span>${fmt(days)}</span> Tage</div>
     ${country?`<div class="hm-item">📍 <span>${country}</span></div>`:''}
-    <div class="badge">${fmt(parseInt(u.artist_count||0))} Künstler</div>
-    <div class="badge">${fmt(parseInt(u.track_count||0))} Tracks</div>
-    <div class="badge">${fmt(parseInt(u.album_count||0))} Alben</div>
+    ${offlineBadge}
+    <div class="badge">${fmt(artistC)} Künstler</div>
+    <div class="badge">${fmt(trackC)} Tracks</div>
+    <div class="badge">${fmt(albumC)} Alben</div>
   `;
+}
+
+async function loadHero(npTrack){
+  // 1) Cached Meta zuerst rendern (sofort, offline-fähig)
+  const cached=await getCachedUserMeta();
+  if(cached) renderHero(cached, isLfmDown());
+
+  // 2) Last.fm versuchen — bei Erfolg Cache updaten & neu rendern
+  let u=null, days=0, total=0, joined=null;
+  const d=await lfmSafe('user.getInfo');
+  if(d?.user){
+    u=d.user;
+    await cacheUserMeta(u);
+    const img=u.image?.find(x=>x.size==='extralarge')?.['#text']||u.image?.[2]?.['#text'];
+    renderHero({
+      avatar_url:img,
+      realname:u.realname,
+      registered_uts:parseInt(u.registered?.unixtime)||0,
+      country:u.country,
+      playcount:parseInt(u.playcount),
+      artist_count:parseInt(u.artist_count),
+      track_count:parseInt(u.track_count),
+      album_count:parseInt(u.album_count)
+    }, false);
+    joined=new Date(u.registered?.unixtime*1000);
+    days=Math.floor((Date.now()-joined)/86400000);
+    total=parseInt(u.playcount);
+  } else if(cached){
+    // Last.fm down — Werte aus Cache für den Rückgabewert
+    joined=cached.registered_uts?new Date(cached.registered_uts*1000):new Date();
+    days=Math.floor((Date.now()-joined)/86400000);
+    total=_archiveData?Object.keys(_archiveData).length:(parseInt(cached.playcount)||0);
+  } else {
+    // Weder Cache noch Last.fm — minimal-Fallback
+    joined=new Date();days=0;total=_archiveData?Object.keys(_archiveData).length:0;
+  }
   // Now playing — track already loaded by loadNowPlayingCard
   try{
     const t=npTrack;
@@ -1477,7 +1560,20 @@ async function loadHero(npTrack){
       if(dotEl) dotEl.style.display='none';
     }
   }catch(e){}
-  return {total,days,joined,u};
+  // Daten für späteren Re-Render zwischenspeichern (wenn Archiv später nachlädt)
+  const heroSnapshot={
+    avatar_url:u?(u.image?.find(x=>x.size==='extralarge')?.['#text']||u.image?.[2]?.['#text']||''):cached?.avatar_url||'',
+    realname:u?.realname||cached?.realname||'',
+    registered_uts:u?(parseInt(u.registered?.unixtime)||0):cached?.registered_uts||0,
+    country:u?.country||cached?.country||'',
+    playcount:total,
+    artist_count:u?(parseInt(u.artist_count)||0):cached?.artist_count||0,
+    track_count:u?(parseInt(u.track_count)||0):cached?.track_count||0,
+    album_count:u?(parseInt(u.album_count)||0):cached?.album_count||0,
+    _days:days
+  };
+  _lastHeroData=heroSnapshot;
+  return {total,days,joined,u:u||cached||{}};
 }
 
 // ── NOW PLAYING CARD ───────────────────────────────────────
@@ -1523,7 +1619,12 @@ async function loadNowPlayingCard(){
         </div>
       </div>
     `;
-  }catch(e){document.getElementById('np-card-wrap').innerHTML='';}
+  }catch(e){
+    // Last.fm down — dezenten Hinweis statt leerer Card zeigen
+    document.getElementById('np-card-wrap').innerHTML=isLfmDown()
+      ?`<div class="np-card" style="opacity:.7;"><div class="np-card-inner"><div class="np-cover-ph">♪</div><div class="np-info"><div class="np-status"><div class="np-last-badge" style="background:rgba(120,120,120,.2);">Last.fm nicht erreichbar</div></div><div class="np-track" style="color:var(--text3);">Offline</div><div class="np-artist" style="color:var(--text3);font-size:12px;">Live-Daten nicht verfügbar</div></div><button class="np-refresh" onclick="loadNowPlayingCard()" title="Erneut versuchen">↻</button></div></div>`
+      :'';
+  }
 
   // Auto-refresh alle 30s
   clearTimeout(npRefreshTimer);
@@ -1533,7 +1634,15 @@ async function loadNowPlayingCard(){
 
 // ── OVERVIEW ───────────────────────────────────────────────
 function renderOverview({total,days,u}){
-  const estMins=total*3;
+  // Total: bevorzugt aus Firebase-Archiv (offline-fähig + konsistent mit Archiv-Badge/Heatmap)
+  const archiveCount=_archiveData?Object.keys(_archiveData).length:null;
+  const totalFinal=archiveCount!==null?archiveCount:(parseInt(total)||0);
+  // Discovery-Counts: aus Archiv rechnen (konsistent & offline-fähig), Last.fm als Fallback
+  const disc=getArchiveDiscoveryCounts();
+  const artistC=disc?disc.artist_count:(parseInt(u?.artist_count)||0);
+  const trackC=disc?disc.track_count:(parseInt(u?.track_count)||0);
+  const albumC=disc?disc.album_count:(parseInt(u?.album_count)||0);
+  const estMins=totalFinal*3;
   const safedays=days>0?days:1;
   const g=document.getElementById('overview-grid');
   g.innerHTML=`
@@ -1550,14 +1659,14 @@ function renderOverview({total,days,u}){
 
   `;
   setTimeout(()=>{
-    animateCounter(document.getElementById('cnt-total'),total);
-    animateCounter(document.getElementById('cnt-day'),parseFloat((total/safedays).toFixed(1)));
-    animateCounter(document.getElementById('cnt-week'),Math.round(total/(safedays/7)));
-    animateCounter(document.getElementById('cnt-month'),Math.round(total/(safedays/30.44)));
+    animateCounter(document.getElementById('cnt-total'),totalFinal);
+    animateCounter(document.getElementById('cnt-day'),parseFloat((totalFinal/safedays).toFixed(1)));
+    animateCounter(document.getElementById('cnt-week'),Math.round(totalFinal/(safedays/7)));
+    animateCounter(document.getElementById('cnt-month'),Math.round(totalFinal/(safedays/30.44)));
     animateCounter(document.getElementById('cnt-days'),days);
-    animateCounter(document.getElementById('cnt-artists'),parseInt(u.artist_count||0));
-    animateCounter(document.getElementById('cnt-tracks'),parseInt(u.track_count||0));
-    animateCounter(document.getElementById('cnt-albums'),parseInt(u.album_count||0));
+    animateCounter(document.getElementById('cnt-artists'),artistC);
+    animateCounter(document.getElementById('cnt-tracks'),trackC);
+    animateCounter(document.getElementById('cnt-albums'),albumC);
   },100);
 }
 
@@ -2534,21 +2643,54 @@ function buildYearSel(joinYear){
 
 async function loadYearReview(year){
   document.getElementById('year-content').innerHTML='<div class="ld"><div class="sp"></div> Lade Jahresrückblick...</div>';
-  const from=new Date(year,0,1),to=new Date(year,11,31,23,59,59);
-  const fromTs=Math.floor(from/1000),toTs=Math.floor(to/1000);
 
-  // Fetch total scrobbles for the year
-  const totalD=await lfm('user.getRecentTracks',{from:fromTs,to:toTs,limit:1})
-    .then(d=>parseInt(d?.recenttracks?.['@attr']?.total||0)).catch(()=>0);
+  // Sicherstellen dass Archiv geladen ist
+  if(!_archiveData) await getArchiveData();
 
-  // Aggregate top artists/tracks/albums from actual year data by loading pages
   const artistMap={},trackMap={},albumMap={};
-  const totalPages=Math.min(Math.ceil(totalD/200),25); // cap at 25 pages = 5000 tracks
-  document.getElementById('year-content').innerHTML=`<div class="ld"><div class="sp"></div> Lade Tracks ${year} (0/${totalPages} Seiten)...</div>`;
+  let totalD=0;
 
-  for(let page=1;page<=totalPages;page++){
-    try{
-      const d=await lfm('user.getRecentTracks',{from:fromTs,to:toTs,limit:200,page});
+  if(_archiveData){
+    // Aus Firebase-Archiv rechnen — offline-fähig, schnell, konsistent mit allen anderen Sektionen
+    Object.entries(_archiveData).forEach(([key,v])=>{
+      const ts=parseInt(key.split('_')[0]);
+      if(!ts) return;
+      const d=new Date(ts*1000);
+      if(d.getFullYear()!==year) return;
+      totalD++;
+      const artist=(v.artist||'').trim();
+      const track=(v.track||'').trim();
+      const album=(v.album||'').trim();
+      if(artist){
+        if(!artistMap[artist]) artistMap[artist]={name:artist,playcount:0,image:[{['#text']:''}],url:''};
+        artistMap[artist].playcount++;
+      }
+      if(track&&artist){
+        const k=artist+'|||'+track;
+        if(!trackMap[k]) trackMap[k]={name:track,artist:{name:artist},playcount:0,image:[{['#text']:''}],url:''};
+        trackMap[k].playcount++;
+      }
+      if(album&&artist){
+        const k=artist+'|||'+album;
+        if(!albumMap[k]) albumMap[k]={name:album,artist:{name:artist},playcount:0,image:[{['#text']:''}],url:''};
+        albumMap[k].playcount++;
+      }
+    });
+  } else {
+    // Kein Archiv vorhanden — Fallback auf Last.fm API (wie bisher)
+    const from=new Date(year,0,1),to=new Date(year,11,31,23,59,59);
+    const fromTs=Math.floor(from/1000),toTs=Math.floor(to/1000);
+    const totD=await lfmSafe('user.getRecentTracks',{from:fromTs,to:toTs,limit:1});
+    totalD=parseInt(totD?.recenttracks?.['@attr']?.total||0);
+    if(!totD){
+      document.getElementById('year-content').innerHTML=`<div style="padding:20px;color:var(--text3);">Kein Archiv vorhanden und Last.fm nicht erreichbar. Bitte vollständigen Import starten.</div>`;
+      return;
+    }
+    const totalPages=Math.min(Math.ceil(totalD/200),25);
+    document.getElementById('year-content').innerHTML=`<div class="ld"><div class="sp"></div> Lade Tracks ${year} (0/${totalPages} Seiten)...</div>`;
+    for(let page=1;page<=totalPages;page++){
+      const d=await lfmSafe('user.getRecentTracks',{from:fromTs,to:toTs,limit:200,page});
+      if(!d) break;
       const tracks=d?.recenttracks?.track||[];
       tracks.forEach(t=>{
         if(t['@attr']?.nowplaying)return;
@@ -2573,7 +2715,7 @@ async function loadYearReview(year){
         }
       });
       document.getElementById('year-content').innerHTML=`<div class="ld"><div class="sp"></div> Lade Tracks ${year} (${page}/${totalPages} Seiten)...</div>`;
-    }catch(e){break;}
+    }
   }
 
   const sortTop=(map)=>Object.values(map).sort((a,b)=>b.playcount-a.playcount).slice(0,5);
@@ -2840,6 +2982,53 @@ async function getRealArchiveCount(){
     const snap=await db.ref('scrobbles').get();
     return snap.exists()?Object.keys(snap.val()).length:0;
   }catch(e){return 0;}
+}
+
+// ── USER META CACHE (Hero-Daten) ──────────────────────────
+// Cached user.getInfo → in Firebase damit Avatar/Country/Registrierung auch
+// bei Last.fm-Ausfall verfügbar sind.
+async function getCachedUserMeta(){
+  try{
+    const snap=await db.ref('user_meta').get();
+    return snap.exists()?snap.val():null;
+  }catch(e){return null;}
+}
+
+async function cacheUserMeta(u){
+  try{
+    const img=u.image?.find(x=>x.size==='extralarge')?.['#text']||u.image?.[2]?.['#text']||'';
+    await db.ref('user_meta').set({
+      realname:u.realname||'',
+      country:u.country&&u.country!=='None'?u.country:'',
+      registered_uts:parseInt(u.registered?.unixtime)||0,
+      avatar_url:img,
+      playcount:parseInt(u.playcount)||0,
+      artist_count:parseInt(u.artist_count)||0,
+      track_count:parseInt(u.track_count)||0,
+      album_count:parseInt(u.album_count)||0,
+      last_fetched:Date.now()
+    });
+  }catch(e){console.warn('cacheUserMeta failed:',e);}
+}
+
+// ── ARCHIV-AGGREGATIONEN (Offline-fähig) ──────────────────
+// Unique Artists/Tracks/Albums aus _archiveData zählen.
+function getArchiveDiscoveryCounts(){
+  if(!_archiveData) return null;
+  const artists=new Set(),tracks=new Set(),albums=new Set();
+  Object.values(_archiveData).forEach(v=>{
+    const a=(v.artist||'').trim().toLowerCase();
+    const t=(v.track||'').trim().toLowerCase();
+    const al=(v.album||'').trim().toLowerCase();
+    if(a) artists.add(a);
+    if(a&&t) tracks.add(a+'|||'+t);
+    if(a&&al) albums.add(a+'|||'+al);
+  });
+  return {
+    artist_count:artists.size,
+    track_count:tracks.size,
+    album_count:albums.size
+  };
 }
 
 async function loadArchiveStatus(){
@@ -3124,16 +3313,26 @@ function updateSyncBadge(msg,color){
   b.style.color=color||'var(--text3)';
 }
 
-async function autoBackgroundSync(){
+// Lock gegen parallele Auto-Syncs (periodischer + visibilitychange + manuell)
+let _autoSyncRunning=false;
+async function autoBackgroundSync(silent=false){
+  if(_autoSyncRunning) return; // bereits aktiv — nicht überlappen
+  // Wenn manueller Import/Delta-Sync läuft, ebenfalls nicht stören
+  if(document.getElementById('archive-modal')?.classList.contains('busy')) return;
+  _autoSyncRunning=true;
   try{
     const hasArchive=await getLatestArchivedTs();
     if(!hasArchive) return; // kein Archiv vorhanden, nichts zu syncen
 
-    syncBanner('syncing','Prüfe auf neue Scrobbles...');
-    updateSyncBadge('🔄 synchronisiert...','var(--pink)');
+    // Im stillen Modus (periodischer Sync / Tab-Rückkehr) kein Banner zeigen,
+    // außer es werden tatsächlich neue Scrobbles gefunden.
+    if(!silent){
+      syncBanner('syncing','Prüfe auf neue Scrobbles...');
+      updateSyncBadge('🔄 synchronisiert...','var(--pink)');
+    }
 
     const latestTs=await getLatestArchivedTs();
-    if(!latestTs){syncBanner('done-ok','Kein Archiv vorhanden');return;}
+    if(!latestTs){if(!silent)syncBanner('done-ok','Kein Archiv vorhanden');return;}
 
     const fromTs=latestTs+1;
     const first=await fetchScrobblePage(fromTs,null,1,1);
@@ -3142,12 +3341,16 @@ async function autoBackgroundSync(){
 
     if(totalNew===0){
       await db.ref('scrobble_meta/last_sync').set(Date.now());
-      updateSyncBadge('aktuell ✓','#22c55e');
-      syncBanner('done-ok','Archiv ist aktuell ✓');
+      if(!silent){
+        updateSyncBadge('aktuell ✓','#22c55e');
+        syncBanner('done-ok','Archiv ist aktuell ✓');
+      }
       return;
     }
 
+    // Neue Scrobbles gefunden — jetzt auch im stillen Modus Banner zeigen
     syncBanner('syncing',`${Number(totalNew).toLocaleString('de-DE')} neue Scrobbles werden gespeichert...`,0);
+    updateSyncBadge('🔄 synchronisiert...','var(--pink)');
 
     let saved=0;
     for(let page=1;page<=totalPages;page++){
@@ -3168,7 +3371,7 @@ async function autoBackgroundSync(){
     await db.ref('scrobble_meta/last_sync').set(Date.now());
     updateSyncBadge(`+${saved} neue Tracks ✓`,'#22c55e');
     syncBanner('done-new',`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles synchronisiert`,100);
-    showToast(`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles`,'ok');
+    if(!silent) showToast(`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles`,'ok');
 
     // Archiv-Cache invalidieren damit neue Daten sichtbar werden
     _archiveData=null;
@@ -3177,12 +3380,51 @@ async function autoBackgroundSync(){
     loadArchiveSection().catch(()=>{});
 
   }catch(e){
-    syncBanner('err','Sync fehlgeschlagen: '+e.message);
-    updateSyncBadge('Sync fehlgeschlagen','#ef4444');
+    // Bei stillem Periodic-Sync nicht mit Banner nerven — könnte nur Netzwerkfehler sein
+    if(!silent){
+      syncBanner('err','Sync fehlgeschlagen: '+e.message);
+      updateSyncBadge('Sync fehlgeschlagen','#ef4444');
+    } else {
+      console.warn('Silent sync failed:',e.message);
+    }
+  } finally {
+    _autoSyncRunning=false;
   }
 }
 
-// ── RUNDE 3: OFFLINE ARCHIVE VIEW ─────────────────────────
+// ── HEALTH-CHECK: Firebase vs. Last.fm Drift-Erkennung ────
+// Vergleicht die tatsächliche Key-Anzahl in Firebase mit Last.fms gemeldeter
+// Playcount. Bei Drift > 2 → Warn-Banner + Empfehlung.
+// Wird nach autoBackgroundSync aufgerufen, damit normale Delta-Lücken schon
+// geschlossen sind und echte Daten-Korruption übrig bleibt.
+async function checkArchiveHealth(){
+  if(isLfmDown()) return; // Ohne Last.fm kein Vergleich möglich
+  try{
+    const [lfmInfo, archiveCount] = await Promise.all([
+      lfmSafe('user.getInfo'),
+      getRealArchiveCount()
+    ]);
+    if(!lfmInfo?.user) return; // Last.fm nicht erreichbar
+    const lfmCount = parseInt(lfmInfo.user.playcount)||0;
+    const drift = lfmCount - archiveCount;
+    // Counter in Firebase auch gleich auf Realwert syncen (für Archiv-Badge)
+    const metaCount = await getArchiveCount();
+    if(metaCount !== archiveCount){
+      try{ await db.ref('scrobble_meta/count').set(archiveCount); }catch(e){}
+    }
+    if(drift > 2 && archiveCount > 0){
+      // Echte Lücke — dezentes Warn-Banner mit Handlungsaufforderung
+      const pct = Math.round((archiveCount/lfmCount)*100);
+      syncBanner('err',
+        `⚠ Archiv ist ${drift} Scrobbles hinter Last.fm (${pct}% synchronisiert). `+
+        `<a href="#" onclick="openArchiveModal();return false;" style="color:var(--pink);text-decoration:underline;">Vollständigen Import starten</a>`
+      );
+      console.warn(`Archive health: ${archiveCount}/${lfmCount} (drift ${drift})`);
+    }
+  }catch(e){console.warn('checkArchiveHealth failed:',e);}
+}
+
+
 let _archiveData=null; // cache der geladenen Daten
 let archivePeriod='all',archiveTab='tracks';
 
@@ -3435,15 +3677,27 @@ document.addEventListener('keydown',(e)=>{
 (async()=>{
   loadCache();
   try{
+    // Archiv parallel starten — braucht keine Last.fm
+    const archivePromise=getArchiveData();
+
     const npTrack=await loadNowPlayingCard();
     const ud=await loadHero(npTrack);
-    joinYear=ud.joined.getFullYear();
+    // Wenn Last.fm down + kein Cache: ud.joined ist heute — dann Jahr aus Archiv ableiten
+    let heroJoinYear=ud.joined.getFullYear();
+    if(isLfmDown() && _archiveData){
+      const tsList=Object.keys(_archiveData).map(k=>parseInt(k.split('_')[0])).filter(x=>x);
+      if(tsList.length){
+        const earliest=Math.min(...tsList);
+        heroJoinYear=new Date(earliest*1000).getFullYear();
+      }
+    }
+    joinYear=heroJoinYear;
     renderOverview(ud);
     renderDiversity();
     loadCharts();
     updateChartsTrackCount();
     loadCompare();
-    buildYearSel(ud.joined.getFullYear());
+    buildYearSel(heroJoinYear);
     loadYearReview(new Date().getFullYear());
     loadStreak();
 
@@ -3462,8 +3716,32 @@ document.addEventListener('keydown',(e)=>{
     // Background DB sync – always check if Firebase is up to date
     if(joinYear) loadLifetimeData(joinYear,true).catch(()=>showToast('⚠ Firebase-Sync fehlgeschlagen','err'));
 
-    // Auto Delta-Sync im Hintergrund
-    autoBackgroundSync().catch(()=>{});
+    // Auto Delta-Sync im Hintergrund, danach Health-Check
+    autoBackgroundSync()
+      .then(()=>checkArchiveHealth())
+      .catch(()=>{});
+
+    // ── KONTINUIERLICHE SYNC-MECHANISMEN ──────────────────
+    // Damit Firebase auch bei offenem Tab aktuell bleibt (ohne Reload nötig)
+
+    // 1) Periodischer Sync alle 5 Minuten — still, kein Banner-Spam
+    setInterval(()=>{
+      if(document.hidden) return; // Tab im Hintergrund → nicht syncen (schont API)
+      if(isLfmDown()) return;     // Last.fm weg → warten bis wieder da
+      autoBackgroundSync(true).catch(()=>{});
+    }, 5*60*1000);
+
+    // 2) Sync bei Tab-Rückkehr — mit kleinem Debounce
+    // (Wenn man schnell zwischen Tabs hin- und herspringt, nicht jedes Mal syncen)
+    let _lastVisSync=0;
+    document.addEventListener('visibilitychange', ()=>{
+      if(document.hidden) return;
+      if(isLfmDown()) return;
+      const now=Date.now();
+      if(now-_lastVisSync < 60*1000) return; // min. 1 Min zwischen Tab-Visibility-Syncs
+      _lastVisSync=now;
+      autoBackgroundSync(true).catch(()=>{});
+    });
 
     // Archiv-Sektion laden
     loadArchiveSection().catch(()=>{});
