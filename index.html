@@ -2,7 +2,15 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- iOS Safari Web-App / Homescreen-Support -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="s1r1us-a Stats">
+<meta name="theme-color" content="#f0d9ed">
+<meta name="format-detection" content="telephone=no">
+<meta name="color-scheme" content="light">
 <title>s1r1us-a — Ultimate Stats</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -917,6 +925,207 @@ body > div.wrap:first-of-type{background:transparent;border:none;box-shadow:none
   .metric-grid > *,.top5-grid > *,.rlist > *,.streak-grid > *{opacity:1;transform:none;}
   #ff-card-wrap,#ff-card-wrap.ff-out-left,#ff-card-wrap.ff-out-right,#ff-card-wrap.ff-in-right,#ff-card-wrap.ff-in-left{animation:none!important;opacity:1;transform:none;}
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   📱 iOS SAFARI / WEB-APP KOMPATIBILITÄT
+   Rein additive Regeln. Desktop-Darstellung bleibt unverändert.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Grundlegendes: iOS Tap-Highlight + Text-Autoscale */
+html{
+  -webkit-tap-highlight-color:transparent;
+  -webkit-text-size-adjust:100%;
+  text-size-adjust:100%;
+}
+
+/* Touch-Callout auf interaktiven Cards verhindern (iOS: kein Bild-Kontextmenü beim Halten) */
+.mc,.ri,.top5-card,.chart-glass,.pb,.ctab,.tag,.hm-item,.action-btn,.action-btn-sm,
+.nav-links a,.export-btn,.modal-btn-primary,.modal-btn-secondary,.modal-close,
+.adm-close,.nav-hamburger,.nav-close,.back-top,.side-nav-dot,.show-more{
+  -webkit-touch-callout:none;
+}
+
+/* Safe-Area Unterstützung: Notch, Dynamic Island, Home-Indicator */
+@supports(padding:env(safe-area-inset-top)){
+  nav{padding-top:calc(12px + env(safe-area-inset-top));}
+  #sync-banner{top:calc(49px + env(safe-area-inset-top));}
+  .back-top{
+    bottom:calc(24px + env(safe-area-inset-bottom));
+    right:calc(24px + env(safe-area-inset-right));
+  }
+  #db-toast{
+    bottom:calc(20px + env(safe-area-inset-bottom));
+    right:calc(20px + env(safe-area-inset-right));
+  }
+  footer{padding-bottom:calc(48px + env(safe-area-inset-bottom));}
+  /* Fullscreen-Mobile-Nav respektiert Notch & Home-Indicator */
+  .nav-links.open{
+    padding-top:calc(20px + env(safe-area-inset-top));
+    padding-bottom:calc(20px + env(safe-area-inset-bottom));
+  }
+  .nav-close{
+    top:calc(16px + env(safe-area-inset-top));
+    right:calc(20px + env(safe-area-inset-right));
+  }
+}
+
+/* iOS-Safari Input-Auto-Zoom verhindern (min. 16px bei Focus) */
+@media(max-width:720px){
+  .search-input,
+  input[type="text"],
+  input[type="search"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  textarea,
+  select{
+    font-size:16px!important;
+  }
+}
+
+/* Dynamic Viewport Height: umgeht iOS-Safari-Adressleisten-vh-Bug */
+@supports(height:100dvh){
+  .modal-box{max-height:80dvh;}
+  .adm-box{max-height:80dvh;}
+  .nav-links.open{height:100dvh;min-height:100dvh;}
+}
+
+/* Standalone-Modus (installierte Web-App): solidere Nav gegen Status-Bar */
+@media(display-mode:standalone){
+  body{min-height:100vh;min-height:100dvh;}
+  nav{background:rgba(255,255,255,0.88);}
+  /* Leichte Scroll-Eindämmung damit Seite nicht im Standalone-Modus bouncet */
+  html{overscroll-behavior-y:contain;}
+}
+
+/* Hover-Effekte NUR für Geräte mit echter Maus.
+   Entfernt "klebende" Hover-States auf Touch-Geräten (iPhone, iPad).
+   Desktop mit Maus: vollständig unverändert. */
+@media(hover:none){
+  /* Karten: keine transform/border-3px/Shadow-Explosion beim Tap */
+  .mc:hover{
+    border:1px solid rgba(255,255,255,0.9)!important;
+    transform:none;
+    box-shadow:none;
+  }
+  .mc:active{transform:scale(0.985);transition:transform .1s;}
+
+  .ri:hover{
+    border:1px solid rgba(255,255,255,0.85)!important;
+    background:rgba(255,255,255,0.55);
+    transform:none;
+    box-shadow:none;
+  }
+  .ri:active{background:rgba(255,255,255,0.75);}
+  .ri:hover .bar-f{transform:none;opacity:1;}
+
+  .top5-card:hover{
+    border:1px solid rgba(255,255,255,0.85)!important;
+    transform:none;
+    box-shadow:none;
+  }
+  .top5-card:active{transform:scale(0.985);}
+
+  .chart-glass:hover{
+    border:1px solid rgba(255,255,255,0.85)!important;
+    box-shadow:none;
+  }
+
+  .hm-item:hover{
+    transform:none;
+    border-color:rgba(255,255,255,0.85);
+    background:rgba(255,255,255,0.55);
+    box-shadow:0 2px 8px rgba(180,80,180,0.07),0 0 0 1px rgba(255,255,255,0.6) inset;
+  }
+
+  .tag:hover{
+    border-color:var(--border2);
+    color:var(--text2);
+    background:transparent;
+    transform:none;
+    box-shadow:none;
+  }
+
+  .wd-bw:hover .wd-b{
+    transform:none;
+    box-shadow:none!important;
+  }
+
+  .cal-day:hover::after{display:none;}
+
+  .pb:hover{
+    border-color:var(--border2);
+    color:var(--text2);
+    background:transparent;
+    box-shadow:none;
+  }
+
+  .ctab:hover:not(.active){
+    color:var(--text2);
+    background:transparent;
+    border-color:transparent;
+  }
+
+  .rec-item:hover{background:transparent;}
+  .nav-links a:hover{background:transparent;color:var(--text2);text-shadow:none;}
+  .export-btn:hover,.action-btn:hover,.action-btn-sm:hover,
+  .modal-close:hover,.adm-close:hover,.nav-hamburger:hover,
+  .np-refresh:hover,.show-more:hover,.modal-btn-secondary:hover{
+    border-color:var(--border2);
+    color:var(--text2);
+    background:transparent;
+    box-shadow:none;
+  }
+  .modal-btn-primary:hover{
+    background:var(--pink3);
+    color:var(--pink2);
+    border-color:rgba(214,24,122,.5);
+  }
+
+  /* Active-State als subtiles Touch-Feedback */
+  .nav-links a:active,.export-btn:active,.action-btn:active,.action-btn-sm:active,
+  .modal-btn-primary:active,.modal-btn-secondary:active,.modal-close:active,
+  .adm-close:active,.nav-hamburger:active,.nav-close:active,.np-refresh:active,
+  .show-more:active,.pb:active,.ctab:active,.tag:active,.hm-item:active,
+  .back-top:active,.side-nav-dot:active,.rec-item:active{
+    opacity:0.65;
+    transition:opacity .1s;
+  }
+}
+
+/* Touch-Target-Größen (Apple HIG empfiehlt 44×44) */
+@media(max-width:720px){
+  .nav-hamburger{min-width:40px;min-height:40px;padding:8px 10px;}
+  .nav-close{min-width:40px;min-height:40px;padding:8px 10px;}
+  .modal-close,.adm-close{min-width:36px;min-height:32px;}
+  .pb{min-height:32px;}
+  .ctab{min-height:32px;}
+  .back-top{width:48px;height:48px;}
+}
+
+/* Sehr schmale Screens (iPhone SE, iPhone 13 mini ~375px, ältere Androids) */
+@media(max-width:380px){
+  .hero-name{font-size:20px;}
+  .sec-title{font-size:19px;}
+  section > .wrap{padding:20px 14px;}
+  .wrap{padding:0 16px;}
+  section > .wrap > .sec-hdr::before{font-size:44px;right:12px;top:12px;}
+  .metric-grid{gap:8px;}
+  .mc{padding:11px 12px;}
+}
+
+/* Smooth-Scrolling auch in scrollbaren Containern */
+.cal-wrap,.modal-box,.adm-body,.nav-links.open{
+  -webkit-overflow-scrolling:touch;
+}
+
+/* Overscroll-Behavior: verhindert Page-Scroll wenn im Modal gescrollt wird */
+.modal-box,.adm-body,.nav-links.open{
+  overscroll-behavior:contain;
+}
+
+/* iOS: Auto-Link auf Zahlen/Daten deaktivieren (falls irgendwo im Stat-Text) */
+a[href^="tel"]{color:inherit;text-decoration:none;pointer-events:none;}
 </style>
 </head>
 <body>
