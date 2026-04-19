@@ -3387,7 +3387,11 @@ async function startDeltaSync(){
       return;
     }
 
-    const fromTs=latestTs+1;
+    const fromTs=latestTs;
+    // fromTs inklusiv: falls mehrere Scrobbles im gleichen uts existieren
+    // (passiert bei Imports aus anderen Diensten), werden Duplikate durch den
+    // deterministischen Key (ts+artist+track+hash) mit identischem Inhalt
+    // überschrieben — kein Datenverlust, keine Lücke.
     const date=new Date(latestTs*1000).toLocaleString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
     statusEl.innerHTML=`Hole neue Tracks seit <span style="color:var(--pink);">${date}</span>...`;
 
@@ -3571,7 +3575,9 @@ async function autoBackgroundSync(silent=false){
     const latestTs=await getLatestArchivedTs();
     if(!latestTs){if(!silent)syncBanner('done-ok','Kein Archiv vorhanden');return;}
 
-    const fromTs=latestTs+1;
+    const fromTs=latestTs;
+    // fromTs inklusiv (siehe Kommentar in startDeltaSync) — verhindert, dass
+    // Scrobbles mit gleichem uts wie der letzte archivierte verloren gehen.
     const first=await fetchScrobblePage(fromTs,null,1,1);
     const totalPages=parseInt(first?.recenttracks?.['@attr']?.totalPages||1);
     const totalNew=parseInt(first?.recenttracks?.['@attr']?.total||0);
@@ -3650,15 +3656,27 @@ async function checkArchiveHealth(){
     if(metaCount !== archiveCount){
       try{ await db.ref('scrobble_meta/count').set(archiveCount); }catch(e){}
     }
-    if(drift > 2 && archiveCount > 0){
-      // Echte Lücke — dezentes Warn-Banner mit Handlungsaufforderung
+    // Drift-Threshold: Last.fms `user.getInfo.playcount` enthält strukturell
+    // mehr als was via `getRecentTracks` abrufbar ist (Now-Playing, gelöschte
+    // Tracks, fehlerhafte Importe). Eine Drift von ein paar Scrobbles ist
+    // normal und kein Datenverlust. Threshold: max(20, 0.2% des Playcounts).
+    const driftThreshold = Math.max(20, Math.floor(lfmCount * 0.002));
+    if(drift > driftThreshold && archiveCount > 0){
       const pct = Math.round((archiveCount/lfmCount)*100);
+      const driftPct = drift / lfmCount;
+      // Bei kleiner Drift (<5%) zuerst Delta-Sync empfehlen — meist reicht das.
+      // Nur bei größerer Diskrepanz Full Import anbieten.
+      const action = driftPct < 0.05
+        ? `<a href="#" onclick="autoBackgroundSync(false);return false;" style="color:var(--pink);text-decoration:underline;">Delta-Sync starten</a>`
+        : `<a href="#" onclick="openArchiveModal();return false;" style="color:var(--pink);text-decoration:underline;">Vollständigen Import starten</a>`;
       syncBanner('err',
-        `⚠ Archiv ist ${drift} Scrobbles hinter Last.fm (${pct}% synchronisiert). `+
-        `<a href="#" onclick="openArchiveModal();return false;" style="color:var(--pink);text-decoration:underline;">Vollständigen Import starten</a>`,
+        `⚠ Archiv ist ${drift} Scrobbles hinter Last.fm (${pct}% synchronisiert). `+action,
         null, true  // html=true — Link wird gerendert statt als Text angezeigt
       );
-      console.warn(`Archive health: ${archiveCount}/${lfmCount} (drift ${drift})`);
+      console.warn(`Archive health: ${archiveCount}/${lfmCount} (drift ${drift}, threshold ${driftThreshold})`);
+    } else if(drift > 0){
+      // Kleine Drift ignorieren — normales Last.fm-API-Rauschen
+      console.info(`Archive health: ${archiveCount}/${lfmCount} (drift ${drift} innerhalb Toleranz ${driftThreshold})`);
     }
   }catch(e){console.warn('checkArchiveHealth failed:',e);}
 }
