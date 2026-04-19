@@ -2005,12 +2005,16 @@ function periodFromTs(period){
   return null; // overall
 }
 
-// Berechnet Top-Charts aus _archiveData für eine gegebene Periode und Tab
-function calcChartsFromArchive(period,tab){
-  if(!_archiveData) return null;
+// Berechnet Top-Charts aus Archive-Daten für eine gegebene Periode und Tab.
+// data kann optional übergeben werden (z.B. frisch aus getArchiveData()) —
+// dann ist die Funktion robust gegen State-Bugs wo _archiveData zwischenzeitlich
+// auf null gesetzt wurde aber getArchiveData() trotzdem Daten liefern kann.
+function calcChartsFromArchive(period,tab,data){
+  const src=data||_archiveData;
+  if(!src) return null;
   const fromTs=periodFromTs(period);
   const countMap={};
-  Object.entries(_archiveData).forEach(([key,v])=>{
+  Object.entries(src).forEach(([key,v])=>{
     const ts=parseInt(key.split('_')[0]);
     if(fromTs&&ts<fromTs) return;
     const artist=(v.artist||'').trim();
@@ -2112,7 +2116,8 @@ async function loadCharts(){
 
     } else {
       // Alle anderen Perioden: aus Firebase-Archiv berechnen
-      items=calcChartsFromArchive(chartPeriod,chartTab)||[];
+      // archData direkt übergeben — robuster als über _archiveData global zu gehen
+      items=calcChartsFromArchive(chartPeriod,chartTab,archData)||[];
     }
     // Cache nur setzen wenn Archiv-Daten wirklich verfügbar sind UND Ergebnis nicht leer —
     // sonst würde ein leeres Ergebnis aus einem Fehler permanent eingefroren.
@@ -3609,8 +3614,12 @@ async function autoBackgroundSync(silent=false){
     syncBanner('done-new',`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles synchronisiert`,100);
     if(!silent) showToast(`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles`,'ok');
 
-    // Archiv-Cache invalidieren damit neue Daten sichtbar werden
+    // Archiv-Cache invalidieren damit neue Daten sichtbar werden.
+    // WICHTIG: Auch _archivePromise zurücksetzen — sonst returnt getArchiveData()
+    // weiterhin das alte resolved-Promise und der .then()-Callback (der _archiveData
+    // neu setzen würde) läuft nicht mehr.
     _archiveData=null;
+    _archivePromise=null;
     // Chart-Cache leeren damit neue Scrobbles in den Charts erscheinen
     Object.keys(cache).filter(k=>k.startsWith('top_')&&!k.endsWith('_today')).forEach(k=>delete cache[k]);
     // Alle UI-Komponenten neu laden — ohne full page reload
