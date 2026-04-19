@@ -1195,7 +1195,7 @@ a[href^="tel"]{color:inherit;text-decoration:none;pointer-events:none;}
 <!-- OVERVIEW -->
 <section id="overview">
   <div class="wrap">
-    <div class="sec-hdr"><div class="sec-title">Übersicht</div><div class="sec-actions"><div id="cache-info" class="sec-info"></div><a href="wrapped.html" class="wrapped-btn" title="Dein Wrapped ansehen"><span class="sparkle">✨</span><span>Wrapped</span></a><button id="archive-btn" onclick="openArchiveModal()" class="action-btn">🗄 Archiv</button></div></div>
+    <div class="sec-hdr"><div class="sec-title">Übersicht</div><div class="sec-actions"><div id="sync-status" class="sec-info" title=""></div><div id="cache-info" class="sec-info"></div><a href="wrapped.html" class="wrapped-btn" title="Dein Wrapped ansehen"><span class="sparkle">✨</span><span>Wrapped</span></a><button id="archive-btn" onclick="openArchiveModal()" class="action-btn">🗄 Archiv</button></div></div>
     <div class="metric-grid" id="overview-grid">
       <div class="skel skel-mc hi"></div>
       <div class="skel skel-mc"></div>
@@ -3385,11 +3385,13 @@ async function startDeltaSync(){
       return;
     }
 
-    const fromTs=latestTs;
-    // fromTs inklusiv: falls mehrere Scrobbles im gleichen uts existieren
-    // (passiert bei Imports aus anderen Diensten), werden Duplikate durch den
-    // deterministischen Key (ts+artist+track+hash) mit identischem Inhalt
-    // überschrieben — kein Datenverlust, keine Lücke.
+    const fromTs=latestTs+1;
+    // fromTs exklusiv (+1): sonst liefert Last.fm den bereits archivierten
+    // Scrobble immer mit und das erzeugt bei jedem Sync einen Phantom-"+1"-Eintrag
+    // (der `seq`-Teil im Scrobble-Key macht den Key nicht deterministisch über Syncs).
+    // Trade-off: Scrobbles mit exakt gleichem uts wie der letzte archivierte werden
+    // nicht per Delta-Sync abgeholt — das passiert praktisch nur bei Bulk-Imports
+    // aus Spotify/YouTube und wird bei Bedarf durch Full-Import gefangen.
     const date=new Date(latestTs*1000).toLocaleString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
     statusEl.innerHTML=`Hole neue Tracks seit <span style="color:var(--pink);">${date}</span>...`;
 
@@ -3493,6 +3495,28 @@ function updateSyncBadge(msg,color){
   b.style.color=color||'var(--text3)';
 }
 
+// Permanentes Sync-Status-Label im Übersichts-Header.
+// Zeigt "Archiv aktuell · vor X Min" basierend auf scrobble_meta/last_sync.
+// Wird beim initialen Load und nach jedem erfolgreichen Sync aktualisiert.
+async function updateSyncStatusLabel(){
+  const el=document.getElementById('sync-status');
+  if(!el) return;
+  try{
+    const snap=await db.ref('scrobble_meta/last_sync').get();
+    if(!snap.exists()){el.style.display='none';return;}
+    const lastSync=snap.val();
+    const ageMin=Math.round((Date.now()-lastSync)/60000);
+    let label;
+    if(ageMin<1) label='Archiv aktuell · gerade eben';
+    else if(ageMin<60) label=`Archiv aktuell · vor ${ageMin} Min`;
+    else if(ageMin<1440){const h=Math.floor(ageMin/60);label=`Archiv aktuell · vor ${h} Std`;}
+    else {const d=Math.floor(ageMin/1440);label=`Archiv aktuell · vor ${d} Tag${d===1?'':'en'}`;}
+    el.textContent=label;
+    el.title=`Letzter Sync: ${new Date(lastSync).toLocaleString('de-DE')}`;
+    el.style.display='block';
+  }catch(e){el.style.display='none';}
+}
+
 // ── POST-SYNC REFRESH ─────────────────────────────────────
 // Aktualisiert alle UI-Komponenten, die von Scrobble-Daten abhängen —
 // ohne Full Page Reload. Wird nach jedem erfolgreichen Sync aufgerufen.
@@ -3573,19 +3597,22 @@ async function autoBackgroundSync(silent=false){
     const latestTs=await getLatestArchivedTs();
     if(!latestTs){if(!silent)syncBanner('done-ok','Kein Archiv vorhanden');return;}
 
-    const fromTs=latestTs;
-    // fromTs inklusiv (siehe Kommentar in startDeltaSync) — verhindert, dass
-    // Scrobbles mit gleichem uts wie der letzte archivierte verloren gehen.
+    const fromTs=latestTs+1;
+    // fromTs exklusiv (+1), siehe Kommentar in startDeltaSync.
     const first=await fetchScrobblePage(fromTs,null,1,1);
     const totalPages=parseInt(first?.recenttracks?.['@attr']?.totalPages||1);
     const totalNew=parseInt(first?.recenttracks?.['@attr']?.total||0);
 
     if(totalNew===0){
       await db.ref('scrobble_meta/last_sync').set(Date.now());
+      // Kein aufpoppendes Banner mehr — stattdessen dezentes Label im Header.
+      // Falls das Banner vorher im "syncing"-Zustand war (non-silent-Modus), ausblenden.
       if(!silent){
+        const banner=document.getElementById('sync-banner');
+        if(banner) banner.classList.remove('visible');
         updateSyncBadge('aktuell ✓','#22c55e');
-        syncBanner('done-ok','Archiv ist aktuell ✓');
       }
+      updateSyncStatusLabel();
       return;
     }
 
@@ -3613,6 +3640,7 @@ async function autoBackgroundSync(silent=false){
     updateSyncBadge(`+${saved} neue Tracks ✓`,'#22c55e');
     syncBanner('done-new',`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles synchronisiert`,100);
     if(!silent) showToast(`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles`,'ok');
+    updateSyncStatusLabel();
 
     // Archiv-Cache invalidieren damit neue Daten sichtbar werden.
     // WICHTIG: Auch _archivePromise zurücksetzen — sonst returnt getArchiveData()
@@ -3971,6 +3999,9 @@ document.addEventListener('keydown',(e)=>{
     loadCalendar();
 
     saveCache();
+
+    // Sync-Status-Label sofort aus DB befüllen (zeigt "vor X Min" auch bevor autoBackgroundSync läuft)
+    updateSyncStatusLabel();
 
     // Background DB sync – always check if Firebase is up to date
     if(joinYear) loadLifetimeData(joinYear,true).catch(()=>showToast('⚠ Firebase-Sync fehlgeschlagen','err'));
