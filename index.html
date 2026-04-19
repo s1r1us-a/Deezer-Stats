@@ -48,6 +48,29 @@ nav{position:sticky;top:0;z-index:200;background:rgba(255,255,255,0.72);backdrop
 .nav-right{display:flex;gap:8px;align-items:center;}
 .export-btn{font-family:var(--mono);font-size:12px;padding:6px 12px;border-radius:7px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;transition:all .2s;}
 .export-btn:hover{border-color:var(--pink);color:var(--pink);background:var(--pink4);box-shadow:0 0 12px rgba(214,24,122,0.2);}
+.wrapped-btn{
+  font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.04em;
+  padding:6px 13px;border-radius:7px;border:1px solid transparent;
+  background:linear-gradient(135deg,var(--pink),var(--purple2));color:#fff;cursor:pointer;
+  text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+  box-shadow:0 4px 14px -4px rgba(232,39,154,.45),inset 0 1px 0 rgba(255,255,255,.25);
+  transition:all .2s;position:relative;overflow:hidden;
+}
+.wrapped-btn::before{
+  content:'';position:absolute;inset:0;border-radius:inherit;
+  background:linear-gradient(135deg,var(--pink2),var(--purple));
+  opacity:0;transition:opacity .2s;
+}
+.wrapped-btn > *{position:relative;z-index:1;}
+.wrapped-btn:hover{transform:translateY(-1px);box-shadow:0 8px 22px -4px rgba(232,39,154,.55),inset 0 1px 0 rgba(255,255,255,.3);}
+.wrapped-btn:hover::before{opacity:1;}
+.wrapped-btn:active{transform:translateY(0);}
+.wrapped-btn .sparkle{display:inline-block;animation:wbtn-spark 2.8s ease-in-out infinite;transform-origin:center;}
+@keyframes wbtn-spark{0%,100%{transform:rotate(-6deg) scale(1);}50%{transform:rotate(6deg) scale(1.15);}}
+@media(max-width:520px){
+  .wrapped-btn > span:last-child{display:none;}
+  .wrapped-btn{padding:6px 10px;}
+}
 
 /* SYNC BANNER */
 #sync-banner{position:sticky;top:49px;z-index:190;width:100%;padding:0;max-height:0;overflow:hidden;transition:max-height .4s ease,padding .4s ease;}
@@ -766,18 +789,17 @@ body > div.wrap:first-of-type{background:transparent;border:none;box-shadow:none
 .metric-grid > *,
 .top5-grid > *,
 .rlist > *,
-.streak-grid > *,
-#funfacts-grid > *{
+.streak-grid > *{
   opacity:0;
   transform:translateY(14px) scale(0.98);
   animation:stag-in 0.55s cubic-bezier(0.22,1,0.36,1) forwards;
 }
-.metric-grid > *:nth-child(1),.top5-grid > *:nth-child(1),.rlist > *:nth-child(1),.streak-grid > *:nth-child(1),#funfacts-grid > *:nth-child(1){animation-delay:0.00s}
-.metric-grid > *:nth-child(2),.top5-grid > *:nth-child(2),.rlist > *:nth-child(2),.streak-grid > *:nth-child(2),#funfacts-grid > *:nth-child(2){animation-delay:0.05s}
-.metric-grid > *:nth-child(3),.top5-grid > *:nth-child(3),.rlist > *:nth-child(3),.streak-grid > *:nth-child(3),#funfacts-grid > *:nth-child(3){animation-delay:0.10s}
-.metric-grid > *:nth-child(4),.top5-grid > *:nth-child(4),.rlist > *:nth-child(4),.streak-grid > *:nth-child(4),#funfacts-grid > *:nth-child(4){animation-delay:0.15s}
-.metric-grid > *:nth-child(5),.top5-grid > *:nth-child(5),.rlist > *:nth-child(5),.streak-grid > *:nth-child(5),#funfacts-grid > *:nth-child(5){animation-delay:0.20s}
-.metric-grid > *:nth-child(6),.top5-grid > *:nth-child(6),.rlist > *:nth-child(6),.streak-grid > *:nth-child(6),#funfacts-grid > *:nth-child(6){animation-delay:0.25s}
+.metric-grid > *:nth-child(1),.top5-grid > *:nth-child(1),.rlist > *:nth-child(1),.streak-grid > *:nth-child(1){animation-delay:0.00s}
+.metric-grid > *:nth-child(2),.top5-grid > *:nth-child(2),.rlist > *:nth-child(2),.streak-grid > *:nth-child(2){animation-delay:0.05s}
+.metric-grid > *:nth-child(3),.top5-grid > *:nth-child(3),.rlist > *:nth-child(3),.streak-grid > *:nth-child(3){animation-delay:0.10s}
+.metric-grid > *:nth-child(4),.top5-grid > *:nth-child(4),.rlist > *:nth-child(4),.streak-grid > *:nth-child(4){animation-delay:0.15s}
+.metric-grid > *:nth-child(5),.top5-grid > *:nth-child(5),.rlist > *:nth-child(5),.streak-grid > *:nth-child(5){animation-delay:0.20s}
+.metric-grid > *:nth-child(6),.top5-grid > *:nth-child(6),.rlist > *:nth-child(6),.streak-grid > *:nth-child(6){animation-delay:0.25s}
 .metric-grid > *:nth-child(7),.top5-grid > *:nth-child(7),.rlist > *:nth-child(7),.streak-grid > *:nth-child(7){animation-delay:0.30s}
 .metric-grid > *:nth-child(8),.top5-grid > *:nth-child(8),.rlist > *:nth-child(8),.streak-grid > *:nth-child(8){animation-delay:0.35s}
 .metric-grid > *:nth-child(9),.top5-grid > *:nth-child(9),.rlist > *:nth-child(9){animation-delay:0.40s}
@@ -840,55 +862,6 @@ body > div.wrap:first-of-type{background:transparent;border:none;box-shadow:none
 /* Waveform nur sichtbar wenn is-playing irgendwo im Hero-Bereich */
 .hero:has(.hero-avatar.is-playing) .hero-waveform{opacity:0.85;}
 
-/* ═══ FUN-FACTS SEKTION ═══ */
-/* FUN FACTS SLIDER */
-#ff-slider{position:relative;user-select:none;}
-#ff-card-wrap{position:relative;min-height:130px;}
-#ff-card-wrap.ff-out-left{animation:ff-out-left .3s cubic-bezier(.4,0,.2,1) both;}
-#ff-card-wrap.ff-out-right{animation:ff-out-right .3s cubic-bezier(.4,0,.2,1) both;}
-#ff-card-wrap.ff-in-right{animation:ff-in-right .38s cubic-bezier(.4,0,.2,1) both;}
-#ff-card-wrap.ff-in-left{animation:ff-in-left .38s cubic-bezier(.4,0,.2,1) both;}
-@keyframes ff-out-left{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(-44px)}}
-@keyframes ff-out-right{from{opacity:1;transform:translateX(0)}to{opacity:0;transform:translateX(44px)}}
-@keyframes ff-in-right{from{opacity:0;transform:translateX(44px)}to{opacity:1;transform:translateX(0)}}
-@keyframes ff-in-left{from{opacity:0;transform:translateX(-44px)}to{opacity:1;transform:translateX(0)}}
-#ff-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:16px;}
-.ff-nav-btn{font-family:var(--mono);font-size:18px;line-height:1;color:var(--text2);background:rgba(255,255,255,0.55);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.85);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;flex-shrink:0;}
-.ff-nav-btn:hover{border-color:var(--pink);color:var(--pink);box-shadow:0 0 12px rgba(232,39,154,0.2);}
-#ff-dots{display:flex;gap:6px;align-items:center;}
-.ff-dot{width:6px;height:6px;border-radius:3px;background:rgba(232,39,154,0.2);cursor:pointer;transition:all .28s;flex-shrink:0;}
-.ff-dot.active{width:22px;background:linear-gradient(90deg,var(--pink),var(--purple2));box-shadow:0 0 8px rgba(232,39,154,0.35);}
-.ff-dot:hover:not(.active){background:rgba(232,39,154,0.4);}
-.ff-progress{height:2px;background:rgba(232,39,154,0.12);border-radius:1px;margin-top:10px;overflow:hidden;}
-.ff-progress-bar{height:100%;background:linear-gradient(90deg,var(--pink),var(--purple2));border-radius:1px;width:0%;transition:width linear;}
-.ff-card{
-  position:relative;
-  padding:26px 28px;
-  border-radius:var(--r);
-  background:rgba(255,255,255,0.62);
-  backdrop-filter:blur(20px);
-  -webkit-backdrop-filter:blur(20px);
-  border:1px solid rgba(255,255,255,0.9);
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.95),
-    inset 0 -1px 0 rgba(232,39,154,0.08),
-    0 8px 24px -10px rgba(180,80,180,0.18);
-  overflow:hidden;
-  isolation:isolate;
-}
-.ff-card::before{
-  content:'';position:absolute;inset:0;
-  background:var(--noise),linear-gradient(135deg,rgba(255,255,255,0.25) 0%,transparent 60%);
-  background-blend-mode:overlay,normal;
-  pointer-events:none;
-}
-.ff-icon{font-size:30px;margin-bottom:12px;display:block;filter:drop-shadow(0 2px 8px rgba(232,39,154,0.3));}
-.ff-headline{font-family:var(--sans);font-size:15px;font-weight:600;color:var(--text);line-height:1.4;position:relative;z-index:2;}
-.ff-highlight{background:linear-gradient(90deg,var(--pink),var(--purple2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-weight:700;}
-.ff-sub{font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:8px;letter-spacing:.04em;position:relative;z-index:2;}
-.ff-counter{font-family:var(--mono);font-size:10px;color:var(--text3);position:absolute;top:14px;right:16px;z-index:2;}
-#funfacts-content{min-height:120px;}
-
 /* ═══ VERFEINERTE SKELETON-LOADER ═══ */
 .skel{
   background:linear-gradient(90deg,
@@ -923,7 +896,6 @@ body > div.wrap:first-of-type{background:transparent;border:none;box-shadow:none
 @media(prefers-reduced-motion:reduce){
   .ld,.metric-grid > *,.top5-grid > *,.rlist > *,.streak-grid > *,.hero-waveform .wf-bar{animation:none!important;}
   .metric-grid > *,.top5-grid > *,.rlist > *,.streak-grid > *{opacity:1;transform:none;}
-  #ff-card-wrap,#ff-card-wrap.ff-out-left,#ff-card-wrap.ff-out-right,#ff-card-wrap.ff-in-right,#ff-card-wrap.ff-in-left{animation:none!important;opacity:1;transform:none;}
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1143,7 +1115,6 @@ a[href^="tel"]{color:inherit;text-decoration:none;pointer-events:none;}
 <nav class="side-nav" aria-label="Schnellnavigation" id="sideNav">
   <button class="side-nav-dot active" data-target="overview" data-label="Übersicht" aria-label="Übersicht"></button>
   <button class="side-nav-dot" data-target="diversity-sec" data-label="Musik-Diversität" aria-label="Diversität"></button>
-  <button class="side-nav-dot" data-target="funfacts-sec" data-label="Fun Facts" aria-label="Fun Facts"></button>
   <button class="side-nav-dot" data-target="charts-sec" data-label="Top Charts" aria-label="Top Charts"></button>
   <button class="side-nav-dot" data-target="activity-sec" data-label="Aktivität" aria-label="Aktivität"></button>
   <button class="side-nav-dot" data-target="calendar-sec" data-label="Jahres-Heatmap" aria-label="Heatmap"></button>
@@ -1171,6 +1142,7 @@ a[href^="tel"]{color:inherit;text-decoration:none;pointer-events:none;}
     </div>
     <div class="nav-right">
       <button class="nav-hamburger" id="nav-hamburger" onclick="openNav()">☰</button>
+      <a href="wrapped.html" class="wrapped-btn" title="Dein Wrapped ansehen"><span class="sparkle">✨</span><span>Wrapped</span></a>
       <button class="export-btn" onclick="exportPNG()">↓ Export PNG</button>
     </div>
   </div>
@@ -1223,7 +1195,7 @@ a[href^="tel"]{color:inherit;text-decoration:none;pointer-events:none;}
 <!-- OVERVIEW -->
 <section id="overview">
   <div class="wrap">
-    <div class="sec-hdr"><div class="sec-title">Übersicht</div><div class="sec-actions"><div id="cache-info" class="sec-info"></div><button id="archive-btn" onclick="openArchiveModal()" class="action-btn">🗄 Archiv</button></div></div>
+    <div class="sec-hdr"><div class="sec-title">Übersicht</div><div class="sec-actions"><div id="cache-info" class="sec-info"></div><a href="wrapped.html" class="wrapped-btn" title="Dein Wrapped ansehen"><span class="sparkle">✨</span><span>Wrapped</span></a><button id="archive-btn" onclick="openArchiveModal()" class="action-btn">🗄 Archiv</button></div></div>
     <div class="metric-grid" id="overview-grid">
       <div class="skel skel-mc hi"></div>
       <div class="skel skel-mc"></div>
@@ -1243,14 +1215,6 @@ a[href^="tel"]{color:inherit;text-decoration:none;pointer-events:none;}
   <div class="wrap">
     <div class="sec-hdr"><div class="sec-title">Musik-Diversität</div></div>
     <div id="diversity-content"><div class="ld"><div class="sp"></div></div></div>
-  </div>
-</section>
-
-<!-- FUN FACTS -->
-<section id="funfacts-sec">
-  <div class="wrap">
-    <div class="sec-hdr"><div class="sec-title">Fun Facts</div><div class="sec-actions"><div id="funfacts-status" class="sec-info"></div></div></div>
-    <div id="funfacts-content"><div class="ld"><div class="sp"></div></div></div>
   </div>
 </section>
 
@@ -4206,437 +4170,6 @@ document.addEventListener('keydown',(e)=>{
     setTimeout(checkVals, 200);
   }
   ['overview-grid', 'streak-content', 'lifetime-stats', 'diversity-content'].forEach(setupCounter);
-
-  // ── Fun-Facts: eigene isolierte Firebase-Query ─────────────
-  function escFF(s){
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
-  function computeFunFacts(scrobbles){
-    const facts = [];
-    const WDAYS = ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
-
-    // Künstler-Map
-    const artists = {};
-    scrobbles.forEach(s => { if(s.artist) artists[s.artist] = (artists[s.artist]||0) + 1; });
-    const artistList = Object.entries(artists).sort((a,b) => b[1]-a[1]);
-
-    // Track-Map
-    const tracks = {};
-    scrobbles.forEach(s => {
-      if(!s.track || !s.artist) return;
-      const k = s.artist + ' — ' + s.track;
-      tracks[k] = (tracks[k]||0) + 1;
-    });
-
-    // Album-Map
-    const albums = {};
-    scrobbles.forEach(s => {
-      if(!s.album || !s.artist) return;
-      const k = s.artist + ' — ' + s.album;
-      albums[k] = (albums[k]||0) + 1;
-    });
-
-    // Stunden-Map
-    const hours = {};
-    scrobbles.forEach(s => {
-      const h = new Date(s.ts).getHours();
-      hours[h] = (hours[h]||0) + 1;
-    });
-
-    // Tage-Map
-    const perDay = {};
-    scrobbles.forEach(s => {
-      const d = new Date(s.ts);
-      const k = `${d.getFullYear()}-${String(d.getMonth()).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-      perDay[k] = (perDay[k]||0) + 1;
-    });
-    const sortedDays = Object.keys(perDay).sort();
-
-    // ── 1. Top-Artist-Ratio ──
-    if(artistList.length >= 3){
-      const [topA, topACount] = artistList[0];
-      const avg = scrobbles.length / artistList.length;
-      const ratio = (topACount / avg).toFixed(1).replace('.', ',');
-      facts.push({
-        icon: '👑',
-        headline: `Du hörst <span class="ff-highlight">${escFF(topA)}</span> <span class="ff-highlight">${ratio}×</span> so oft wie einen durchschnittlichen Künstler.`,
-        sub: `${topACount.toLocaleString('de-DE')} Plays · ${artistList.length} Künstler insgesamt`
-      });
-    }
-
-    // ── 2. Erster Scrobble ──
-    const first = scrobbles[0];
-    if(first && first.track){
-      const firstDate = new Date(first.ts).toLocaleDateString('de-DE', {day:'numeric', month:'long', year:'numeric'});
-      facts.push({
-        icon: '🌱',
-        headline: `Dein erster Scrobble: <span class="ff-highlight">${escFF(first.track)}</span> von <span class="ff-highlight">${escFF(first.artist)}</span>`,
-        sub: `Am ${firstDate} fing alles an`
-      });
-    }
-
-    // ── 3. Wochentag-Begleiter ──
-    const weekdayArtist = {};
-    scrobbles.forEach(s => {
-      if(!s.artist) return;
-      const wd = new Date(s.ts).getDay();
-      if(!weekdayArtist[wd]) weekdayArtist[wd] = {};
-      weekdayArtist[wd][s.artist] = (weekdayArtist[wd][s.artist]||0) + 1;
-    });
-    const wdFavs = Object.entries(weekdayArtist).map(([wd, arts]) => {
-      const sorted = Object.entries(arts).sort((a,b) => b[1]-a[1]);
-      return { wd: parseInt(wd), topArtist: sorted[0][0], count: sorted[0][1] };
-    }).sort((a,b) => b.count - a.count);
-    if(wdFavs.length >= 1){
-      const fav = wdFavs[0];
-      facts.push({
-        icon: '🗓️',
-        headline: `Dein treuester <span class="ff-highlight">${WDAYS[fav.wd]}</span>-Begleiter: <span class="ff-highlight">${escFF(fav.topArtist)}</span>`,
-        sub: `${fav.count.toLocaleString('de-DE')} ${WDAYS[fav.wd]}-Plays`
-      });
-    }
-
-    // ── 4. Tageszeit ──
-    const topHour = Object.entries(hours).sort((a,b) => b[1]-a[1])[0];
-    if(topHour){
-      const h = parseInt(topHour[0]);
-      const nextH = (h+1) % 24;
-      const period = h >= 5 && h < 12 ? 'Morgenmensch'
-                   : h >= 12 && h < 17 ? 'Mittagshörer'
-                   : h >= 17 && h < 22 ? 'Abendhörer'
-                   : 'Nachteule';
-      const icon = period === 'Nachteule' ? '🌙' : period === 'Morgenmensch' ? '☀️' : period === 'Abendhörer' ? '🌆' : '🎧';
-      facts.push({
-        icon,
-        headline: `Du bist eine <span class="ff-highlight">${period}</span> — am liebsten zwischen ${h.toString().padStart(2,'0')}:00 und ${nextH.toString().padStart(2,'0')}:00 Uhr.`,
-        sub: `${topHour[1].toLocaleString('de-DE')} Plays in dieser Stunde`
-      });
-    }
-
-    // ── 5. Nacht-Anteil ──
-    const nightPlays = scrobbles.filter(s => { const h = new Date(s.ts).getHours(); return h >= 0 && h < 5; }).length;
-    const nightPct = Math.round((nightPlays / scrobbles.length) * 100);
-    if(nightPlays >= 10){
-      const label = nightPct >= 20 ? 'echte Nachteule 🦉' : nightPct >= 10 ? 'gelegentlicher Nachtmensch' : 'leichter Nachthocker';
-      facts.push({
-        icon: '🌃',
-        headline: `<span class="ff-highlight">${nightPct}%</span> deiner Scrobbles laufen zwischen Mitternacht und 5:00 Uhr — du bist ein ${label}.`,
-        sub: `${nightPlays.toLocaleString('de-DE')} Nacht-Plays insgesamt`
-      });
-    }
-
-    // ── 6. Dauerbrenner (Track) ──
-    const topT = Object.entries(tracks).sort((a,b) => b[1]-a[1])[0];
-    if(topT && topT[1] >= 3){
-      facts.push({
-        icon: '🔁',
-        headline: `Dein Dauerbrenner: <span class="ff-highlight">${escFF(topT[0])}</span>`,
-        sub: `${topT[1]}× gehört`
-      });
-    }
-
-    // ── 7. Top Album ──
-    const topAlbum = Object.entries(albums).sort((a,b) => b[1]-a[1])[0];
-    if(topAlbum && topAlbum[1] >= 3){
-      facts.push({
-        icon: '💿',
-        headline: `Dein meistgehörtes Album: <span class="ff-highlight">${escFF(topAlbum[0])}</span>`,
-        sub: `${topAlbum[1].toLocaleString('de-DE')} Plays`
-      });
-    }
-
-    // ── 8. Wochenende vs. Werktag ──
-    let weekendPlays = 0, weekdayPlays = 0, weekendDays = 0, weekdayDaysSet = new Set(), weekendDaysSet = new Set();
-    scrobbles.forEach(s => {
-      const d = new Date(s.ts);
-      const wd = d.getDay();
-      const dk = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      if(wd === 0 || wd === 6){ weekendPlays++; weekendDaysSet.add(dk); }
-      else { weekdayPlays++; weekdayDaysSet.add(dk); }
-    });
-    const weDays = weekendDaysSet.size || 1;
-    const wdDays = weekdayDaysSet.size || 1;
-    const weAvg = Math.round(weekendPlays / weDays);
-    const wdAvg = Math.round(weekdayPlays / wdDays);
-    if(weekendPlays >= 10 && weekdayPlays >= 10){
-      const isWeekender = weAvg > wdAvg;
-      const diff = Math.round(Math.abs(weAvg - wdAvg));
-      facts.push({
-        icon: isWeekender ? '🎉' : '💼',
-        headline: isWeekender
-          ? `Du hörst am <span class="ff-highlight">Wochenende</span> mehr Musik — <span class="ff-highlight">${weAvg}</span> vs. ${wdAvg} Tracks/Tag.`
-          : `Du hörst an <span class="ff-highlight">Werktagen</span> mehr Musik — <span class="ff-highlight">${wdAvg}</span> vs. ${weAvg} Tracks/Tag.`,
-        sub: `Unterschied: ${diff} Tracks/Tag · ${weekendPlays.toLocaleString('de-DE')} We-Plays, ${weekdayPlays.toLocaleString('de-DE')} Werktag-Plays`
-      });
-    }
-
-    // ── 9. Vergessener Künstler ──
-    if(scrobbles.length >= 100){
-      const cut = Math.floor(scrobbles.length * 0.25);
-      const earlyArtists = {};
-      scrobbles.slice(0, cut).forEach(s => { if(s.artist) earlyArtists[s.artist] = (earlyArtists[s.artist]||0) + 1; });
-      const recentArtists = new Set(scrobbles.slice(-cut).map(s => s.artist).filter(Boolean));
-      const forgotten = Object.entries(earlyArtists)
-        .filter(([a, c]) => c >= 5 && !recentArtists.has(a))
-        .sort((a,b) => b[1]-a[1])[0];
-      if(forgotten){
-        facts.push({
-          icon: '👻',
-          headline: `Du hast <span class="ff-highlight">${escFF(forgotten[0])}</span> fast vergessen — früher ${forgotten[1]}× gehört, zuletzt kaum noch.`,
-          sub: 'Vielleicht mal wieder reinhören?'
-        });
-      }
-    }
-
-    // ── 10. Längste Streak ──
-    let longest = 1, cur = 1;
-    for(let i = 1; i < sortedDays.length; i++){
-      const [py,pm,pd] = sortedDays[i-1].split('-').map(Number);
-      const [cy,cm,cd] = sortedDays[i].split('-').map(Number);
-      const diff = Math.round((new Date(cy,cm,cd) - new Date(py,pm,pd)) / 86400000);
-      if(diff === 1){ cur++; longest = Math.max(longest, cur); }
-      else { cur = 1; }
-    }
-    if(longest >= 3){
-      facts.push({
-        icon: '🔥',
-        headline: `Deine längste Musik-Serie: <span class="ff-highlight">${longest} Tage</span> am Stück — ohne einen Tag Pause.`,
-        sub: `${sortedDays.length.toLocaleString('de-DE')} aktive Hör-Tage insgesamt`
-      });
-    }
-
-    // ── 11. Marathon-Tag ──
-    const topDay = Object.entries(perDay).sort((a,b) => b[1]-a[1])[0];
-    if(topDay && topDay[1] >= 20){
-      const [y,m,d] = topDay[0].split('-').map(Number);
-      const datStr = new Date(y, m, d).toLocaleDateString('de-DE', {day:'numeric', month:'long', year:'numeric'});
-      const hrs = Math.round(topDay[1] * 3 / 60 * 10) / 10;
-      facts.push({
-        icon: '🏃',
-        headline: `Dein Marathon-Tag: <span class="ff-highlight">${datStr}</span> mit <span class="ff-highlight">${topDay[1]}</span> Tracks.`,
-        sub: `ca. ${hrs.toString().replace('.', ',')} Stunden Musik`
-      });
-    }
-
-    // ── 12. Mono-Session (längste Künstler-Serie hintereinander) ──
-    if(scrobbles.length >= 20){
-      const GAP = 45 * 60 * 1000; // 45 min Pause = neue Session
-      let bestArtist = '', bestCount = 0, curArtist = '', curCount = 0;
-      for(let i = 0; i < scrobbles.length; i++){
-        const s = scrobbles[i];
-        const gap = i > 0 ? s.ts - scrobbles[i-1].ts : 0;
-        if(s.artist === curArtist && gap < GAP){
-          curCount++;
-        } else {
-          curArtist = s.artist; curCount = 1;
-        }
-        if(curCount > bestCount){ bestCount = curCount; bestArtist = curArtist; }
-      }
-      if(bestCount >= 5){
-        facts.push({
-          icon: '🎯',
-          headline: `Dein Rekord: <span class="ff-highlight">${bestCount} Tracks</span> am Stück nur von <span class="ff-highlight">${escFF(bestArtist)}</span>.`,
-          sub: 'Längste ununterbrochene Ein-Künstler-Session'
-        });
-      }
-    }
-
-    // ── 13. Entdeckungsrate ──
-    if(sortedDays.length >= 7){
-      const rate = (artistList.length / sortedDays.length).toFixed(1).replace('.', ',');
-      const label = parseFloat(rate.replace(',','.')) >= 3 ? 'sehr neugierig' : parseFloat(rate.replace(',','.')) >= 1.5 ? 'gut gemischt' : 'loyaler Stammhörer';
-      facts.push({
-        icon: '🔭',
-        headline: `Im Schnitt <span class="ff-highlight">${rate} neue Künstler</span> pro Hörtag — du bist ein ${label}.`,
-        sub: `${artistList.length} einzigartige Künstler · ${sortedDays.length} aktive Tage`
-      });
-    }
-
-    // ── 14. Jahres-Reise (nur wenn > 1 Jahr) ──
-    if(artistList.length >= 5 && sortedDays.length >= 60){
-      const earliest = scrobbles[0].ts;
-      const latest = scrobbles[scrobbles.length - 1].ts;
-      const yearsSpan = (latest - earliest) / (1000*60*60*24*365);
-      if(yearsSpan >= 1){
-        facts.push({
-          icon: '🗺️',
-          headline: `Seit dem ersten Scrobble: <span class="ff-highlight">${yearsSpan.toFixed(1).replace('.', ',')} Jahre</span> Musik-Reise.`,
-          sub: `${scrobbles.length.toLocaleString('de-DE')} Plays, ${artistList.length.toLocaleString('de-DE')} Künstler`
-        });
-      }
-    }
-
-    return facts;
-  }
-
-  function renderFunFacts(facts){
-    const container = document.getElementById('funfacts-content');
-    if(!container) return;
-    if(!facts.length){
-      container.innerHTML = '<div class="sec-info" style="padding:20px 0;">Nicht genug Daten für Fun Facts. Importiere erst mehr Scrobbles.</div>';
-      return;
-    }
-
-    let current = 0;
-    let timer = null;
-    let isAnimating = false;
-    const INTERVAL = 8000;
-
-    function buildCard(f, idx){
-      return `<div class="ff-card">
-        <span class="ff-counter">${idx+1} / ${facts.length}</span>
-        <span class="ff-icon">${f.icon}</span>
-        <div class="ff-headline">${f.headline}</div>
-        <div class="ff-sub">${escFF(f.sub)}</div>
-      </div>`;
-    }
-
-    const dotsHTML = facts.map((_,i) => `<span class="ff-dot${i===0?' active':''}"></span>`).join('');
-
-    container.innerHTML = `
-      <div id="ff-slider">
-        <div id="ff-card-wrap">${buildCard(facts[0], 0)}</div>
-        <div class="ff-progress"><div class="ff-progress-bar" id="ff-prog"></div></div>
-        <div id="ff-nav">
-          <button class="ff-nav-btn" id="ff-prev" aria-label="Zurück">‹</button>
-          <div id="ff-dots">${dotsHTML}</div>
-          <button class="ff-nav-btn" id="ff-next" aria-label="Weiter">›</button>
-        </div>
-      </div>`;
-
-    const wrap = () => document.getElementById('ff-card-wrap');
-    const prog = () => document.getElementById('ff-prog');
-
-    function updateDots(){
-      container.querySelectorAll('.ff-dot').forEach((d,i) => d.classList.toggle('active', i===current));
-    }
-
-    function startProgress(){
-      const bar = prog();
-      if(!bar) return;
-      bar.style.transition = 'none';
-      bar.style.width = '0%';
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          bar.style.transition = `width ${INTERVAL}ms linear`;
-          bar.style.width = '100%';
-        });
-      });
-    }
-
-    function goTo(next, dir){
-      if(isAnimating) return;
-      isAnimating = true;
-      const w = wrap();
-      if(!w){ isAnimating=false; return; }
-
-      w.classList.add(dir >= 0 ? 'ff-out-left' : 'ff-out-right');
-      setTimeout(() => {
-        current = ((next % facts.length) + facts.length) % facts.length;
-        w.innerHTML = buildCard(facts[current], current);
-        w.classList.remove('ff-out-left','ff-out-right');
-        w.classList.add(dir >= 0 ? 'ff-in-right' : 'ff-in-left');
-        updateDots();
-        setTimeout(() => {
-          w.classList.remove('ff-in-right','ff-in-left');
-          isAnimating = false;
-        }, 420);
-      }, 300);
-    }
-
-    function next(){ goTo(current + 1, 1); resetTimer(); }
-    function prev(){ goTo(current - 1, -1); resetTimer(); }
-
-    function resetTimer(){
-      clearInterval(timer);
-      startProgress();
-      timer = setInterval(next, INTERVAL);
-    }
-
-    document.getElementById('ff-next').addEventListener('click', next);
-    document.getElementById('ff-prev').addEventListener('click', prev);
-
-    container.querySelectorAll('.ff-dot').forEach((dot, i) => {
-      dot.addEventListener('click', () => {
-        if(i === current) return;
-        goTo(i, i > current ? 1 : -1);
-        resetTimer();
-      });
-    });
-
-    // Pause on hover
-    const slider = document.getElementById('ff-slider');
-    slider.addEventListener('mouseenter', () => {
-      clearInterval(timer);
-      const bar = prog();
-      if(bar) bar.style.transition = 'none';
-    });
-    slider.addEventListener('mouseleave', resetTimer);
-
-    // Swipe support
-    let touchStartX = 0;
-    slider.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].clientX; }, {passive:true});
-    slider.addEventListener('touchend', e => {
-      const dx = e.changedTouches[0].clientX - touchStartX;
-      if(Math.abs(dx) > 40){ dx < 0 ? next() : prev(); }
-    }, {passive:true});
-
-    resetTimer();
-  }
-
-  async function loadFunFacts(){
-    const container = document.getElementById('funfacts-content');
-    const status = document.getElementById('funfacts-status');
-    if(!container) return;
-
-    if(typeof firebase === 'undefined' || !firebase.apps || !firebase.apps.length){
-      container.innerHTML = '<div class="sec-info" style="padding:20px 0;">Firebase nicht verfügbar.</div>';
-      return;
-    }
-
-    try {
-      if(status) status.textContent = 'Analysiere...';
-      let data = typeof _archiveData !== 'undefined' && _archiveData ? _archiveData : null;
-      if(!data){
-        const snap = await firebase.database().ref('scrobbles').once('value');
-        if(!snap.exists()){
-          container.innerHTML = '<div class="sec-info" style="padding:20px 0;">Kein Archiv gefunden. Nutze „🗄 Archiv" in der Übersicht, um Scrobbles zu importieren.</div>';
-          if(status) status.textContent = '';
-          return;
-        }
-        data = snap.val();
-        if(typeof _archiveData !== 'undefined') _archiveData = data;
-      }
-      const scrobbles = Object.entries(data).map(([key, v]) => ({
-        ts: parseInt(key.split('_')[0]) * 1000,
-        artist: (v && v.artist ? String(v.artist) : '').trim(),
-        track: (v && v.track ? String(v.track) : '').trim(),
-        album: (v && v.album ? String(v.album) : '').trim()
-      })).filter(s => s.artist && s.ts > 0).sort((a,b) => a.ts - b.ts);
-
-      if(scrobbles.length < 20){
-        container.innerHTML = '<div class="sec-info" style="padding:20px 0;">Noch zu wenig Daten für Fun Facts (mindestens 20 Scrobbles nötig).</div>';
-        if(status) status.textContent = '';
-        return;
-      }
-
-      const facts = computeFunFacts(scrobbles);
-      renderFunFacts(facts);
-      if(status) status.textContent = `${scrobbles.length.toLocaleString('de-DE')} Scrobbles analysiert`;
-    } catch(e){
-      console.warn('Fun-Facts Fehler:', e);
-      container.innerHTML = '<div class="sec-info" style="padding:20px 0;">Fun-Facts konnten nicht geladen werden.</div>';
-      if(status) status.textContent = '';
-    }
-  }
-
-  // Start nachdem die Hauptdaten eine Chance zum Laden hatten
-  if(document.readyState === 'complete'){
-    setTimeout(loadFunFacts, 2000);
-  } else {
-    window.addEventListener('load', () => setTimeout(loadFunFacts, 2000));
-  }
 })();
 </script>
 </body>
