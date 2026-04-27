@@ -1236,6 +1236,7 @@ a[href^="tel"]{color:inherit;text-decoration:none;pointer-events:none;}
           <button class="pb" data-p="3month">3 Mo</button>
           <button class="pb" data-p="1month">1 Mo</button>
           <button class="pb" data-p="7day">7 Tage</button>
+          <button class="pb" data-p="yesterday">Gestern</button>
           <button class="pb active" data-p="today">Heute</button>
         </div>
       </div>
@@ -2098,7 +2099,30 @@ async function loadCharts(){
     // getArchiveData() ist idempotent (nutzt internes Promise), also egal wie oft es aufgerufen wird.
     const archData=await getArchiveData();
 
-    if(chartPeriod==='today'){
+    if(chartPeriod==='yesterday'){
+      // Gestern: Mitternacht gestern bis Mitternacht heute
+      const now=new Date();
+      const midnightToday=Math.floor(new Date(now.getFullYear(),now.getMonth(),now.getDate())/1000);
+      const midnightYesterday=midnightToday-86400;
+      const countMap={};
+      if(_archiveData){
+        Object.entries(_archiveData).forEach(([key,v])=>{
+          const ts=parseInt(key.split('_')[0]);
+          if(ts<midnightYesterday||ts>=midnightToday) return;
+          const artist=(v.artist||'').trim();
+          const track=(v.track||'').trim();
+          const album=(v.album||'').trim();
+          let nameKey,displayName,artistName=artist;
+          if(chartTab==='artists'){if(!artist) return;nameKey=artist.toLowerCase();displayName=artist;}
+          else if(chartTab==='tracks'){if(!track) return;nameKey=artist.toLowerCase()+'|||'+track.toLowerCase();displayName=track;}
+          else{if(!album) return;nameKey=artist.toLowerCase()+'|||'+album.toLowerCase();displayName=album;}
+          if(!countMap[nameKey]) countMap[nameKey]={name:displayName,artist:{name:artistName},playcount:0,image:[{'#text':'',size:'medium'}],url:''};
+          countMap[nameKey].playcount++;
+        });
+      }
+      items=Object.values(countMap).sort((a,b)=>b.playcount-a.playcount);
+
+    } else if(chartPeriod==='today'){
       // Heute: aus Archiv berechnen + nur nowplaying-Track separat von API holen
       const now=new Date();
       const midnightTs=Math.floor(new Date(now.getFullYear(),now.getMonth(),now.getDate())/1000);
@@ -3048,7 +3072,22 @@ async function updateChartsTrackCount(){
 
   const now=new Date();
   let fromTsSec=0,label='';
-  if(chartPeriod==='today'){
+  if(chartPeriod==='yesterday'){
+    const midnightToday=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    const midnightYesterday=new Date(midnightToday);midnightYesterday.setDate(midnightYesterday.getDate()-1);
+    fromTsSec=Math.floor(midnightYesterday.getTime()/1000);
+    const toTsSec=Math.floor(midnightToday.getTime()/1000);
+    label='Gestern';
+    delete _chartCountCache['yesterday'];
+    // Für gestern brauchen wir einen separaten Zähler mit To-Ts
+    const src=_archiveData;
+    if(!src){el.style.display='none';return;}
+    let count=0;
+    Object.keys(src).forEach(k=>{const ts=parseInt(k.split('_')[0]);if(ts>=fromTsSec&&ts<toTsSec)count++;});
+    el.textContent=`${count.toLocaleString('de-DE')} Scrobbles ${label}`;
+    el.style.display='';
+    return;
+  } else if(chartPeriod==='today'){
     const midnight=new Date(now.getFullYear(),now.getMonth(),now.getDate());
     fromTsSec=Math.floor(midnight.getTime()/1000);
     label='Heute';
@@ -4219,7 +4258,7 @@ function getArchivePeriodFilter(){
   return ()=>true; // overall
 }
 
-const PERIOD_LABEL={'overall':'Gesamt','12month':'12 Monate','6month':'6 Monate','3month':'3 Monate','1month':'1 Monat','7day':'7 Tage','today':'Heute'};
+const PERIOD_LABEL={'overall':'Gesamt','12month':'12 Monate','6month':'6 Monate','3month':'3 Monate','1month':'1 Monat','7day':'7 Tage','yesterday':'Gestern','today':'Heute'};
 
 async function openArtistDrillDown(artistName){
   const overlay=document.getElementById('adm-overlay');
