@@ -743,7 +743,10 @@ footer{padding:32px 0 48px;}
 #nowplaying-sec > .wrap > .sec-hdr::before{display:none;}
 
 /* Hero-Wrap: nicht als Section-Card stylen */
-body > div.wrap:first-of-type{background:transparent;border:none;box-shadow:none;backdrop-filter:none;background-image:none;padding:28px 0 0;}
+/* Hero-Wrapper (#hero-wrap): randbündig wie die Sektions-Karten, transparent.
+   Hinweis: der frühere Selektor body>div.wrap:first-of-type griff ins Leere,
+   weil das erste div-Kind des body der Decor-Layer (scroll-progress) ist. */
+#hero-wrap{background:transparent;border:none;box-shadow:none;backdrop-filter:none;background-image:none;padding:28px 0 0;}
 
 /* Ersten Section-Abstand nach Hero reduzieren */
 #nowplaying-sec{padding-top:20px;}
@@ -1132,7 +1135,7 @@ section > .wrap::after{
   background:linear-gradient(90deg,transparent,rgba(236,72,153,0.5),rgba(139,92,246,0.5),transparent);
   pointer-events:none;z-index:1;
 }
-#nowplaying-sec > .wrap::after,footer .wrap::after,body > div.wrap:first-of-type::after{display:none;}
+#nowplaying-sec > .wrap::after,footer .wrap::after,#hero-wrap::after{display:none;}
 
 /* Hover-Tiefe der Karten: weicher Akzent-Glow statt harter Schatten */
 .mc:hover,.chart-glass:hover,.top5-card:hover{
