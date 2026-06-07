@@ -81,7 +81,7 @@ nav{position:sticky;top:0;z-index:200;background:rgba(255,255,255,0.10);backdrop
 .sync-bar-fill{height:100%;background:linear-gradient(90deg,var(--pink),var(--purple2));border-radius:2px;width:0%;transition:width .4s ease;}
 
 
-.hero{padding:28px 24px;position:relative;background:rgba(255,255,255,0.08);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border:1px solid rgba(255,255,255,0.12);border-radius:var(--rl);overflow:visible;box-shadow:0 8px 40px rgba(0,0,0,0.1),0 0 0 1px rgba(255,255,255,0.13) inset;}
+.hero{padding:36px 40px;position:relative;background:rgba(255,255,255,0.08);backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);border:1px solid rgba(255,255,255,0.12);border-radius:26px;overflow:visible;box-shadow:0 8px 40px rgba(0,0,0,0.1),0 0 0 1px rgba(255,255,255,0.13) inset;}
 .hero-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0.1;filter:blur(20px);z-index:0;transition:opacity .5s;overflow:hidden;}
 .hero::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(232,39,154,0.05) 0%,transparent 60%);pointer-events:none;z-index:0;}
 .hero-inner{position:relative;z-index:1;display:flex;align-items:center;gap:24px;padding-left:12px;}
@@ -335,7 +335,7 @@ footer{padding:28px 0;text-align:center;}
   .nav-links a{font-size:16px;padding:14px 24px;width:100%;text-align:center;border-radius:10px;}
   .nav-hamburger{display:flex;}
   /* Hero compact */
-  .hero{padding:28px 0 22px;}
+  .hero{padding:22px 20px;border-radius:20px;}
   .hero-avatar img,.hero-avatar-ph{width:64px;height:64px;}
   .hero-meta{gap:10px;}
   .hm-item{font-size:12px;}
@@ -743,7 +743,7 @@ footer{padding:32px 0 48px;}
 #nowplaying-sec > .wrap > .sec-hdr::before{display:none;}
 
 /* Hero-Wrap: nicht als Section-Card stylen */
-body > div.wrap:first-of-type{background:transparent;border:none;box-shadow:none;backdrop-filter:none;background-image:none;padding:28px 24px 0;}
+body > div.wrap:first-of-type{background:transparent;border:none;box-shadow:none;backdrop-filter:none;background-image:none;padding:28px 0 0;}
 
 /* Ersten Section-Abstand nach Hero reduzieren */
 #nowplaying-sec{padding-top:20px;}
@@ -1076,6 +1076,7 @@ html{
   .hero-name{font-size:20px;}
   .sec-title{font-size:19px;}
   section > .wrap{padding:20px 14px;}
+  .hero{padding:20px 14px;}
   .wrap{padding:0 16px;}
   section > .wrap > .sec-hdr::before{font-size:44px;right:12px;top:12px;}
   .metric-grid{gap:8px;}
