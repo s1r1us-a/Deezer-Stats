@@ -20,6 +20,7 @@
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+<a href="#overview" class="skip-link">Zum Inhalt springen</a>
 
 <!-- ✨ MAKEOVER: Decor-Layer -->
 <div class="scroll-progress" id="scrollProgress"></div>
@@ -70,7 +71,7 @@
 <!-- SYNC BANNER -->
 <div id="sync-banner">
   <div class="wrap">
-    <div class="sync-banner-inner syncing" id="sync-banner-inner">
+    <div class="sync-banner-inner syncing" id="sync-banner-inner" role="status" aria-live="polite">
       <div class="sync-sp" id="sync-spinner"></div>
       <span id="sync-banner-msg">Synchronisiere Archiv...</span>
       <div class="sync-bar-wrap" id="sync-bar-wrap" style="display:none;">
@@ -162,7 +163,7 @@
     </div>
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
-      <input class="search-input" id="chart-search" placeholder="Suchen..." oninput="renderCharts()">
+      <input class="search-input" id="chart-search" placeholder="Suchen..." aria-label="Charts durchsuchen" oninput="onSearchInput()">
     </div>
     <div class="ctabs">
       <div class="ctab active" data-t="artists">Künstler</div>
@@ -378,7 +379,7 @@
   </div>
 </div>
 
-<div id="db-toast"><div class="toast-dot"></div><span id="db-toast-msg"></span></div>
+<div id="db-toast" role="status" aria-live="polite"><div class="toast-dot"></div><span id="db-toast-msg"></span></div>
 
 <script src="js/app.js"></script>
 <!-- ✨ MAKEOVER: Eigenständiges Interaktions-Modul (berührt keine bestehende Logik) -->

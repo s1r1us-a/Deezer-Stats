@@ -16,7 +16,7 @@
   --bg2:rgba(255,255,255,0.03);--bg3:rgba(255,255,255,0.03);
   --bg4:rgba(255,255,255,0.03);--bg5:rgba(255,255,255,0.03);
   --border:rgba(255,255,255,0.03);--border2:rgba(255,255,255,0.03);--border3:rgba(139,92,246,0.4);
-  --text:#f4f1ff;--text2:#b4adcf;--text3:#8b84a8;
+  --text:#f4f1ff;--text2:#c2bcd8;--text3:#a59ec2;
   --pink:#ec4899;--pink2:#f472b6;--pink3:rgba(236,72,153,0.14);--pink4:rgba(236,72,153,0.08);
   --purple:#8b5cf6;--purple2:#a78bfa;--purple3:rgba(139,92,246,0.16);
   --mono:'Space Mono',monospace;--sans:'DM Sans',sans-serif;
@@ -118,7 +118,7 @@ section{padding:40px 0;border-bottom:1px solid var(--border2);}
 .metric-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;}
 .mc{background:rgba(255,255,255,0.08);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.13);border-radius:var(--r);padding:18px 20px;transition:border-color .25s,transform .2s,box-shadow .2s;position:relative;overflow:hidden;}
 .mc::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--glass) 0%,transparent 60%);pointer-events:none;}
-.mc:hover{border:3px solid var(--pink)!important;transform:translateY(-3px);box-shadow:0 12px 32px rgba(232,39,154,0.3),0 0 16px rgba(232,39,154,0.2);}
+.mc:hover{border-color:var(--accent-2);transform:translateY(-3px);box-shadow:0 12px 32px rgba(232,39,154,0.3),0 0 16px rgba(232,39,154,0.2);}
 .mc.hi{border-color:rgba(232,39,154,.3);background:rgba(255,255,255,0.10);box-shadow:0 0 32px rgba(232,39,154,.12),0 0 0 1px rgba(255,255,255,0.13) inset;grid-column:span 2;}
 .mc.hi::before{background:linear-gradient(135deg,rgba(232,39,154,0.1) 0%,transparent 60%);}
 .mc.hi .mc-val{font-size:38px;}
@@ -140,7 +140,7 @@ section{padding:40px 0;border-bottom:1px solid var(--border2);}
 /* RANKED LIST */
 .rlist{display:flex;flex-direction:column;gap:6px;}
 .ri{display:flex;align-items:center;gap:12px;padding:11px 14px;background:rgba(255,255,255,0.08);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.12);border-radius:var(--r);transition:all .22s;text-decoration:none;color:inherit;border-left:3px solid transparent;}
-.ri:hover{border:3px solid var(--pink)!important;background:rgba(255,255,255,0.11);transform:translateX(4px);box-shadow:0 4px 20px rgba(232,39,154,0.25);}
+.ri:hover{border-color:var(--accent-2);background:rgba(255,255,255,0.11);transform:translateX(4px);box-shadow:0 4px 20px rgba(232,39,154,0.25);}
 .ri.top3{border-color:rgba(255,255,255,0.12);}
 .ri.top3:hover{border-color:rgba(232,39,154,0.2);background:rgba(255,255,255,0.11);}
 .ri.rank1{border-left-color:#f59e0b;background:rgba(245,158,11,0.05);}
@@ -238,7 +238,7 @@ section{padding:40px 0;border-bottom:1px solid var(--border2);}
 .top5-grid{display:flex;flex-direction:column;gap:8px;margin-top:4px;}
 .top5-card{display:flex;align-items:center;gap:14px;padding:13px 16px;background:rgba(255,255,255,0.08);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.12);border-radius:var(--r);transition:all .22s;position:relative;overflow:hidden;}
 .top5-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.05) 0%,transparent 60%);pointer-events:none;}
-.top5-card:hover{border:3px solid var(--pink)!important;transform:translateX(4px);box-shadow:0 6px 24px rgba(232,39,154,0.25);}
+.top5-card:hover{border-color:var(--accent-2);transform:translateX(4px);box-shadow:0 6px 24px rgba(232,39,154,0.25);}
 .top5-card.rank-1{border-left:3px solid #f59e0b;background:rgba(245,158,11,0.06);}
 .top5-card.rank-2{border-left:3px solid #9ca3af;background:rgba(156,163,175,0.05);}
 .top5-card.rank-3{border-left:3px solid #d97706;background:rgba(217,119,6,0.05);}
@@ -388,7 +388,7 @@ footer{padding:28px 0;text-align:center;}
 /* CHART GLASS BOXES */
 .chart-glass{background:rgba(255,255,255,0.07);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.12);border-radius:var(--r);padding:18px 20px;position:relative;overflow:hidden;transition:border-color .25s,box-shadow .25s;}
 .chart-glass::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--glass) 0%,transparent 60%);pointer-events:none;}
-.chart-glass:hover{border:3px solid var(--pink)!important;box-shadow:0 8px 28px rgba(232,39,154,0.25);}
+.chart-glass:hover{border-color:var(--accent-2);box-shadow:0 8px 28px rgba(232,39,154,0.25);}
 .chart-glass.wide{padding:24px 28px;border-radius:var(--rl);}
 .chart-glass-hdr{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
 .chart-glass-title{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);}
@@ -1171,3 +1171,56 @@ section > .wrap{position:relative;}
 /* Now-Playing-Sektion bleibt transparent (keine Glas-Card) — Override nach der
    generellen section>.wrap-Regel, damit np-card frei schwebt. */
 #nowplaying-sec > .wrap{background:transparent;border:none;box-shadow:none;}
+
+/* ═══════════════════════════════════════════════════════════════
+   ✨ UI-AUSBAU (Teil 1–3): Empty-States, Bento-Akzent, Press-Feedback,
+   Skip-Link, Fokus-Ringe, Touch-Targets, Lesbarkeit.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Empty-States — zentriert, dezent */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:34px 16px;text-align:center;color:var(--text2);}
+.empty-ico{font-size:30px;opacity:0.75;filter:drop-shadow(0 0 16px rgba(var(--np-accent),0.35));}
+.empty-msg{font-family:var(--mono);font-size:12.5px;color:var(--text2);max-width:260px;line-height:1.5;}
+
+/* Bento-Akzent: hervorgehobene Kennzahl (.mc.hi) bekommt Akzent-Tönung + Top-Linie */
+.mc.hi{
+  background:linear-gradient(135deg,rgba(236,72,153,0.12),rgba(139,92,246,0.10)) , var(--glass-bg);
+}
+.mc.hi::after{content:'';position:absolute;left:0;right:0;top:0;height:2px;background:linear-gradient(90deg,var(--accent-2),var(--accent));opacity:0.8;z-index:3;}
+.mc.hi .mc-val{background:linear-gradient(90deg,var(--pink2),var(--purple2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
+
+/* Press-Feedback nur auf echten Maus-/Hover-Geräten (Touch hat eigenes Feedback) */
+@media(hover:hover){
+  button:active,.pb:active,.ctab:active,.tag:active,.sort-btn:active,
+  .action-btn:active,.action-btn-sm:active,.show-more:active,.export-btn:active,
+  .modal-btn-primary:active,.modal-btn-secondary:active,.side-nav-dot:active{
+    transform:scale(0.97);transition:transform .08s ease;
+  }
+}
+
+/* Skip-Link: off-screen bis Fokus (Tastatur-A11y) */
+.skip-link{position:absolute;left:-9999px;top:8px;z-index:1000;background:var(--bg-1);color:var(--text);
+  font-family:var(--mono);font-size:13px;padding:10px 16px;border-radius:10px;border:1px solid var(--glass-border-strong);
+  box-shadow:var(--shadow);text-decoration:none;}
+.skip-link:focus{left:12px;}
+
+/* Fokus-Ringe auf ALLE interaktiven Elemente ausweiten */
+.sort-btn:focus-visible,.show-more:focus-visible,.action-btn:focus-visible,.action-btn-sm:focus-visible,
+.export-btn:focus-visible,.wrapped-btn:focus-visible,.nav-hamburger:focus-visible,.nav-close:focus-visible,
+.modal-btn-primary:focus-visible,.modal-btn-secondary:focus-visible,.modal-close:focus-visible,
+.adm-close:focus-visible,.back-top:focus-visible,.ri:focus-visible,.np-refresh:focus-visible,
+.nav-links a:focus-visible{
+  outline:2px solid var(--accent-2);outline-offset:2px;border-radius:8px;
+}
+
+/* Placeholder lesbar halten */
+.search-input::placeholder{color:var(--text3);opacity:1;}
+
+/* Größere Touch-Targets für kleine Buttons auf Mobile */
+@media(max-width:720px){
+  .sort-btn{min-height:38px;padding:6px 12px;}
+  .action-btn,.action-btn-sm{min-height:36px;padding:6px 12px;}
+}
+
+/* Sanftes Lade-Feedback beim Re-Render von Listen/Charts */
+.is-loading{opacity:0.45;transition:opacity .18s ease;pointer-events:none;}

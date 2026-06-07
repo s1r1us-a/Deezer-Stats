@@ -193,14 +193,32 @@ function timeAgo(ts){
 function rankCls(i){return i===0?'g':i===1?'s':i===2?'b':'';}
 function imgEl(src,cls='ri-img'){return src?`<img src="${src}" class="${cls}" alt="" onerror="this.style.display='none'">`:`<div class="${cls.replace('img','ph')}">♪</div>`;}
 
-let _toastTimer=null;
+// Zentrierter, wiederverwendbarer Empty-State
+function emptyState(msg,icon='🎵'){
+  return `<div class="empty-state"><div class="empty-ico" aria-hidden="true">${icon}</div><div class="empty-msg">${escapeHTML(msg)}</div></div>`;
+}
+
+// ── TOAST mit einfacher Warteschlange (max. 1 sichtbar) ──────
+let _toastTimer=null,_toastQueue=[],_toastBusy=false;
 function showToast(msg,type='',duration=4000){
+  _toastQueue.push({msg,type,duration});
+  if(!_toastBusy) _drainToast();
+}
+function _drainToast(){
   const el=document.getElementById('db-toast');
   const msgEl=document.getElementById('db-toast-msg');
-  el.className='show'+(type?' '+type:'');
-  msgEl.textContent=msg;
+  if(!el||!msgEl){_toastQueue=[];_toastBusy=false;return;}
+  const next=_toastQueue.shift();
+  if(!next){_toastBusy=false;return;}
+  _toastBusy=true;
+  el.className='show'+(next.type?' '+next.type:'');
+  msgEl.textContent=next.msg;
   clearTimeout(_toastTimer);
-  if(duration>0) _toastTimer=setTimeout(()=>{el.classList.remove('show');setTimeout(()=>{el.className='';},300);},duration);
+  const dur=next.duration>0?next.duration:4000;
+  _toastTimer=setTimeout(()=>{
+    el.classList.remove('show');
+    setTimeout(()=>{el.className='';_drainToast();},320);
+  },dur);
 }
 
 // ── COUNTER ANIMATION ──────────────────────────────────────
@@ -759,7 +777,7 @@ function renderCharts(){
       </div>
     </a>`;
   }).join('');
-  document.getElementById('charts-list').innerHTML=`<div class="rlist">${html||'<div style="color:var(--text3);font-size:13px;padding:12px;">Keine Ergebnisse.</div>'}</div>`;
+  document.getElementById('charts-list').innerHTML=html?`<div class="rlist">${html}</div>`:emptyState(q?'Keine Treffer für „'+escapeHTML(q)+'".':'Noch keine Daten für diesen Zeitraum.',q?'🔍':'🎵');
   document.getElementById('show-more-btn').style.display=items.length>showCount?'block':'none';
   // Event delegation for artist drill-down (replaces inline onclick with data attribute)
   document.getElementById('charts-list').querySelectorAll('[data-artist]').forEach(el=>{
@@ -773,7 +791,17 @@ function renderCharts(){
     });
   });
 }
-function showMore(){showCount+=15;renderCharts();}
+function showMore(){
+  const prev=showCount;showCount+=15;renderCharts();
+  // Erste neu eingeblendete Zeile sanft in den Blick holen
+  requestAnimationFrame(()=>{
+    const rows=document.querySelectorAll('#charts-list .ri');
+    if(rows[prev]) rows[prev].scrollIntoView({behavior:'smooth',block:'nearest'});
+  });
+}
+// Entprellte Sucheingabe (vermeidet Re-Render bei jedem Tastendruck)
+let _searchT=null;
+function onSearchInput(){clearTimeout(_searchT);_searchT=setTimeout(renderCharts,180);}
 function setSort(m){sortMode=m;document.getElementById('sb-plays').classList.toggle('active',m==='plays');document.getElementById('sb-alpha').classList.toggle('active',m==='alpha');renderCharts();}
 
 // ── LIFETIME DATA (Firebase) ────────────────────────────────
