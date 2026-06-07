@@ -1177,6 +1177,94 @@ function attachHourHover(){
   });
 }
 
+// ── TAG×STUNDE-HEATMAP (7×24, aus Archiv) ──────────────────
+// Additiv: nutzt getArchiveData(), berührt keine bestehende Render-Logik.
+async function renderDayHourHeatmap(){
+  const cont=document.getElementById('dayhour-chart');
+  if(!cont) return;
+  try{
+    const data=await getArchiveData();
+    if(!data){cont.innerHTML=emptyState('Noch kein Archiv geladen.','🗓'); return;}
+    const days=['Mo','Di','Mi','Do','Fr','Sa','So'];
+    const matrix=Array.from({length:7},()=>new Array(24).fill(0));
+    let total=0,max=0,peakDay=0,peakHr=0;
+    Object.keys(data).forEach(k=>{
+      const ts=parseInt(k.split('_')[0]); if(!ts) return;
+      const d=new Date(ts*1000);
+      const day=(d.getDay()+6)%7, hr=d.getHours();
+      const v=++matrix[day][hr]; total++;
+      if(v>max){max=v;peakDay=day;peakHr=hr;}
+    });
+    if(!total){cont.innerHTML=emptyState('Noch keine Daten im Archiv.','🗓'); return;}
+    const cell=(c)=>{
+      if(!c) return 'rgba(255,255,255,0.04)';
+      const p=c/max;
+      if(p<0.25) return 'rgba(139,92,246,0.35)';
+      if(p<0.5) return 'rgba(167,139,250,0.55)';
+      if(p<0.75) return 'rgba(236,72,153,0.7)';
+      return 'var(--pink)';
+    };
+    const hourLabels=[0,6,12,18];
+    let grid='';
+    for(let dd=0;dd<7;dd++){
+      grid+=`<div class="dh-row"><div class="dh-day">${days[dd]}</div>`+
+        matrix[dd].map((c,hh)=>`<div class="dh-cell" style="background:${cell(c)}" title="${days[dd]} ${String(hh).padStart(2,'0')}:00 · ${fmt(c)} Plays"></div>`).join('')+
+        `</div>`;
+    }
+    grid+=`<div class="dh-row dh-axis"><div class="dh-day"></div>`+
+      Array.from({length:24},(_,hh)=>`<div class="dh-cell dh-axis-lbl">${hourLabels.includes(hh)?String(hh).padStart(2,'0'):''}</div>`).join('')+`</div>`;
+    cont.innerHTML=`<div class="dh-scroll"><div class="dh-grid">${grid}</div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:12px;">
+        <span>${fmt(total)} Plays gesamt</span>
+        <span style="color:var(--pink2);">Peak: ${days[peakDay]} ${String(peakHr).padStart(2,'0')}:00</span>
+      </div>`;
+  }catch(e){console.warn('DayHour-Heatmap fehlgeschlagen:',e); cont.innerHTML=emptyState('Heatmap konnte nicht geladen werden.','🗓');}
+}
+
+// ── YEAR-OVER-YEAR + Hochrechnung (aus Archiv) ─────────────
+async function renderYoY(){
+  const cont=document.getElementById('yoy-content');
+  if(!cont) return;
+  try{
+    const data=await getArchiveData();
+    if(!data){cont.innerHTML=emptyState('Noch kein Archiv geladen.','📅'); return;}
+    const months=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+    const byYear={};
+    Object.keys(data).forEach(k=>{
+      const ts=parseInt(k.split('_')[0]); if(!ts) return;
+      const d=new Date(ts*1000), y=d.getFullYear();
+      if(!byYear[y]) byYear[y]={total:0,months:new Array(12).fill(0)};
+      byYear[y].total++; byYear[y].months[d.getMonth()]++;
+    });
+    const years=Object.keys(byYear).map(Number).sort((a,b)=>b-a);
+    if(!years.length){cont.innerHTML=emptyState('Noch keine Daten im Archiv.','📅'); return;}
+    const maxTotal=Math.max(...years.map(y=>byYear[y].total))||1;
+    const nowY=new Date().getFullYear();
+    let projHtml='';
+    if(byYear[nowY]){
+      const dayOfYear=Math.floor((Date.now()-new Date(nowY,0,1).getTime())/86400000)+1;
+      const proj=Math.round(byYear[nowY].total/Math.max(dayOfYear,1)*365);
+      const prev=byYear[nowY-1]?.total;
+      const diff=prev?Math.round((proj-prev)/prev*100):null;
+      projHtml=`<div class="yoy-proj">📈 Hochrechnung ${nowY}: <b>${fmt(proj)}</b> Scrobbles${diff!==null?` <span style="color:${diff>=0?'var(--ok)':'var(--bad)'};">(${diff>=0?'+':''}${diff}% vs ${nowY-1})</span>`:''}</div>`;
+    }
+    const rows=years.map(y=>{
+      const info=byYear[y];
+      const peakM=months[info.months.indexOf(Math.max(...info.months))];
+      const prev=byYear[y-1]?.total;
+      const diff=prev?Math.round((info.total-prev)/prev*100):null;
+      const w=Math.round(info.total/maxTotal*100);
+      return `<div class="yoy-row">
+        <div class="yoy-year">${y}</div>
+        <div class="yoy-bar-c"><div class="yoy-bar-f" style="width:${w}%"></div></div>
+        <div class="yoy-val">${fmt(info.total)}</div>
+        <div class="yoy-meta">${diff!==null?`<span style="color:${diff>=0?'var(--ok)':'var(--bad)'};">${diff>=0?'▲':'▼'} ${Math.abs(diff)}%</span> · `:''}Peak ${peakM}</div>
+      </div>`;
+    }).join('');
+    cont.innerHTML=`${projHtml}<div class="yoy-list">${rows}</div>`;
+  }catch(e){console.warn('YoY fehlgeschlagen:',e); cont.innerHTML=emptyState('Konnte Jahresvergleich nicht laden.','📅');}
+}
+
 // ── TREND CHART ────────────────────────────────────────────
 async function loadTrend(){
   const topD=await lfm('user.getTopArtists',{period:'overall',limit:3});
@@ -2925,6 +3013,8 @@ document.addEventListener('keydown',(e)=>{
     buildYearSel(heroJoinYear);
     loadYearReview(new Date().getFullYear());
     loadStreak();
+    renderDayHourHeatmap();
+    renderYoY();
 
     const [recent,_monthly]=await Promise.all([loadRecent(),loadMonthly(++monthlyLoadId)]);
     window._lastRecentTracks=recent;
