@@ -176,3 +176,63 @@
   }
   ['overview-grid', 'streak-content', 'lifetime-stats', 'diversity-content'].forEach(setupCounter);
 })();
+
+/* ── Album-Art-Akzent ───────────────────────────────────────────────
+   Die Now-Playing-Aura (.hero) nimmt die Dominantfarbe des aktuellen
+   Covers an. Voll gekapselt: CORS-getaintete Bilder werfen in
+   getImageData() — der catch fällt still auf die statische Pink/Purple-
+   Aura zurück. Berührt keine bestehende Logik. */
+(function(){
+  'use strict';
+  const root = document.documentElement;
+  let lastUrl = '', rafT = null;
+
+  function apply(r, g, b){ root.style.setProperty('--np-accent', r + ', ' + g + ', ' + b); }
+
+  function sample(url){
+    if(!url || url === lastUrl) return;
+    lastUrl = url;
+    const im = new Image();
+    im.crossOrigin = 'anonymous';
+    im.onload = function(){
+      try{
+        const c = document.createElement('canvas');
+        c.width = c.height = 16;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(im, 0, 0, 16, 16);
+        const d = ctx.getImageData(0, 0, 16, 16).data;
+        let r = 0, g = 0, b = 0, n = 0;
+        for(let i = 0; i < d.length; i += 4){
+          const rr = d[i], gg = d[i+1], bb = d[i+2];
+          const mx = Math.max(rr, gg, bb), mn = Math.min(rr, gg, bb);
+          if(mx < 28 || mn > 230) continue;        // Schwarz/Weiß überspringen → lebendiger
+          r += rr; g += gg; b += bb; n++;
+        }
+        if(n){ apply(Math.round(r/n), Math.round(g/n), Math.round(b/n)); }
+      }catch(e){ /* CORS-tainted → statische Aura bleibt */ }
+    };
+    im.onerror = function(){ lastUrl = ''; };
+    im.src = url;
+  }
+
+  function bgUrl(el){
+    if(!el) return '';
+    const m = /url\(["']?(.*?)["']?\)/.exec(el.style.backgroundImage || '');
+    return m ? m[1] : '';
+  }
+
+  function update(){
+    const cover = document.querySelector('.np-cover');
+    if(cover && cover.src){ sample(cover.src); return; }
+    sample(bgUrl(document.getElementById('hero-bg')));
+  }
+
+  const mo = new MutationObserver(function(){
+    if(rafT) return;
+    rafT = requestAnimationFrame(function(){ rafT = null; update(); });
+  });
+  mo.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['src', 'style'] });
+
+  if(document.readyState !== 'loading') update();
+  else document.addEventListener('DOMContentLoaded', update);
+})();

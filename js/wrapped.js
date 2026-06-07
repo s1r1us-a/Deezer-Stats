@@ -710,7 +710,7 @@ function animateCounter(el, target, dur=1500){
 
 function spawnConfetti(container, count=40){
   if(prefersReducedMotion()) return;
-  const colors = ['#ff49b8','#ff7ac9','#a855f7','#c084fc','#ffc371','#7af0c9'];
+  const colors = ['#ec4899','#f472b6','#8b5cf6','#a78bfa','#3b82f6','#22d3ee'];
   const layer = document.createElement('div');
   layer.className = 'confetti';
   for(let i=0;i<count;i++){

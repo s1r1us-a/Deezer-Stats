@@ -3,19 +3,21 @@
    but inverted to night-mode for Wrapped-story feel
 ═══════════════════════════════════════════════════════════ */
 :root{
-  --ink:#0a0015;
-  --ink2:#18062e;
-  --ink3:#2a0e4a;
-  --paper:#fff;
-  --paper-soft:rgba(255,255,255,.86);
-  --paper-muted:rgba(255,255,255,.6);
-  --paper-ghost:rgba(255,255,255,.32);
-  --pink:#ff49b8;
-  --pink2:#ff7ac9;
+  color-scheme:dark;
+  /* an die flashcards-Dark-Palette angeglichen (Konsistenz mit index.html) */
+  --ink:#0b0820;
+  --ink2:#14102e;
+  --ink3:#1f1640;
+  --paper:#f4f1ff;
+  --paper-soft:rgba(244,241,255,.86);
+  --paper-muted:rgba(244,241,255,.6);
+  --paper-ghost:rgba(244,241,255,.32);
+  --pink:#ec4899;
+  --pink2:#f472b6;
   --pink3:#ffb2de;
-  --purple:#a855f7;
-  --purple2:#c084fc;
-  --indigo:#6366f1;
+  --purple:#8b5cf6;
+  --purple2:#a78bfa;
+  --indigo:#3b82f6;
   --mint:#7af0c9;
   --amber:#ffc371;
   --rose:#ff6f91;

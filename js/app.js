@@ -1,6 +1,6 @@
 const USER='s1r1us-a',KEY='b126713de975c43a7a8f046bcf954884',API='https://ws.audioscrobbler.com/2.0/';
-const PINK='#d6187a',PINK2='#f03fa0';
-const COLORS=['#d6187a','#f03fa0','#c026d3','#7c3aed','#2563eb','#0891b2','#059669','#d97706'];
+const PINK='#ec4899',PINK2='#f472b6';
+const COLORS=['#ec4899','#8b5cf6','#3b82f6','#f472b6','#a78bfa','#22d3ee','#34d399','#fbbf24'];
 const CACHE_KEY='lfm_cache_s1r1us_v2';
 
 // ── HELPERS ────────────────────────────────────────────────
@@ -14,7 +14,7 @@ function chartColors(){
   const s=getComputedStyle(document.body);
   const tick=s.getPropertyValue('--text3').trim()||'#4a4a4a';
   const grid='rgba(255,255,255,0.04)';
-  const tooltip={backgroundColor:'#111',borderColor:'#333',borderWidth:1,titleColor:'#f0f0f0',bodyColor:'#888',titleFont:{family:'Space Mono'}};
+  const tooltip={backgroundColor:'rgba(20,16,46,0.95)',borderColor:'rgba(139,92,246,0.4)',borderWidth:1,titleColor:'#f4f1ff',bodyColor:'#b4adcf',titleFont:{family:'Space Mono'}};
   _chartColors={tick,grid,tooltip};
   return _chartColors;
 }
@@ -948,7 +948,7 @@ async function loadPie(){
   const cc=chartColors();
   pieInst=new Chart(document.getElementById('pieChart'),{
     type:'doughnut',
-    data:{labels:top.map(a=>a.name),datasets:[{data:top.map(a=>parseInt(a.playcount)),backgroundColor:COLORS,borderColor:'#3a3a42',borderWidth:3,hoverOffset:6}]},
+    data:{labels:top.map(a=>a.name),datasets:[{data:top.map(a=>parseInt(a.playcount)),backgroundColor:COLORS,borderColor:'#14102e',borderWidth:3,hoverOffset:6}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
       plugins:{legend:{display:false},tooltip:{...cc.tooltip,
         callbacks:{label:c=>{const pct=((c.parsed/total)*100).toFixed(1);return ` ${fmt(c.parsed)} Plays (${pct}%)`;}}}}}
@@ -1311,9 +1311,9 @@ function renderCalendar(dayMap,start,end){
   function getColor(count){
     if(!count) return 'var(--bg3)';
     const p=count/maxVal;
-    if(p<0.25) return 'rgba(214,24,122,0.25)';
-    if(p<0.5) return 'rgba(214,24,122,0.5)';
-    if(p<0.75) return 'rgba(214,24,122,0.75)';
+    if(p<0.25) return 'rgba(139,92,246,0.35)';
+    if(p<0.5) return 'rgba(167,139,250,0.55)';
+    if(p<0.75) return 'rgba(236,72,153,0.7)';
     return 'var(--pink)';
   }
   // Total active days
