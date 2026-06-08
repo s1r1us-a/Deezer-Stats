@@ -28,18 +28,19 @@ Kontrast-Anhebung, Tag×Stunde-Heatmap, Year-over-Year + Jahres-Hochrechnung.
 - Now-Playing-Kontext: Rang/Plays des laufenden Künstlers diesen Monat. _(medium)_
 
 ## Performance
-- `loading="lazy"` für Album-Cover in Listen/Recent. _(easy)_
-- Google-Fonts-`woff2` per `<link rel=preload>` vorladen. _(easy)_
+- ✅ `loading="lazy"` für Album-Cover in Listen/Recent. _(umgesetzt)_
+- ✅ `preconnect` für Fonts/Last.fm/Firebase, `defer` für html2canvas. _(umgesetzt)_
+- Google-Fonts-`woff2` per `<link rel=preload>` vorladen (über preconnect hinaus). _(easy)_
 - Archiv-Pagination/Chunking für sehr große Sammlungen (10k+). _(hard)_
 - Service-Worker: statische Assets + letzter Archiv-Snapshot offline. _(hard)_
 
 ## Accessibility
-- Modal-Focus-Trap (Tab-Schleife) für Artist-/Archiv-Modal (Escape existiert bereits). _(medium)_
-- `role="tablist"`/Pfeiltasten-Navigation für Perioden-/Content-Tabs. _(medium)_
+- ✅ Modal-Focus-Trap (Tab-Schleife) für Artist-/Archiv-Modal. _(umgesetzt)_
+- ✅ `role="tablist"`/Pfeiltasten-Navigation für Perioden-/Content-Tabs. _(umgesetzt)_
 - Muster/Hatching für Rang 1–3 (Farbfehlsichtigkeit). _(medium)_
 
 ## Mobile / PWA
-- Echte `apple-touch-icon`-PNGs (192/512) + Manifest. _(easy)_
+- ✅ `apple-touch-icon`-PNG (180) + Icons (192/512) + `manifest.webmanifest`. _(umgesetzt)_
 - Artist-Modal als Bottom-Sheet auf Mobile. _(medium)_
 - Haptisches Feedback (`navigator.vibrate`) bei Aktionen (Android). _(easy)_
 - Gesten-Navigation zwischen Sektionen. _(hard)_
@@ -47,5 +48,5 @@ Kontrast-Anhebung, Tag×Stunde-Heatmap, Year-over-Year + Jahres-Hochrechnung.
 ## Code-Qualität / Wartbarkeit
 - `Formatters`-Modul (`fmt`/`fmtTime`/`timeAgo` …) auslagern. _(easy)_
 - `ChartManager`/`ArchiveStore` zur Bündelung von Chart- bzw. Archiv-Zugriffen. _(hard)_
-- Inline-`onclick` schrittweise auf Event-Delegation umstellen. _(medium)_
+- ✅ Inline-`onclick` in `index.html` auf zentrale Event-Delegation (`data-action`) umgestellt. _(umgesetzt)_
 - `app.js` perspektivisch in `archive.js`/`charts.js`/`ui.js` aufteilen. _(hard)_
