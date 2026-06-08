@@ -12,9 +12,36 @@
 <meta name="format-detection" content="telephone=no">
 <meta name="color-scheme" content="dark">
 <title>s1r1us-a — Ultimate Stats</title>
+<meta name="description" content="Persönliches Musik-Dashboard für s1r1us-a: Top-Künstler, Tracks & Alben, Hör-Heatmaps, Streaks und Year-over-Year-Statistiken aus Last.fm.">
+<link rel="canonical" href="https://s1r1us-a.github.io/Deezer-Stats/">
+
+<!-- Open Graph / Social -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="s1r1us-a Stats">
+<meta property="og:title" content="s1r1us-a — Ultimate Stats">
+<meta property="og:description" content="Top-Künstler, Tracks & Alben, Hör-Heatmaps, Streaks und Year-over-Year-Statistiken.">
+<meta property="og:url" content="https://s1r1us-a.github.io/Deezer-Stats/">
+<meta property="og:image" content="https://s1r1us-a.github.io/Deezer-Stats/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="s1r1us-a — Ultimate Stats">
+<meta name="twitter:description" content="Top-Künstler, Tracks & Alben, Hör-Heatmaps, Streaks und Year-over-Year-Statistiken.">
+<meta name="twitter:image" content="https://s1r1us-a.github.io/Deezer-Stats/assets/og-cover.png">
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="assets/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+
+<!-- Performance: Verbindungen früh aufbauen -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://ws.audioscrobbler.com">
+<link rel="preconnect" href="https://lastfm-stats-default-rtdb.europe-west1.firebasedatabase.app">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <link rel="stylesheet" href="css/styles.css">
@@ -50,20 +77,20 @@
   <div class="wrap nav-inner">
     <div class="nav-logo">◈ s1r1us-a / ultimate stats</div>
     <div class="nav-links" id="nav-links">
-      <button class="nav-close" onclick="closeNav()">✕</button>
-      <a href="#overview" onclick="closeNav()">Übersicht</a>
-      <a href="#charts-sec" onclick="closeNav()">Charts</a>
-      <a href="#activity-sec" onclick="closeNav()">Aktivität</a>
-      <a href="#calendar-sec" onclick="closeNav()">Kalender & Jahr</a>
-      <a href="#compare-sec" onclick="closeNav()">Vergleich</a>
-      <a href="#recent-sec" onclick="closeNav()">Recents</a>
-      <a href="#archive-sec" onclick="closeNav()" id="nav-archive-link" style="display:none;">Archiv</a>
+      <button class="nav-close" data-action="closeNav">✕</button>
+      <a href="#overview" data-action="closeNav">Übersicht</a>
+      <a href="#charts-sec" data-action="closeNav">Charts</a>
+      <a href="#activity-sec" data-action="closeNav">Aktivität</a>
+      <a href="#calendar-sec" data-action="closeNav">Kalender & Jahr</a>
+      <a href="#compare-sec" data-action="closeNav">Vergleich</a>
+      <a href="#recent-sec" data-action="closeNav">Recents</a>
+      <a href="#archive-sec" data-action="closeNav" id="nav-archive-link" style="display:none;">Archiv</a>
 
     </div>
     <div class="nav-right">
-      <button class="nav-hamburger" id="nav-hamburger" onclick="openNav()">☰</button>
+      <button class="nav-hamburger" id="nav-hamburger" data-action="openNav">☰</button>
       <a href="wrapped.html" class="wrapped-btn" title="Dein Wrapped ansehen"><span class="sparkle">✨</span><span>Wrapped</span></a>
-      <button class="export-btn" onclick="exportPNG()">↓ Export PNG</button>
+      <button class="export-btn" data-action="exportPNG">↓ Export PNG</button>
     </div>
   </div>
 </nav>
@@ -115,7 +142,7 @@
 <!-- OVERVIEW -->
 <section id="overview">
   <div class="wrap">
-    <div class="sec-hdr"><div class="sec-title">Übersicht</div><div class="sec-actions"><div id="sync-status" class="sec-info" title=""></div><div id="cache-info" class="sec-info"></div><a href="wrapped.html" class="wrapped-btn" title="Dein Wrapped ansehen"><span class="sparkle">✨</span><span>Wrapped</span></a><button id="archive-btn" onclick="openArchiveModal()" class="action-btn">🗄 Archiv</button></div></div>
+    <div class="sec-hdr"><div class="sec-title">Übersicht</div><div class="sec-actions"><div id="sync-status" class="sec-info" title=""></div><div id="cache-info" class="sec-info"></div><a href="wrapped.html" class="wrapped-btn" title="Dein Wrapped ansehen"><span class="sparkle">✨</span><span>Wrapped</span></a><button id="archive-btn" data-action="openArchiveModal" class="action-btn">🗄 Archiv</button></div></div>
     <div class="metric-grid" id="overview-grid">
       <div class="skel skel-mc hi"></div>
       <div class="skel skel-mc"></div>
@@ -146,10 +173,10 @@
       <div class="sec-actions">
         <div id="charts-track-count" style="display:none;font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:6px;background:var(--pink3);border:1px solid rgba(214,24,122,.25);color:var(--pink2);white-space:nowrap;"></div>
         <div class="sort-wrap">
-          <button class="sort-btn active" id="sb-plays" onclick="setSort('plays')">Plays</button>
-          <button class="sort-btn" id="sb-alpha" onclick="setSort('alpha')">A–Z</button>
+          <button class="sort-btn active" id="sb-plays" data-action="setSort" data-arg="plays">Plays</button>
+          <button class="sort-btn" id="sb-alpha" data-action="setSort" data-arg="alpha">A–Z</button>
         </div>
-        <div class="period-tabs" id="chart-periods">
+        <div class="period-tabs" id="chart-periods" role="tablist" aria-label="Zeitraum">
           <button class="pb" data-p="overall">Gesamt</button>
           <button class="pb" data-p="12month">12 Mo</button>
           <button class="pb" data-p="6month">6 Mo</button>
@@ -163,9 +190,9 @@
     </div>
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
-      <input class="search-input" id="chart-search" placeholder="Suchen..." aria-label="Charts durchsuchen" oninput="onSearchInput()">
+      <input class="search-input" id="chart-search" placeholder="Suchen..." aria-label="Charts durchsuchen">
     </div>
-    <div class="ctabs">
+    <div class="ctabs" role="tablist" aria-label="Kategorie">
       <div class="ctab active" data-t="artists">Künstler</div>
       <div class="ctab" data-t="tracks">Tracks</div>
       <div class="ctab" data-t="albums">Alben</div>
@@ -177,7 +204,7 @@
       <div class="skel-ri"><div class="skel skel-ri-circle"></div><div class="skel-ri-lines"><div class="skel skel-ri-line wide"></div><div class="skel skel-ri-line narrow"></div></div><div class="skel skel-ri-bar"></div></div>
       <div class="skel-ri"><div class="skel skel-ri-circle"></div><div class="skel-ri-lines"><div class="skel skel-ri-line wide"></div><div class="skel skel-ri-line narrow"></div></div><div class="skel skel-ri-bar"></div></div>
     </div></div>
-    <button class="show-more" id="show-more-btn" style="display:none" onclick="showMore()">+ Mehr anzeigen</button>
+    <button class="show-more" id="show-more-btn" style="display:none" data-action="showMore">+ Mehr anzeigen</button>
   </div>
 </section>
 
@@ -319,14 +346,14 @@
 </footer>
 
 <!-- ARCHIVE MODAL -->
-<div id="archive-modal" class="modal-overlay">
+<div id="archive-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="archive-modal-title">
   <div class="modal-box">
     <div class="modal-hdr">
-      <div class="modal-title">
+      <div class="modal-title" id="archive-modal-title">
         🗄 Scrobble-Archiv
         <div id="archive-sync-badge" class="modal-sync-badge"></div>
       </div>
-      <button onclick="closeArchiveModal()" class="modal-close">✕</button>
+      <button data-action="closeArchiveModal" class="modal-close" aria-label="Schließen">✕</button>
     </div>
     <div id="archive-status" class="modal-status">Lädt Archiv-Info...</div>
     <div id="archive-progress-wrap" class="modal-progress">
@@ -336,10 +363,10 @@
       <div id="archive-progress-txt" class="modal-progress-txt">0%</div>
     </div>
     <div class="modal-actions">
-      <button id="archive-import-btn" onclick="startFullImport()" class="modal-btn-primary">⬇ Vollständiger Import</button>
-      <button id="archive-delta-btn" onclick="startDeltaSync()" class="modal-btn-secondary">↻ Delta-Sync</button>
-      <button id="archive-gapfill-btn" onclick="startGapFill()" class="modal-btn-secondary">🩹 Lücken füllen</button>
-      <button id="archive-abort-btn" onclick="abortImport()" class="modal-btn-danger">✕ Abbrechen</button>
+      <button id="archive-import-btn" data-action="startFullImport" class="modal-btn-primary">⬇ Vollständiger Import</button>
+      <button id="archive-delta-btn" data-action="startDeltaSync" class="modal-btn-secondary">↻ Delta-Sync</button>
+      <button id="archive-gapfill-btn" data-action="startGapFill" class="modal-btn-secondary">🩹 Lücken füllen</button>
+      <button id="archive-abort-btn" data-action="abortImport" class="modal-btn-danger">✕ Abbrechen</button>
     </div>
     <div class="modal-hint">
       <b>Vollständiger Import</b> — holt alle Scrobbles einmalig von Last.fm und speichert sie in Firebase.<br>
@@ -352,7 +379,7 @@
 <!-- ARCHIVE OFFLINE VIEW SECTION -->
 <section id="archive-sec" style="display:none;">
   <div class="wrap">
-    <div class="sec-hdr" style="cursor:pointer;" onclick="toggleArchive()">
+    <div class="sec-hdr" style="cursor:pointer;" data-action="toggleArchive">
       <div class="sec-title">Archiv <span id="archive-sec-badge" class="sec-info" style="margin-left:6px;"></span></div>
       <div style="display:flex;align-items:center;gap:10px;">
         <span id="archive-toggle-icon" style="font-family:var(--mono);font-size:12px;color:var(--text3);transition:transform .3s;">▼</span>
@@ -360,14 +387,14 @@
     </div>
     <div id="archive-body" style="display:none;">
       <div class="sec-actions" style="margin-bottom:16px;">
-        <div class="period-tabs" id="archive-period-tabs">
+        <div class="period-tabs" id="archive-period-tabs" role="tablist" aria-label="Archiv-Zeitraum">
           <button class="pb active" data-ap="all">Gesamt</button>
           <button class="pb" data-ap="year">Dieses Jahr</button>
           <button class="pb" data-ap="month">Dieser Monat</button>
         </div>
-        <button onclick="event.stopPropagation();exportArchiveCSV(event)" class="action-btn-sm">↓ CSV Export</button>
+        <button data-action="exportArchiveCSV" class="action-btn-sm">↓ CSV Export</button>
       </div>
-      <div class="ctabs" id="archive-ctabs">
+      <div class="ctabs" id="archive-ctabs" role="tablist" aria-label="Archiv-Kategorie">
         <div class="ctab active" data-at="tracks">Tracks</div>
         <div class="ctab" data-at="artists">Künstler</div>
         <div class="ctab" data-at="albums">Alben</div>
@@ -378,14 +405,14 @@
 </section>
 
 <!-- ARTIST DRILL-DOWN MODAL -->
-<div class="adm-overlay" id="adm-overlay" onclick="closeArtistDrillDown(event)">
+<div class="adm-overlay" id="adm-overlay" data-action="closeArtistDrillDown" role="dialog" aria-modal="true" aria-labelledby="adm-title">
   <div class="adm-box">
     <div class="adm-head">
       <div>
         <div class="adm-title" id="adm-title">Künstler</div>
         <div class="adm-sub" id="adm-sub"></div>
       </div>
-      <button class="adm-close" onclick="closeArtistDrillDown(null)">✕</button>
+      <button class="adm-close" data-action="closeArtistDrillDown" aria-label="Schließen">✕</button>
     </div>
     <div class="adm-body" id="adm-body"><div class="ld"><div class="sp"></div> Lade...</div></div>
   </div>

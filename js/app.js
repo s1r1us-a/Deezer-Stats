@@ -191,7 +191,7 @@ function timeAgo(ts){
   return new Date(ts*1000).toLocaleDateString('de-DE',{day:'2-digit',month:'short'});
 }
 function rankCls(i){return i===0?'g':i===1?'s':i===2?'b':'';}
-function imgEl(src,cls='ri-img'){return src?`<img src="${src}" class="${cls}" alt="" onerror="this.style.display='none'">`:`<div class="${cls.replace('img','ph')}">♪</div>`;}
+function imgEl(src,cls='ri-img'){return src?`<img src="${src}" class="${cls}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'">`:`<div class="${cls.replace('img','ph')}">♪</div>`;}
 
 // Zentrierter, wiederverwendbarer Empty-State
 function emptyState(msg,icon='🎵'){
@@ -1668,7 +1668,7 @@ async function loadRecent(){
   const html=displayTracks.map(t=>{
     const isNow=t['@attr']?.nowplaying;
     const src=t.image?.find(x=>x.size==='medium')?.['#text']||t.image?.[1]?.['#text'];
-    const imgE=src?`<img src="${src}" class="rec-img" alt="">`:`<div class="rec-img" style="display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px;">♪</div>`;
+    const imgE=src?`<img src="${src}" class="rec-img" alt="" loading="lazy" decoding="async">`:`<div class="rec-img" style="display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px;">♪</div>`;
     const timeE=isNow?`<span class="np-badge">live</span>`:`<span class="rec-time">${timeAgo(t.date?.uts)}</span>`;
     const loved=t.loved==='1'?`<span style="color:var(--pink);font-size:11px;margin-left:3px;">♥</span>`:'';
     const href=t.url||`https://www.last.fm/music/${encodeURIComponent(t.artist?.name||t.artist?.['#text']||'')}/_/${encodeURIComponent(t.name||'')}`;
@@ -1849,12 +1849,12 @@ const RETRY_DELAY=4000;    // ms Pause vor einem Retry
 
 function openArchiveModal(){
   const m=document.getElementById('archive-modal');
-  m.style.opacity='1';m.style.pointerEvents='all';
+  m.style.opacity='1';m.style.pointerEvents='all';m.classList.add('open');
   loadArchiveStatus();
 }
 function closeArchiveModal(){
   const m=document.getElementById('archive-modal');
-  m.style.opacity='0';m.style.pointerEvents='none';
+  m.style.opacity='0';m.style.pointerEvents='none';m.classList.remove('open');
 }
 document.getElementById('archive-modal').addEventListener('click',function(e){
   if(e.target===this) closeArchiveModal();
@@ -2864,8 +2864,7 @@ document.getElementById('archive-ctabs').querySelectorAll('.ctab').forEach(t=>t.
 }));
 
 // ── RUNDE 4: CSV EXPORT ───────────────────────────────────
-async function exportArchiveCSV(event){
-  const btn=event.currentTarget;
+async function exportArchiveCSV(btn){
   const origText=btn.textContent;
   btn.textContent='Wird erstellt...';btn.disabled=true;
   try{
@@ -3067,4 +3066,103 @@ document.addEventListener('keydown',(e)=>{
     console.error(e);
     document.body.insertAdjacentHTML('afterbegin',`<div class="wrap"><div class="err" style="margin:16px 0;">Fehler: ${e.message}</div></div>`);
   }
+})();
+
+// ── EVENT-DELEGATION (ersetzt Inline-onclick) ──────────────
+// Zentrale Verdrahtung: Buttons/Links tragen data-action (+ optional data-arg),
+// statt onclick="…". Hält das HTML frei von Inline-Handlern (CSP-freundlich).
+document.addEventListener('click',(e)=>{
+  const el=e.target.closest('[data-action]');
+  if(!el) return;
+  const action=el.dataset.action;
+  switch(action){
+    case 'setSort': setSort(el.dataset.arg); break;
+    case 'exportArchiveCSV': exportArchiveCSV(el); break;
+    case 'closeArtistDrillDown':
+      // Schließen-Button immer schließen; Backdrop nur bei direktem Klick auf das Overlay
+      closeArtistDrillDown(el.classList.contains('adm-close') ? null : e);
+      break;
+    default: {
+      const fn=window[action];
+      if(typeof fn==='function') fn();
+    }
+  }
+});
+
+// Suche (ersetzt oninput="onSearchInput()")
+(()=>{ const s=document.getElementById('chart-search'); if(s) s.addEventListener('input',onSearchInput); })();
+
+// ── TABLIST-ARIA + TASTATURNAVIGATION ──────────────────────
+// Ergänzt role/aria-selected und Pfeiltasten-Navigation für bestehende Tabs.
+// Die Klick-Logik bleibt unverändert; hier nur ARIA-Sync + Roving-Tabindex.
+function enhanceTablist(list){
+  const tabs=[...list.children].filter(c=>c.matches('button,div'));
+  if(!tabs.length) return;
+  const sync=()=>tabs.forEach(t=>{
+    const on=t.classList.contains('active');
+    t.setAttribute('role','tab');
+    t.setAttribute('aria-selected',on?'true':'false');
+    t.tabIndex=on?0:-1;
+  });
+  sync();
+  // Nach jedem Klick ARIA aktualisieren (läuft nach den bestehenden Handlern)
+  list.addEventListener('click',()=>requestAnimationFrame(sync));
+  list.addEventListener('keydown',(e)=>{
+    const i=tabs.indexOf(document.activeElement);
+    if(i<0) return;
+    let n=-1;
+    if(e.key==='ArrowRight'||e.key==='ArrowDown') n=(i+1)%tabs.length;
+    else if(e.key==='ArrowLeft'||e.key==='ArrowUp') n=(i-1+tabs.length)%tabs.length;
+    else if(e.key==='Home') n=0;
+    else if(e.key==='End') n=tabs.length-1;
+    else if((e.key==='Enter'||e.key===' ')){ e.preventDefault(); tabs[i].click(); return; }
+    else return;
+    e.preventDefault();
+    tabs[n].focus();
+    tabs[n].click();
+  });
+}
+document.querySelectorAll('.period-tabs,.ctabs').forEach(enhanceTablist);
+
+// ── MODAL-FOCUS-TRAP ───────────────────────────────────────
+// Hält Tab-Fokus innerhalb offener Modals und stellt den Fokus beim
+// Schließen wieder her. Greift auf Archiv-Modal und Artist-Drilldown.
+(()=>{
+  let lastFocused=null;
+  const SEL='a[href],button:not([disabled]),input,select,textarea,[tabindex]:not([tabindex="-1"])';
+  const isOpen=m=>m&&m.classList.contains('open');
+  const openModal=()=>document.getElementById('adm-overlay')?.classList.contains('open')
+      ? document.getElementById('adm-overlay')
+      : (document.getElementById('archive-modal')?.classList.contains('open')
+          ? document.getElementById('archive-modal') : null);
+
+  // Beim Öffnen Fokus merken + in die Box setzen (per MutationObserver auf class)
+  ['archive-modal','adm-overlay'].forEach(id=>{
+    const m=document.getElementById(id);
+    if(!m) return;
+    let wasOpen=isOpen(m);
+    new MutationObserver(()=>{
+      const now=isOpen(m);
+      if(now&&!wasOpen){
+        lastFocused=document.activeElement;
+        const first=m.querySelector(SEL);
+        if(first) requestAnimationFrame(()=>first.focus());
+      }else if(!now&&wasOpen){
+        if(lastFocused&&typeof lastFocused.focus==='function') lastFocused.focus();
+      }
+      wasOpen=now;
+    }).observe(m,{attributes:true,attributeFilter:['class']});
+  });
+
+  // Tab innerhalb des offenen Modals einfangen
+  document.addEventListener('keydown',(e)=>{
+    if(e.key!=='Tab') return;
+    const m=openModal();
+    if(!m) return;
+    const f=[...m.querySelectorAll(SEL)].filter(el=>el.offsetParent!==null);
+    if(!f.length) return;
+    const first=f[0],last=f[f.length-1];
+    if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+  });
 })();
