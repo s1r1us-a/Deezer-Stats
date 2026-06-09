@@ -837,7 +837,7 @@ async function loadLifetimeData(startYear,silent=false){
     for(let m=0;m<=maxM;m++) allMonths.push({y,m,key:monthKey(y,m)});
   }
 
-  const toFetch=allMonths.filter(({key})=>!existing[key]||key===currentKey);
+  const toFetch=allMonths.filter(({key})=>existing[key]===undefined||key===currentKey);
 
   if(toFetch.length===0){
     show('✓ Alle Daten aus Firebase geladen');
