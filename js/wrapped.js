@@ -909,6 +909,9 @@ function closeStory(){
   $('#story').classList.remove('show');
   $('#entry').style.display = 'flex';
   $('#entry').style.animation = 'entry-fade .6s var(--ease-out)';
+  // Fokus zurück auf das auslösende Element (Fallback: erste Entry-Karte).
+  const restore = (_storyTrigger && document.contains(_storyTrigger)) ? _storyTrigger : $('#opt-30d');
+  restore?.focus();
 }
 
 function restart(){
@@ -1050,7 +1053,14 @@ async function shareCard(){
 // ═════════════════════════════════════════════════════════════════
 // FLOW
 // ═════════════════════════════════════════════════════════════════
+// Element, das die Story gestartet hat — für Fokus-Rückgabe beim Schließen.
+let _storyTrigger = null;
+
 async function start(period){
+  // Auslöser merken, solange er noch fokussiert/sichtbar ist (Entry-Karte oder Jahr-Chip).
+  if(document.activeElement && document.activeElement !== document.body){
+    _storyTrigger = document.activeElement;
+  }
   $('#entry').style.display = 'none';
   $('#loader').classList.add('show');
   setProgress(5);
@@ -1075,6 +1085,9 @@ async function start(period){
     await new Promise(r=>setTimeout(r,450));
     $('#loader').classList.remove('show');
     $('#story').classList.add('show');
+    // Fokus in den Dialog holen, damit Tastatur-/Screenreader-Nutzer nicht im
+    // ausgeblendeten Entry-Screen hängen bleiben.
+    $('#btn-close')?.focus();
     renderSlide(0);
     startSlideTimer();
   }catch(e){

@@ -88,6 +88,17 @@ function loadCache(){try{const d=localStorage.getItem(CACHE_KEY);if(d){const p=J
 Object.keys(cache).filter(k=>k.startsWith('top_')&&k.endsWith('_today')).forEach(k=>delete cache[k]);document.getElementById('cache-info').textContent='Cache: vor '+Math.round(age)+' Min';return;}}}catch(e){}}
 function saveCache(){try{localStorage.setItem(CACHE_KEY,JSON.stringify({ts:Date.now(),data:cache}));}catch(e){}}
 
+// Archiv-Caches nach einem Sync invalidieren, damit neue Scrobbles sichtbar werden.
+// WICHTIG: Auch _archivePromise zurücksetzen — sonst returnt getArchiveData()
+// weiterhin das alte resolved-Promise und der .then()-Callback (der _archiveData
+// neu setzen würde) läuft nicht mehr. Der 'today'-Chart-Cache wird in loadCache()
+// ohnehin verworfen, daher hier nur die historischen top_*-Einträge leeren.
+function invalidateArchiveCaches(){
+  _archiveData=null;
+  _archivePromise=null;
+  Object.keys(cache).filter(k=>k.startsWith('top_')&&!k.endsWith('_today')).forEach(k=>delete cache[k]);
+}
+
 // ── API ────────────────────────────────────────────────────
 // ── LAST.FM OFFLINE-STATUS ────────────────────────────────
 // Nach 2 aufeinanderfolgenden Fehlern gilt Last.fm als "down" — dann werden
@@ -1955,9 +1966,19 @@ async function fetchScrobblePage(from,to,page,limit=200){
 
   let lastErr;
   for(let attempt=1;attempt<=RETRY_MAX;attempt++){
+    let retryAfterMs=null; // bei 429 vom Server vorgegebene Wartezeit
     try{
       const r=await fetch(url);
-      if(!r.ok) throw new Error('HTTP '+r.status);
+      if(!r.ok){
+        // 429 = Rate-Limit: deutlich länger warten als bei einem 5xx, möglichst
+        // exakt so lange wie der Server via Retry-After-Header vorgibt.
+        if(r.status===429){
+          const ra=parseInt(r.headers.get('Retry-After'));
+          // Ohne Header exponentiell hochgehen: 4s, 8s, 16s ...
+          retryAfterMs=Number.isFinite(ra)?ra*1000:RETRY_DELAY*Math.pow(2,attempt-1);
+        }
+        throw new Error('HTTP '+r.status);
+      }
       const d=await r.json();
       if(d?.error) throw new Error('Last.fm: '+d.message);
       return d;
@@ -1965,8 +1986,10 @@ async function fetchScrobblePage(from,to,page,limit=200){
       lastErr=e;
       if(_importAborted) throw e;
       if(attempt<RETRY_MAX){
-        updateProgressTxt(`⚠ Fehler (Versuch ${attempt}/${RETRY_MAX}): ${e.message} — warte ${RETRY_DELAY/1000}s...`);
-        await new Promise(r=>setTimeout(r,RETRY_DELAY));
+        const waitMs=retryAfterMs||RETRY_DELAY;
+        const note=retryAfterMs?' (Rate-Limit)':'';
+        updateProgressTxt(`⚠ Fehler${note} (Versuch ${attempt}/${RETRY_MAX}): ${e.message} — warte ${Math.round(waitMs/1000)}s...`);
+        await new Promise(r=>setTimeout(r,waitMs));
       }
     }
   }
@@ -2081,7 +2104,7 @@ async function startFullImport(){
     const totalPages=parseInt(first?.recenttracks?.['@attr']?.totalPages||1);
     const totalTracks=parseInt(first?.recenttracks?.['@attr']?.total||0);
 
-    let done=0,savedCount=0;
+    let done=0,savedCount=0,failedPages=0;
     statusEl.innerHTML=`Importiere <span style="color:var(--pink);">${Number(totalTracks).toLocaleString('de-DE')}</span> Scrobbles über ${totalPages} Seiten...`;
 
     const eta=makeETATracker();
@@ -2093,8 +2116,9 @@ async function startFullImport(){
       const tracks=d?.recenttracks?.track||[];
       // Write im Hintergrund starten — nicht awaiten. Fetch der nächsten Seite
       // läuft damit parallel zum Firebase-Write der aktuellen.
+      // .catch() macht endgültig fehlgeschlagene Writes sichtbar statt sie zu verschlucken.
       writePromises.push(
-        writeBatch(tracks,(page-1)*200).then(n=>{savedCount+=n;return n;})
+        writeBatch(tracks,(page-1)*200).then(n=>{savedCount+=n;return n;}).catch(()=>{failedPages++;})
       );
       done++;
 
@@ -2127,8 +2151,10 @@ async function startFullImport(){
         ` <span style="color:var(--text2);">von</span> `+
         `<span style="color:var(--text);">${Number(totalTracks).toLocaleString('de-DE')}</span>`+
         ` <span style="color:var(--text2);">Scrobbles archiviert</span>`+
-        (realCount<totalTracks?`<br><span style="color:var(--text3);font-size:11px;">(${totalTracks-realCount} nowplaying/Duplikate übersprungen)</span>`:'');
-      showToast('✓ Import abgeschlossen','ok');
+        (realCount<totalTracks?`<br><span style="color:var(--text3);font-size:11px;">(${totalTracks-realCount} nowplaying/Duplikate übersprungen)</span>`:'')+
+        (failedPages>0?`<br><span style="color:#f59e0b;font-size:11px;">⚠ ${failedPages} Seite(n) konnten nicht gespeichert werden — „Lücken füllen" ausführen</span>`:'');
+      if(failedPages>0) showToast(`⚠ ${failedPages} Seite(n) nicht gespeichert`,'err');
+      else showToast('✓ Import abgeschlossen','ok');
     } else {
       statusEl.innerHTML=
         `Import abgebrochen bei Seite ${done}/${totalPages}<br>`+
@@ -2183,7 +2209,7 @@ async function startDeltaSync(){
     statusEl.innerHTML=
       `<span style="color:var(--pink);">${Number(totalNew).toLocaleString('de-DE')}</span> neue Tracks gefunden — wird importiert...`;
 
-    let savedCount=0;
+    let savedCount=0,failedPages=0;
     const eta=makeETATracker();
     const writePromises=[];
     for(let page=1;page<=totalPages;page++){
@@ -2191,9 +2217,11 @@ async function startDeltaSync(){
 
       const d=await fetchScrobblePage(fromTs,null,page,200);
       const tracks=d?.recenttracks?.track||[];
-      // Fire-and-forget Write — blockiert nächsten Fetch nicht
+      // Fire-and-forget Write — blockiert nächsten Fetch nicht.
+      // .catch() fängt endgültig fehlgeschlagene Writes ab, damit sie nicht
+      // als unhandled rejection verschluckt werden und der Nutzer einen Hinweis bekommt.
       writePromises.push(
-        writeBatch(tracks,(page-1)*200).then(n=>{savedCount+=n;return n;})
+        writeBatch(tracks,(page-1)*200).then(n=>{savedCount+=n;return n;}).catch(()=>{failedPages++;})
       );
 
       const pct=Math.round((page/totalPages)*90);
@@ -2224,8 +2252,16 @@ async function startDeltaSync(){
         `✓ Delta-Sync abgeschlossen<br>`+
         `<span style="color:var(--pink2);font-size:13px;font-weight:700;">+${Number(savedCount).toLocaleString('de-DE')}</span>`+
         ` <span style="color:var(--text2);">neue Tracks — Gesamt:</span> `+
-        `<span style="color:var(--text);">${Number(newTotal).toLocaleString('de-DE')}</span>`;
-      showToast('✓ Delta-Sync abgeschlossen','ok');
+        `<span style="color:var(--text);">${Number(newTotal).toLocaleString('de-DE')}</span>`+
+        (failedPages>0?`<br><span style="color:#f59e0b;font-size:11px;">⚠ ${failedPages} Seite(n) konnten nicht gespeichert werden — Sync erneut ausführen</span>`:'');
+      if(failedPages>0) showToast(`⚠ ${failedPages} Seite(n) nicht gespeichert`,'err');
+      else showToast('✓ Delta-Sync abgeschlossen','ok');
+      // Archiv-Cache invalidieren + komplette UI ohne Reload aktualisieren
+      // (zuvor blieb die Seite nach manuellem Delta-Sync veraltet — anders als
+      // beim automatischen Hintergrund-Sync).
+      invalidateArchiveCaches();
+      await refreshAfterSync();
+      updateSyncStatusLabel();
     } else {
       statusEl.innerHTML=
         `Sync abgebrochen<br>`+
@@ -2453,9 +2489,7 @@ async function startGapFill(){
     }
 
     // Archiv-Cache invalidieren damit neue Daten sichtbar werden
-    _archiveData=null;
-    _archivePromise=null;
-    Object.keys(cache).filter(k=>k.startsWith('top_')&&!k.endsWith('_today')).forEach(k=>delete cache[k]);
+    invalidateArchiveCaches();
 
   }catch(e){
     statusEl.innerHTML=`<span style="color:#ef4444;">Fehler: ${e.message}</span>`;
@@ -2625,15 +2659,15 @@ async function autoBackgroundSync(silent=false){
     syncBanner('syncing',`${Number(totalNew).toLocaleString('de-DE')} neue Scrobbles werden gespeichert...`,0);
     updateSyncBadge('🔄 synchronisiert...','var(--pink)');
 
-    let saved=0;
+    let saved=0,failedPages=0;
     const eta=makeETATracker();
     const writePromises=[];
     for(let page=1;page<=totalPages;page++){
       const d=await fetchScrobblePage(fromTs,null,page,200);
       const tracks=d?.recenttracks?.track||[];
-      // Fire-and-forget Write
+      // Fire-and-forget Write — .catch() verhindert verschluckte Schreibfehler
       writePromises.push(
-        writeBatch(tracks,(page-1)*200).then(n=>{saved+=n;return n;})
+        writeBatch(tracks,(page-1)*200).then(n=>{saved+=n;return n;}).catch(()=>{failedPages++;})
       );
       const pct=Math.round((page/totalPages)*90);
       syncBanner('syncing', `Scrobbles werden geladen... ${page}/${totalPages} · ${eta.label(pct)}`, pct);
@@ -2651,19 +2685,19 @@ async function autoBackgroundSync(silent=false){
     const realTotal=await getRealArchiveCount();
     await db.ref('scrobble_meta/count').set(realTotal);
     await db.ref('scrobble_meta/last_sync').set(Date.now());
-    updateSyncBadge(`+${saved} neue Tracks ✓`,'#22c55e');
-    syncBanner('done-new',`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles synchronisiert`,100);
-    if(!silent) showToast(`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles`,'ok');
+    if(failedPages>0){
+      updateSyncBadge(`+${saved} · ⚠ ${failedPages} Fehler`,'#f59e0b');
+      syncBanner('err',`⚠ +${Number(saved).toLocaleString('de-DE')} gespeichert, ${failedPages} Seite(n) fehlgeschlagen — „Lücken füllen" hilft`);
+      if(!silent) showToast(`⚠ ${failedPages} Seite(n) nicht gespeichert`,'err');
+    } else {
+      updateSyncBadge(`+${saved} neue Tracks ✓`,'#22c55e');
+      syncBanner('done-new',`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles synchronisiert`,100);
+      if(!silent) showToast(`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles`,'ok');
+    }
     updateSyncStatusLabel();
 
     // Archiv-Cache invalidieren damit neue Daten sichtbar werden.
-    // WICHTIG: Auch _archivePromise zurücksetzen — sonst returnt getArchiveData()
-    // weiterhin das alte resolved-Promise und der .then()-Callback (der _archiveData
-    // neu setzen würde) läuft nicht mehr.
-    _archiveData=null;
-    _archivePromise=null;
-    // Chart-Cache leeren damit neue Scrobbles in den Charts erscheinen
-    Object.keys(cache).filter(k=>k.startsWith('top_')&&!k.endsWith('_today')).forEach(k=>delete cache[k]);
+    invalidateArchiveCaches();
     // Alle UI-Komponenten neu laden — ohne full page reload
     await refreshAfterSync();
 
