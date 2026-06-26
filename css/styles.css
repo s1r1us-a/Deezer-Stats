@@ -2,8 +2,10 @@
   color-scheme: dark;
   /* ── flashcards Design-Tokens (Dark Glassmorphism) ── */
   --bg-0:#0b0820;--bg-1:#14102e;
-  --glass-bg:rgba(255,255,255,0.03);--glass-bg-strong:rgba(255,255,255,0.03);
-  --glass-border:rgba(255,255,255,0.03);--glass-border-strong:rgba(255,255,255,0.03);
+  /* --glass-bg ist die einzige Quelle für die 0.03-Glasfläche; alle gleichwertigen
+     Token referenzieren sie per var() (reine Wert-Deduplizierung, kein visueller Effekt). */
+  --glass-bg:rgba(255,255,255,0.03);--glass-bg-strong:var(--glass-bg);
+  --glass-border:var(--glass-bg);--glass-border-strong:var(--glass-bg);
   --accent:#8b5cf6;--accent-2:#ec4899;--accent-3:#3b82f6;
   --ok:#10b981;--bad:#ef4444;
   --radius-lg:20px;--radius-md:14px;--radius-sm:10px;
@@ -13,9 +15,9 @@
   /* ── Legacy-Aliase: bestehende Komponenten referenzieren diese Namen.
      Auf die Dark-Palette gemappt, damit alles automatisch re-thematisiert. ── */
   --bg:#0b0820;
-  --bg2:rgba(255,255,255,0.03);--bg3:rgba(255,255,255,0.03);
-  --bg4:rgba(255,255,255,0.03);--bg5:rgba(255,255,255,0.03);
-  --border:rgba(255,255,255,0.03);--border2:rgba(255,255,255,0.03);--border3:rgba(139,92,246,0.4);
+  --bg2:var(--glass-bg);--bg3:var(--glass-bg);
+  --bg4:var(--glass-bg);--bg5:var(--glass-bg);
+  --border:var(--glass-bg);--border2:var(--glass-bg);--border3:rgba(139,92,246,0.4);
   --text:#f4f1ff;--text2:#c2bcd8;--text3:#a59ec2;
   --pink:#ec4899;--pink2:#f472b6;--pink3:rgba(236,72,153,0.14);--pink4:rgba(236,72,153,0.08);
   --purple:#8b5cf6;--purple2:#a78bfa;--purple3:rgba(139,92,246,0.16);
@@ -601,6 +603,7 @@ section > .wrap > .sec-hdr::before{
 @media(prefers-reduced-motion:reduce){
   *,::before,::after{animation-duration:0.01ms!important;animation-iteration-count:1!important;transition-duration:0.01ms!important;}
   body::before,body::after,.bg-orb{animation:none!important;}
+  html{scroll-behavior:auto!important;}
 }
 
 /* ═══════════════════════════════════════════════════════════════

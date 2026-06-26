@@ -1,11 +1,23 @@
 (function(){
   'use strict';
 
+  // ── Bewegungs-Präferenz ────────────────────────────────────
+  // Diese JS-getriebenen Effekte werden vom CSS-@media(prefers-reduced-motion)
+  // nicht erfasst, daher hier explizit prüfen. `reduceMotion()` wird live
+  // ausgewertet, damit ein Umschalten ohne Reload greift.
+  const reduceMQ = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const finePointerMQ = window.matchMedia('(hover: hover) and (pointer: fine)');
+  const reduceMotion = () => reduceMQ.matches;
+  const scrollBehavior = () => reduceMotion() ? 'auto' : 'smooth';
+
   // ── Spotlight: folgt der Maus ──────────────────────────────
+  // Nur bei feinem Zeiger (Maus) und ohne Reduced-Motion — auf Touch bringt
+  // der Effekt nichts und kostet nur Pointer-Events.
   const spot = document.getElementById('spotlight');
-  if(spot){
+  if(spot && finePointerMQ.matches && !reduceMotion()){
     let raf = null, tx = 50, ty = 50;
     window.addEventListener('pointermove', (e) => {
+      if(reduceMotion()) return;
       tx = (e.clientX / window.innerWidth) * 100;
       ty = (e.clientY / window.innerHeight) * 100;
       if(raf) return;
@@ -40,7 +52,7 @@
   // ── Back-to-top Click ──────────────────────────────────────
   if(backTop){
     backTop.addEventListener('click', () => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: scrollBehavior() });
     });
   }
 
@@ -53,7 +65,7 @@
         const el = document.getElementById(id);
         if(el){
           const y = el.getBoundingClientRect().top + window.scrollY - 80;
-          window.scrollTo({ top: y, behavior: 'smooth' });
+          window.scrollTo({ top: y, behavior: scrollBehavior() });
         }
       });
     });
@@ -83,18 +95,23 @@
   const parallaxEls = document.querySelectorAll('[data-parallax]');
   if(parallaxEls.length){
     let parallaxRaf = null;
+    const resetParallax = () => parallaxEls.forEach(el => { el.style.transform = 'none'; });
     const updateParallax = () => {
+      parallaxRaf = null;
+      // Bei Reduced-Motion keine Scroll-Verschiebung — Orbs bleiben statisch.
+      if(reduceMotion()){ resetParallax(); return; }
       const y = window.scrollY;
       parallaxEls.forEach(el => {
         const factor = parseFloat(el.dataset.parallax) || 0;
         el.style.transform = `translate3d(0, ${-y * factor}px, 0)`;
       });
-      parallaxRaf = null;
     };
     window.addEventListener('scroll', () => {
       if(parallaxRaf) return;
       parallaxRaf = requestAnimationFrame(updateParallax);
     }, { passive: true });
+    // Live auf Umschalten der Präferenz reagieren.
+    reduceMQ.addEventListener('change', () => { reduceMotion() ? resetParallax() : updateParallax(); });
     updateParallax();
   }
 
