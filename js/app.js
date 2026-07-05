@@ -1,6 +1,7 @@
 const USER='s1r1us-a',KEY='b126713de975c43a7a8f046bcf954884',API='https://ws.audioscrobbler.com/2.0/';
-const PINK='#ec4899',PINK2='#f472b6';
-const COLORS=['#ec4899','#8b5cf6','#3b82f6','#f472b6','#a78bfa','#22d3ee','#34d399','#fbbf24'];
+// Apple-Systemfarben (analog gptstats-Design)
+const PINK='#ff375f',PINK2='#ff6482';
+const COLORS=['#ff375f','#bf5af2','#0a84ff','#ff9f0a','#5e5ce6','#64d2ff','#30d158','#ffd60a'];
 const CACHE_KEY='lfm_cache_s1r1us_v2';
 
 // ── HELPERS ────────────────────────────────────────────────
@@ -12,9 +13,10 @@ let _chartColors=null;
 function chartColors(){
   if(_chartColors) return _chartColors;
   const s=getComputedStyle(document.body);
-  const tick=s.getPropertyValue('--text3').trim()||'#4a4a4a';
-  const grid='rgba(255,255,255,0.04)';
-  const tooltip={backgroundColor:'rgba(20,16,46,0.95)',borderColor:'rgba(139,92,246,0.4)',borderWidth:1,titleColor:'#f4f1ff',bodyColor:'#b4adcf',titleFont:{family:'Space Mono'}};
+  const tick=s.getPropertyValue('--text3').trim()||'#6e6e73';
+  const grid='rgba(255,255,255,0.06)';
+  const fontFam='-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif';
+  const tooltip={backgroundColor:'rgba(28,28,30,0.95)',borderColor:'rgba(255,255,255,0.12)',borderWidth:1,titleColor:'#f5f5f7',bodyColor:'#a1a1a6',titleFont:{family:fontFam},bodyFont:{family:fontFam},cornerRadius:10,padding:10};
   _chartColors={tick,grid,tooltip};
   return _chartColors;
 }
@@ -29,6 +31,9 @@ const FB_CONFIG={
 };
 firebase.initializeApp(FB_CONFIG);
 const db=firebase.database();
+
+// Chart.js global auf System-Font umstellen (Apple-Look)
+if(window.Chart){Chart.defaults.font.family='-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif';}
 
 let cache={},chartPeriod='today',chartTab='artists',sortMode='plays',allItems=[],showCount=10;
 
@@ -902,7 +907,7 @@ function renderLifetimeChart(monthData){
   // Color: current month = pink, rest = dimmed. Group by year for subtle bands
   const bgColors=monthData.map(({key})=>{
     if(key===currentKey) return PINK;
-    return 'rgba(214,24,122,0.3)';
+    return 'rgba(255,55,95,0.3)';
   });
 
   const cc=chartColors();
@@ -921,12 +926,12 @@ function renderLifetimeChart(monthData){
       },
       scales:{
         x:{
-          ticks:{color:cc.tick,font:{family:'Space Mono',size:8},maxRotation:90,
+          ticks:{color:cc.tick,font:{size:8},maxRotation:90,
             callback:(val,i)=>i%3===0?labels[i]:''},
           grid:{display:false},border:{display:false}
         },
         y:{
-          ticks:{color:cc.tick,font:{family:'Space Mono',size:9},callback:v=>fmt(v)},
+          ticks:{color:cc.tick,font:{size:9},callback:v=>fmt(v)},
           grid:{color:cc.grid},border:{display:false}
         }
       }
@@ -968,12 +973,12 @@ async function loadMonthly(loadId){
   const cc=chartColors();
   monthlyInst=new Chart(ctx,{
     type:'bar',data:{labels,datasets:[{label:'Scrobbles',data:results,
-      backgroundColor:results.map((_,i)=>i===results.length-1?PINK:'rgba(214,24,122,0.35)'),
+      backgroundColor:results.map((_,i)=>i===results.length-1?PINK:'rgba(255,55,95,0.35)'),
       borderRadius:3,borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{...cc.tooltip,callbacks:{label:c=>' '+fmt(c.parsed.y)+' Scrobbles'}}},
-      scales:{x:{ticks:{color:cc.tick,font:{family:'Space Mono',size:9},maxRotation:45},grid:{display:false},border:{display:false}},
-               y:{ticks:{color:cc.tick,font:{family:'Space Mono',size:9},callback:v=>fmt(v)},grid:{color:cc.grid},border:{display:false}}}}
+      scales:{x:{ticks:{color:cc.tick,font:{size:9},maxRotation:45},grid:{display:false},border:{display:false}},
+               y:{ticks:{color:cc.tick,font:{size:9},callback:v=>fmt(v)},grid:{color:cc.grid},border:{display:false}}}}
   });
   return results;
 }
@@ -987,7 +992,7 @@ async function loadPie(){
   const cc=chartColors();
   pieInst=new Chart(document.getElementById('pieChart'),{
     type:'doughnut',
-    data:{labels:top.map(a=>a.name),datasets:[{data:top.map(a=>parseInt(a.playcount)),backgroundColor:COLORS,borderColor:'#14102e',borderWidth:3,hoverOffset:6}]},
+    data:{labels:top.map(a=>a.name),datasets:[{data:top.map(a=>parseInt(a.playcount)),backgroundColor:COLORS,borderColor:'#000',borderWidth:3,hoverOffset:6}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
       plugins:{legend:{display:false},tooltip:{...cc.tooltip,
         callbacks:{label:c=>{const pct=((c.parsed/total)*100).toFixed(1);return ` ${fmt(c.parsed)} Plays (${pct}%)`;}}}}}
@@ -1083,7 +1088,7 @@ function renderWeekday(data){
       const barH=c>0?Math.max(8,Math.round((c/max)*110)):3;
       return `<div class="wd-bw" style="gap:4px;">
         <div class="wd-c" style="opacity:${c>0?1:0.3};color:${isMx?'var(--pink2)':'var(--text2)'};">${c>0?pct+'%':'—'}</div>
-        <div class="wd-b ${isMx?'mx':''}" style="height:${barH}px;opacity:${c===0?0.18:isMx?1:0.55};${isMx?'box-shadow:0 0 10px rgba(214,24,122,0.5);':''}border-radius:3px 3px 0 0;" title="${days[i]}: ${fmt(c)} Plays${c>0?' ('+pct+'%)':''}"></div>
+        <div class="wd-b ${isMx?'mx':''}" style="height:${barH}px;opacity:${c===0?0.18:isMx?1:0.55};${isMx?'box-shadow:0 0 10px rgba(255,55,95,0.45);':''}border-radius:3px 3px 0 0;" title="${days[i]}: ${fmt(c)} Plays${c>0?' ('+pct+'%)':''}"></div>
         <div class="wd-l" style="opacity:${c===0?0.35:1};color:${isMx?'var(--pink2)':'var(--text3)'};">${days[i]}</div>
       </div>`;
     }).join('')}</div>
@@ -1127,7 +1132,7 @@ function renderClock(data){
     const showLabel=labelVisible.has(i);
     return `<div class="wd-bw" data-hour="${i}" data-count="${c}" data-pct="${pctDisp}" style="gap:4px;cursor:pointer;">
       <div class="wd-c" style="opacity:${showPct?(isMx?1:0.85):0};color:${isMx?'var(--pink2)':'var(--text2)'};min-height:14px;">${showPct?Math.round(pct)+'%':''}</div>
-      <div class="wd-b ${isMx?'mx':''}" style="height:${barH}px;opacity:${c===0?0.18:isMx?1:0.55};${isMx?'box-shadow:0 0 10px rgba(214,24,122,0.5);':''}border-radius:3px 3px 0 0;transition:opacity .15s;"></div>
+      <div class="wd-b ${isMx?'mx':''}" style="height:${barH}px;opacity:${c===0?0.18:isMx?1:0.55};${isMx?'box-shadow:0 0 10px rgba(255,55,95,0.45);':''}border-radius:3px 3px 0 0;transition:opacity .15s;"></div>
       <div class="wd-l" style="opacity:${showLabel?(isMx?1:0.75):0.35};color:${isMx?'var(--pink2)':'var(--text3)'};">${showLabel?String(i).padStart(2,'0'):'·'}</div>
     </div>`;
   }).join('');
@@ -1158,7 +1163,7 @@ function attachHourHover(){
     const hour=parseInt(bw.dataset.hour);
     const count=parseInt(bw.dataset.count);
     const pct=bw.dataset.pct;
-    tooltip.innerHTML=`<span style="color:#f4c0d1;">${String(hour).padStart(2,'0')}:00 – ${String((hour+1)%24).padStart(2,'0')}:00</span><br>${fmt(count)} Plays · ${pct}%`;
+    tooltip.innerHTML=`<span style="color:#ff8fa3;">${String(hour).padStart(2,'0')}:00 – ${String((hour+1)%24).padStart(2,'0')}:00</span><br>${fmt(count)} Plays · ${pct}%`;
     const glassRect=glass.getBoundingClientRect();
     const bwRect=bw.getBoundingClientRect();
     tooltip.style.left=(bwRect.left-glassRect.left+bwRect.width/2)+'px';
@@ -1210,9 +1215,9 @@ async function renderDayHourHeatmap(){
     const cell=(c)=>{
       if(!c) return 'rgba(255,255,255,0.04)';
       const p=c/max;
-      if(p<0.25) return 'rgba(139,92,246,0.35)';
-      if(p<0.5) return 'rgba(167,139,250,0.55)';
-      if(p<0.75) return 'rgba(236,72,153,0.7)';
+      if(p<0.25) return 'rgba(255,55,95,0.22)';
+      if(p<0.5) return 'rgba(255,55,95,0.45)';
+      if(p<0.75) return 'rgba(255,55,95,0.7)';
       return 'var(--pink)';
     };
     const hourLabels=[0,6,12,18];
@@ -1344,8 +1349,8 @@ async function loadTrend(){
     type:'line',data:{labels,datasets},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{...cc.tooltip,callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.parsed.y)}`}}},
-      scales:{x:{ticks:{color:cc.tick,font:{family:'Space Mono',size:9},maxRotation:45},grid:{color:cc.grid},border:{display:false}},
-               y:{ticks:{color:cc.tick,font:{family:'Space Mono',size:9}},grid:{color:cc.grid},border:{display:false}}}}
+      scales:{x:{ticks:{color:cc.tick,font:{size:9},maxRotation:45},grid:{color:cc.grid},border:{display:false}},
+               y:{ticks:{color:cc.tick,font:{size:9}},grid:{color:cc.grid},border:{display:false}}}}
   });
   const leg=document.createElement('div');
   leg.style.cssText='display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;';
@@ -1438,9 +1443,9 @@ function renderCalendar(dayMap,start,end){
   function getColor(count){
     if(!count) return 'var(--bg3)';
     const p=count/maxVal;
-    if(p<0.25) return 'rgba(139,92,246,0.35)';
-    if(p<0.5) return 'rgba(167,139,250,0.55)';
-    if(p<0.75) return 'rgba(236,72,153,0.7)';
+    if(p<0.25) return 'rgba(255,55,95,0.22)';
+    if(p<0.5) return 'rgba(255,55,95,0.45)';
+    if(p<0.75) return 'rgba(255,55,95,0.7)';
     return 'var(--pink)';
   }
   // Total active days
@@ -1717,7 +1722,7 @@ async function exportPNG(){
   const btn=document.querySelector('.export-btn');
   btn.textContent='Wird erstellt...';btn.disabled=true;
   try{
-    const canvas=await html2canvas(document.getElementById('hero-section'),{backgroundColor:'#090909',scale:2});
+    const canvas=await html2canvas(document.getElementById('hero-section'),{backgroundColor:'#000',scale:2});
     const a=document.createElement('a');
     a.href=canvas.toDataURL('image/png');
     a.download='s1r1us-a-stats.png';
@@ -1996,6 +2001,16 @@ async function fetchScrobblePage(from,to,page,limit=200){
   throw lastErr;
 }
 
+// Ermittelt Gesamtzahl + echte Seitenzahl (bei 200er-Seiten) für ein Sync-Fenster.
+// WICHTIG: totalPages aus einem limit=1-Call ist die Anzahl der EINZEL-Seiten
+// (= Gesamtzahl der Tracks!) — die Seitenzahl für limit=200 muss selbst
+// berechnet werden. Vorher wurden dadurch bis zu 200× zu viele Seiten gefetcht.
+async function getSyncTotals(fromTs,toTs){
+  const first=await fetchScrobblePage(fromTs,toTs,1,1);
+  const total=parseInt(first?.recenttracks?.['@attr']?.total||0);
+  return {total,pages:Math.max(1,Math.ceil(total/200))};
+}
+
 function setArchiveBusy(busy){
   document.getElementById('archive-import-btn').style.display=busy?'none':'inline-block';
   document.getElementById('archive-delta-btn').style.display=busy?'none':'inline-block';
@@ -2083,7 +2098,7 @@ async function startFullImport(){
     const count=await getArchiveCount();
     const countStr=count?` (${Number(count).toLocaleString('de-DE')} Scrobbles)`:'';
     const confirmed=confirm(
-      `⚠ Es existiert bereits ein Archiv${countStr}.\n\nEin vollständiger Import löscht alle gespeicherten Daten und beginnt von vorne.\n\nFür neue Tracks nutze stattdessen "Delta-Sync".\n\nWirklich neu importieren?`
+      `⚠ Es existiert bereits ein Archiv${countStr}.\n\nEin vollständiger Import löscht alle gespeicherten Daten und beginnt von vorne.\n\nFür neue Tracks (oder um einen unterbrochenen Import fortzusetzen) nutze stattdessen "Delta-Sync".\n\nWirklich neu importieren?`
     );
     if(!confirmed) return;
   }
@@ -2100,30 +2115,35 @@ async function startFullImport(){
     await db.ref('scrobble_meta').remove();
 
     statusEl.textContent='Ermittle Gesamtanzahl von Last.fm...';
-    const first=await fetchScrobblePage(null,null,1,1);
-    const totalPages=parseInt(first?.recenttracks?.['@attr']?.totalPages||1);
-    const totalTracks=parseInt(first?.recenttracks?.['@attr']?.total||0);
+    // Fixiertes Zeitfenster: Scrobbles die WÄHREND des Imports reinkommen
+    // verschieben sonst die Pagination und erzeugen Duplikate/Lücken.
+    const toTs=Math.floor(Date.now()/1000);
+    const {total:totalTracks,pages:totalPages}=await getSyncTotals(null,toTs);
 
-    let done=0,savedCount=0,failedPages=0;
+    let done=0,savedCount=0;
+    let writeFailed=false;
     statusEl.innerHTML=`Importiere <span style="color:var(--pink);">${Number(totalTracks).toLocaleString('de-DE')}</span> Scrobbles über ${totalPages} Seiten...`;
 
     const eta=makeETATracker();
-    const writePromises=[];
-    for(let page=1;page<=totalPages;page++){
+    // RESUME-GARANTIE: Seiten werden von der ÄLTESTEN zur neuesten importiert
+    // und strikt in Reihenfolge geschrieben. Das Archiv wächst dadurch immer
+    // lückenlos von unten — ein abgebrochener Import wird vom nächsten
+    // Delta-Sync automatisch an genau dieser Stelle fortgesetzt.
+    // Pipeline: der Fetch der nächsten Seite läuft parallel zum Write der
+    // aktuellen; geschrieben wird erst, wenn die vorherige Seite sicher ist.
+    let prevWrite=Promise.resolve();
+    for(let page=totalPages;page>=1;page--){
       if(_importAborted) break;
 
-      const d=await fetchScrobblePage(null,null,page,200);
+      const d=await fetchScrobblePage(null,toTs,page,200);
       const tracks=d?.recenttracks?.track||[];
-      // Write im Hintergrund starten — nicht awaiten. Fetch der nächsten Seite
-      // läuft damit parallel zum Firebase-Write der aktuellen.
-      // .catch() macht endgültig fehlgeschlagene Writes sichtbar statt sie zu verschlucken.
-      writePromises.push(
-        writeBatch(tracks,(page-1)*200).then(n=>{savedCount+=n;return n;}).catch(()=>{failedPages++;})
-      );
+      // Vorherige Seite muss geschrieben sein, bevor die nächste startet —
+      // sonst könnte ein fehlgeschlagener Write ein Loch hinterlassen.
+      try{ await prevWrite; }catch(e){ writeFailed=true; break; }
+      prevWrite=writeBatch(tracks,(page-1)*200).then(n=>{savedCount+=n;});
       done++;
 
-      // Progress 0-90% für Fetches, 90-100% reserviert für finale Write-Phase
-      const pct=Math.round((done/totalPages)*90);
+      const pct=Math.round((done/totalPages)*95);
       updateProgressBar(pct);
       updateProgressTxt(
         `${pct}% — Seite ${done}/${totalPages} geladen — `+
@@ -2133,13 +2153,15 @@ async function startFullImport(){
       await new Promise(r=>setTimeout(r,IMPORT_DELAY));
     }
 
-    // Auf alle noch laufenden Firebase-Writes warten
-    if(!_importAborted){
-      updateProgressTxt(`Finalisiere ${writePromises.length} Firebase-Writes... · ${eta.fmtElapsed()} gesamt`);
-      await Promise.all(writePromises);
-    }
+    // Letzten Write abwarten
+    try{ await prevWrite; }catch(e){ writeFailed=true; }
 
-    if(!_importAborted){
+    if(writeFailed){
+      statusEl.innerHTML=
+        `<span style="color:#f59e0b;">⚠ Firebase-Write fehlgeschlagen — Import gestoppt.</span><br>`+
+        `<span style="color:var(--text2);">${Number(savedCount).toLocaleString('de-DE')} Tracks lückenlos gespeichert — "Delta-Sync" setzt den Import fort.</span>`;
+      showToast('⚠ Import unterbrochen — Delta-Sync setzt fort','err');
+    } else if(!_importAborted){
       const realCount=await getRealArchiveCount();
       await db.ref('scrobble_meta/count').set(realCount);
       await db.ref('scrobble_meta/last_import').set(Date.now());
@@ -2151,15 +2173,13 @@ async function startFullImport(){
         ` <span style="color:var(--text2);">von</span> `+
         `<span style="color:var(--text);">${Number(totalTracks).toLocaleString('de-DE')}</span>`+
         ` <span style="color:var(--text2);">Scrobbles archiviert</span>`+
-        (realCount<totalTracks?`<br><span style="color:var(--text3);font-size:11px;">(${totalTracks-realCount} nowplaying/Duplikate übersprungen)</span>`:'')+
-        (failedPages>0?`<br><span style="color:#f59e0b;font-size:11px;">⚠ ${failedPages} Seite(n) konnten nicht gespeichert werden — „Lücken füllen" ausführen</span>`:'');
-      if(failedPages>0) showToast(`⚠ ${failedPages} Seite(n) nicht gespeichert`,'err');
-      else showToast('✓ Import abgeschlossen','ok');
+        (realCount<totalTracks?`<br><span style="color:var(--text3);font-size:11px;">(${totalTracks-realCount} nowplaying/Duplikate übersprungen)</span>`:'');
+      showToast('✓ Import abgeschlossen','ok');
     } else {
       statusEl.innerHTML=
-        `Import abgebrochen bei Seite ${done}/${totalPages}<br>`+
-        `<span style="color:var(--text2);">${Number(savedCount).toLocaleString('de-DE')} Tracks bisher gespeichert</span>`;
-      showToast('Import abgebrochen','err');
+        `Import pausiert bei Seite ${done}/${totalPages}<br>`+
+        `<span style="color:var(--text2);">${Number(savedCount).toLocaleString('de-DE')} Tracks lückenlos gespeichert — "Delta-Sync" setzt genau hier fort.</span>`;
+      showToast('Import pausiert — Delta-Sync setzt fort','ok');
     }
   }catch(e){
     statusEl.innerHTML=`<span style="color:#ef4444;">Fehler: ${e.message}</span>`;
@@ -2191,12 +2211,13 @@ async function startDeltaSync(){
     // Trade-off: Scrobbles mit exakt gleichem uts wie der letzte archivierte werden
     // nicht per Delta-Sync abgeholt — das passiert praktisch nur bei Bulk-Imports
     // aus Spotify/YouTube und wird bei Bedarf durch Full-Import gefangen.
+    // toTs fixiert das Fenster: Scrobbles während des Syncs verschieben sonst
+    // die Pagination und erzeugen Duplikate/Lücken.
+    const toTs=Math.floor(Date.now()/1000);
     const date=new Date(latestTs*1000).toLocaleString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
     statusEl.innerHTML=`Hole neue Tracks seit <span style="color:var(--pink);">${date}</span>...`;
 
-    const first=await fetchScrobblePage(fromTs,null,1,1);
-    const totalPages=parseInt(first?.recenttracks?.['@attr']?.totalPages||1);
-    const totalNew=parseInt(first?.recenttracks?.['@attr']?.total||0);
+    const {total:totalNew,pages:totalPages}=await getSyncTotals(fromTs,toTs);
 
     if(totalNew===0){
       statusEl.innerHTML=
@@ -2209,38 +2230,42 @@ async function startDeltaSync(){
     statusEl.innerHTML=
       `<span style="color:var(--pink);">${Number(totalNew).toLocaleString('de-DE')}</span> neue Tracks gefunden — wird importiert...`;
 
-    let savedCount=0,failedPages=0;
+    let savedCount=0,done=0;
+    let writeFailed=false;
     const eta=makeETATracker();
-    const writePromises=[];
-    for(let page=1;page<=totalPages;page++){
+    // RESUME-GARANTIE: älteste Seite zuerst + Writes strikt in Reihenfolge —
+    // das Archiv bleibt lückenlos, ein abgebrochener Sync wird beim nächsten
+    // Delta-Sync automatisch an derselben Stelle fortgesetzt.
+    let prevWrite=Promise.resolve();
+    for(let page=totalPages;page>=1;page--){
       if(_importAborted) break;
 
-      const d=await fetchScrobblePage(fromTs,null,page,200);
+      const d=await fetchScrobblePage(fromTs,toTs,page,200);
       const tracks=d?.recenttracks?.track||[];
-      // Fire-and-forget Write — blockiert nächsten Fetch nicht.
-      // .catch() fängt endgültig fehlgeschlagene Writes ab, damit sie nicht
-      // als unhandled rejection verschluckt werden und der Nutzer einen Hinweis bekommt.
-      writePromises.push(
-        writeBatch(tracks,(page-1)*200).then(n=>{savedCount+=n;return n;}).catch(()=>{failedPages++;})
-      );
+      try{ await prevWrite; }catch(e){ writeFailed=true; break; }
+      prevWrite=writeBatch(tracks,(page-1)*200).then(n=>{savedCount+=n;});
+      done++;
 
-      const pct=Math.round((page/totalPages)*90);
+      const pct=Math.round((done/totalPages)*95);
       updateProgressBar(pct);
       updateProgressTxt(
-        `${pct}% — Seite ${page}/${totalPages} geladen — `+
+        `${pct}% — Seite ${done}/${totalPages} geladen — `+
         `${Number(savedCount).toLocaleString('de-DE')}/${Number(totalNew).toLocaleString('de-DE')} — ${eta.label(pct)}`
       );
 
       await new Promise(r=>setTimeout(r,IMPORT_DELAY));
     }
 
-    // Auf alle noch laufenden Writes warten
-    if(!_importAborted){
-      updateProgressTxt(`Finalisiere ${writePromises.length} Firebase-Writes... · ${eta.fmtElapsed()} gesamt`);
-      await Promise.all(writePromises);
-    }
+    // Letzten Write abwarten
+    try{ await prevWrite; }catch(e){ writeFailed=true; }
 
-    if(!_importAborted){
+    if(writeFailed){
+      statusEl.innerHTML=
+        `<span style="color:#f59e0b;">⚠ Firebase-Write fehlgeschlagen — Sync gestoppt.</span><br>`+
+        `<span style="color:var(--text2);">+${Number(savedCount).toLocaleString('de-DE')} Tracks lückenlos gespeichert — der nächste Sync setzt genau hier fort.</span>`;
+      showToast('⚠ Sync unterbrochen — wird fortgesetzt','err');
+      invalidateArchiveCaches();
+    } else if(!_importAborted){
       // Counter aus echter Key-Anzahl ermitteln statt inkrementell —
       // damit driftet der Counter nicht mehr bei fehlgeschlagenen Writes oder Duplikaten.
       const newTotal=await getRealArchiveCount();
@@ -2252,10 +2277,8 @@ async function startDeltaSync(){
         `✓ Delta-Sync abgeschlossen<br>`+
         `<span style="color:var(--pink2);font-size:13px;font-weight:700;">+${Number(savedCount).toLocaleString('de-DE')}</span>`+
         ` <span style="color:var(--text2);">neue Tracks — Gesamt:</span> `+
-        `<span style="color:var(--text);">${Number(newTotal).toLocaleString('de-DE')}</span>`+
-        (failedPages>0?`<br><span style="color:#f59e0b;font-size:11px;">⚠ ${failedPages} Seite(n) konnten nicht gespeichert werden — Sync erneut ausführen</span>`:'');
-      if(failedPages>0) showToast(`⚠ ${failedPages} Seite(n) nicht gespeichert`,'err');
-      else showToast('✓ Delta-Sync abgeschlossen','ok');
+        `<span style="color:var(--text);">${Number(newTotal).toLocaleString('de-DE')}</span>`;
+      showToast('✓ Delta-Sync abgeschlossen','ok');
       // Archiv-Cache invalidieren + komplette UI ohne Reload aktualisieren
       // (zuvor blieb die Seite nach manuellem Delta-Sync veraltet — anders als
       // beim automatischen Hintergrund-Sync).
@@ -2264,8 +2287,9 @@ async function startDeltaSync(){
       updateSyncStatusLabel();
     } else {
       statusEl.innerHTML=
-        `Sync abgebrochen<br>`+
-        `<span style="color:var(--text2);">${Number(savedCount).toLocaleString('de-DE')} neue Tracks gespeichert</span>`;
+        `Sync pausiert<br>`+
+        `<span style="color:var(--text2);">+${Number(savedCount).toLocaleString('de-DE')} Tracks lückenlos gespeichert — der nächste Sync setzt genau hier fort.</span>`;
+      invalidateArchiveCaches();
     }
   }catch(e){
     statusEl.innerHTML=`<span style="color:#ef4444;">Fehler: ${e.message}</span>`;
@@ -2277,7 +2301,7 @@ async function startDeltaSync(){
 
 function abortImport(){
   _importAborted=true;
-  updateProgressTxt('Wird abgebrochen...');
+  updateProgressTxt('Wird pausiert — Fortschritt bleibt gespeichert...');
 }
 
 // ── GAP-FILL: Findet & schließt Lücken ohne Full Import ────
@@ -2318,9 +2342,10 @@ async function startGapFill(){
 
     // ─── Phase 2: Last.fm-Übersicht holen ───────────────────────────────────
     statusEl.textContent='Hole Last.fm Übersicht...';
-    const first=await fetchScrobblePage(1,null,1,1);
-    const totalPages=parseInt(first?.recenttracks?.['@attr']?.totalPages||1);
-    const totalLfm=parseInt(first?.recenttracks?.['@attr']?.total||0);
+    // Fenster fixieren, damit neue Scrobbles während des Abgleichs die
+    // Pagination nicht verschieben.
+    const gfToTs=Math.floor(Date.now()/1000);
+    const {total:totalLfm,pages:totalPages}=await getSyncTotals(1,gfToTs);
 
     if(totalLfm===0){
       statusEl.innerHTML='Last.fm meldet keine Scrobbles (API-Fehler?).';
@@ -2341,7 +2366,7 @@ async function startGapFill(){
     for(let page=1;page<=totalPages;page++){
       if(_importAborted) break;
 
-      const d=await fetchScrobblePage(1,null,page,200);
+      const d=await fetchScrobblePage(1,gfToTs,page,200);
       const tracks=d?.recenttracks?.track||[];
       for(const t of tracks){
         if(t['@attr']?.nowplaying) continue;
@@ -2637,10 +2662,9 @@ async function autoBackgroundSync(silent=false){
     if(!latestTs){if(!silent)syncBanner('done-ok','Kein Archiv vorhanden');return;}
 
     const fromTs=latestTs+1;
-    // fromTs exklusiv (+1), siehe Kommentar in startDeltaSync.
-    const first=await fetchScrobblePage(fromTs,null,1,1);
-    const totalPages=parseInt(first?.recenttracks?.['@attr']?.totalPages||1);
-    const totalNew=parseInt(first?.recenttracks?.['@attr']?.total||0);
+    // fromTs exklusiv (+1), toTs fixiert das Fenster — siehe startDeltaSync.
+    const toTs=Math.floor(Date.now()/1000);
+    const {total:totalNew,pages:totalPages}=await getSyncTotals(fromTs,toTs);
 
     if(totalNew===0){
       await db.ref('scrobble_meta/last_sync').set(Date.now());
@@ -2659,41 +2683,44 @@ async function autoBackgroundSync(silent=false){
     syncBanner('syncing',`${Number(totalNew).toLocaleString('de-DE')} neue Scrobbles werden gespeichert...`,0);
     updateSyncBadge('🔄 synchronisiert...','var(--pink)');
 
-    let saved=0,failedPages=0;
+    let saved=0,done=0;
+    let writeFailed=false;
     const eta=makeETATracker();
-    const writePromises=[];
-    for(let page=1;page<=totalPages;page++){
-      const d=await fetchScrobblePage(fromTs,null,page,200);
+    // RESUME-GARANTIE: älteste Seite zuerst + Writes strikt in Reihenfolge —
+    // siehe startDeltaSync. Ein unterbrochener Sync (Tab zu, Netzwerk weg)
+    // wird beim nächsten Sync automatisch an derselben Stelle fortgesetzt.
+    let prevWrite=Promise.resolve();
+    for(let page=totalPages;page>=1;page--){
+      const d=await fetchScrobblePage(fromTs,toTs,page,200);
       const tracks=d?.recenttracks?.track||[];
-      // Fire-and-forget Write — .catch() verhindert verschluckte Schreibfehler
-      writePromises.push(
-        writeBatch(tracks,(page-1)*200).then(n=>{saved+=n;return n;}).catch(()=>{failedPages++;})
-      );
-      const pct=Math.round((page/totalPages)*90);
-      syncBanner('syncing', `Scrobbles werden geladen... ${page}/${totalPages} · ${eta.label(pct)}`, pct);
+      try{ await prevWrite; }catch(e){ writeFailed=true; break; }
+      prevWrite=writeBatch(tracks,(page-1)*200).then(n=>{saved+=n;});
+      done++;
+      const pct=Math.round((done/totalPages)*95);
+      syncBanner('syncing', `Scrobbles werden geladen... ${done}/${totalPages} · ${eta.label(pct)}`, pct);
       updateSyncBadge(`${pct}%`,'var(--pink)');
       await new Promise(r=>setTimeout(r,0)); // DOM rendern lassen
       await new Promise(r=>setTimeout(r,IMPORT_DELAY));
     }
 
-    // Auf alle Writes warten bevor Counter/Cache aktualisiert werden
-    syncBanner('syncing', `Finalisiere Firebase-Writes... · ${eta.fmtElapsed()} gesamt`, 95);
-    await Promise.all(writePromises);
+    // Letzten Write abwarten bevor Counter/Cache aktualisiert werden
+    try{ await prevWrite; }catch(e){ writeFailed=true; }
+
+    if(writeFailed){
+      updateSyncBadge(`+${saved} · ⚠ unterbrochen`,'#f59e0b');
+      syncBanner('err',`⚠ +${Number(saved).toLocaleString('de-DE')} gespeichert — Sync unterbrochen, wird beim nächsten Mal fortgesetzt`);
+      invalidateArchiveCaches();
+      return;
+    }
 
     // Counter aus echter Key-Anzahl ermitteln statt inkrementell —
     // damit driftet der Counter nicht mehr bei fehlgeschlagenen Writes oder Duplikaten.
     const realTotal=await getRealArchiveCount();
     await db.ref('scrobble_meta/count').set(realTotal);
     await db.ref('scrobble_meta/last_sync').set(Date.now());
-    if(failedPages>0){
-      updateSyncBadge(`+${saved} · ⚠ ${failedPages} Fehler`,'#f59e0b');
-      syncBanner('err',`⚠ +${Number(saved).toLocaleString('de-DE')} gespeichert, ${failedPages} Seite(n) fehlgeschlagen — „Lücken füllen" hilft`);
-      if(!silent) showToast(`⚠ ${failedPages} Seite(n) nicht gespeichert`,'err');
-    } else {
-      updateSyncBadge(`+${saved} neue Tracks ✓`,'#22c55e');
-      syncBanner('done-new',`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles synchronisiert`,100);
-      if(!silent) showToast(`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles`,'ok');
-    }
+    updateSyncBadge(`+${saved} neue Tracks ✓`,'#22c55e');
+    syncBanner('done-new',`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles synchronisiert`,100);
+    if(!silent) showToast(`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles`,'ok');
     updateSyncStatusLabel();
 
     // Archiv-Cache invalidieren damit neue Daten sichtbar werden.
