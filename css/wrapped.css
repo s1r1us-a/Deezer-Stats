@@ -103,7 +103,7 @@ img{max-width:100%;display:block;}
 }
 .entry-title{
   font-weight:700;
-  font-size:clamp(56px,15vw,104px);line-height:.98;
+  font-size:clamp(56px,15vw,104px);line-height:1.02;
   background:var(--grad-text);
   -webkit-background-clip:text;background-clip:text;color:transparent;
   letter-spacing:-.035em;margin-bottom:16px;
@@ -403,7 +403,7 @@ img{max-width:100%;display:block;}
 
 .headline{
   font-weight:700;
-  font-size:clamp(40px,11vw,84px);line-height:1;letter-spacing:-.035em;
+  font-size:clamp(40px,11vw,84px);line-height:1.04;letter-spacing:-.035em;
   background:var(--grad-text);
   -webkit-background-clip:text;background-clip:text;color:transparent;
   margin-bottom:14px;
@@ -442,7 +442,7 @@ img{max-width:100%;display:block;}
 /* ── SLIDE 1: INTRO ── */
 .intro-mark{
   font-weight:700;
-  font-size:clamp(72px,22vw,160px);line-height:.95;
+  font-size:clamp(72px,22vw,160px);line-height:1;
   background:var(--grad-text);
   -webkit-background-clip:text;background-clip:text;color:transparent;
   letter-spacing:-.045em;
@@ -486,7 +486,7 @@ img{max-width:100%;display:block;}
 /* ── SLIDE 2: TOTAL SCROBBLES ── */
 .bignum{
   font-weight:700;
-  font-size:clamp(80px,22vw,168px);line-height:.95;letter-spacing:-.045em;
+  font-size:clamp(80px,22vw,168px);line-height:1;letter-spacing:-.045em;
   background:var(--grad-text);
   -webkit-background-clip:text;background-clip:text;color:transparent;
   margin-bottom:10px;
@@ -518,7 +518,7 @@ img{max-width:100%;display:block;}
 @keyframes crown-hover{0%,100%{transform:translateY(0) rotate(-4deg);}50%{transform:translateY(-6px) rotate(4deg);}}
 .artist-huge{
   font-weight:700;
-  font-size:clamp(38px,10vw,76px);line-height:1;letter-spacing:-.035em;
+  font-size:clamp(38px,10vw,76px);line-height:1.04;letter-spacing:-.035em;
   background:var(--grad-text);
   -webkit-background-clip:text;background-clip:text;color:transparent;
   margin:0 0 10px;word-break:break-word;
@@ -651,7 +651,7 @@ img{max-width:100%;display:block;}
 }
 .clock-hour{
   font-weight:700;
-  font-size:clamp(48px,13vw,76px);line-height:.95;letter-spacing:-.03em;
+  font-size:clamp(48px,13vw,76px);line-height:1;letter-spacing:-.03em;
   background:var(--grad-text);
   -webkit-background-clip:text;background-clip:text;color:transparent;
   font-variant-numeric:tabular-nums;
@@ -691,7 +691,7 @@ img{max-width:100%;display:block;}
 .peak-date{font-size:clamp(11px,3vw,13px);font-weight:600;color:var(--paper-muted);letter-spacing:.1em;margin-top:6px;text-transform:uppercase;}
 .peak-scrobs{
   font-weight:700;
-  font-size:clamp(44px,13vw,80px);line-height:.95;margin-top:18px;letter-spacing:-.04em;
+  font-size:clamp(44px,13vw,80px);line-height:1;margin-top:18px;letter-spacing:-.04em;
   background:var(--grad-text);
   -webkit-background-clip:text;background-clip:text;color:transparent;
   font-variant-numeric:tabular-nums;
@@ -702,7 +702,7 @@ img{max-width:100%;display:block;}
 @keyframes flame{0%,100%{transform:scale(1) rotate(-3deg);}50%{transform:scale(1.1) rotate(3deg);}}
 .streak-days{
   font-weight:700;
-  font-size:clamp(78px,22vw,150px);line-height:.92;letter-spacing:-.045em;
+  font-size:clamp(78px,22vw,150px);line-height:1;letter-spacing:-.045em;
   background:linear-gradient(115deg,var(--amber),var(--pink) 60%,var(--purple2));
   -webkit-background-clip:text;background-clip:text;color:transparent;
   font-variant-numeric:tabular-nums;
@@ -759,7 +759,7 @@ img{max-width:100%;display:block;}
 }
 .outro-title{
   font-weight:700;
-  font-size:clamp(30px,7.5vw,48px);line-height:1;letter-spacing:-.03em;
+  font-size:clamp(30px,7.5vw,48px);line-height:1.05;letter-spacing:-.03em;
   background:var(--grad-text);
   -webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:6px;
 }
@@ -814,7 +814,7 @@ img{max-width:100%;display:block;}
   border-radius:32px;overflow:hidden;
 }
 .sc-head{font-size:14px;font-weight:700;letter-spacing:.16em;color:var(--paper-muted);text-transform:uppercase;}
-.sc-title{font-weight:700;font-size:68px;line-height:.98;background:var(--grad-text);-webkit-background-clip:text;background-clip:text;color:transparent;margin-top:12px;letter-spacing:-.035em;}
+.sc-title{font-weight:700;font-size:68px;line-height:1.02;background:var(--grad-text);-webkit-background-clip:text;background-clip:text;color:transparent;margin-top:12px;letter-spacing:-.035em;}
 .sc-period{font-size:16px;font-weight:600;color:var(--paper-muted);letter-spacing:.14em;margin-top:14px;text-transform:uppercase;}
 .sc-body{display:grid;gap:20px;}
 .sc-row{display:flex;justify-content:space-between;align-items:flex-end;padding:16px 0;border-bottom:1px solid rgba(0,0,0,.1);}
@@ -963,3 +963,45 @@ img{max-width:100%;display:block;}
   .confetti, .stars{display:none !important;}
   .orb-a, .orb-b{opacity:.12 !important;}
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   FEINSCHLIFF — Clip-Fix für Gradient-Text + lebendige Verläufe
+   ═══════════════════════════════════════════════════════════════ */
+
+/* background-clip:text füllt nur die Textbox — ohne Puffer werden
+   Unterlängen (g/p/y) und Umlaut-Punkte abgeschnitten. */
+.entry-title,.headline,.intro-mark,.bignum,.time-chunk-n,.artist-huge,
+.track-title,.clock-hour,.peak-scrobs,.streak-days,.perso-type,.outro-title,
+.cmp-val,.cmp-top-name,.sc-title{
+  padding-block:.08em .16em;
+  margin-block:-.04em -.06em;
+}
+.rank-n{padding-block:.06em .14em;}
+
+/* Große Gradient-Texte wandern langsam durch den Verlauf */
+@keyframes grad-pan{0%{background-position:0% 50%;}100%{background-position:100% 50%;}}
+.entry-title,.headline,.intro-mark,.bignum,.artist-huge,.track-title,
+.peak-scrobs,.streak-days,.perso-type,.outro-title{
+  background-size:220% auto;
+  animation:grad-pan 7s ease-in-out infinite alternate;
+}
+/* Slide-Reveal + Gradient-Animation kombinieren (Reveal überschreibt sonst) */
+.slide.active .headline{animation:slide-reveal .85s .18s var(--ease-spring) both,grad-pan 7s 1s ease-in-out infinite alternate;}
+
+/* Slide-Hintergründe atmen sanft */
+.slide-bg{animation:bg-breathe 12s ease-in-out infinite alternate;will-change:transform;}
+@keyframes bg-breathe{from{transform:scale(1);}to{transform:scale(1.06);}}
+
+/* #1 der Rank-Liste: Gradient-Marker links */
+.rank-item{position:relative;}
+.rank-item.hero::before{
+  content:'';position:absolute;left:0;top:14%;bottom:14%;width:3px;
+  border-radius:99px;background:var(--grad-hero);
+}
+
+/* Story-Progress mit feinem Schein */
+.prog-fill{box-shadow:0 0 8px rgba(94,92,230,.45);}
+
+/* Entry-Karten: Icon reagiert aufs Hovern */
+.entry-card-ico{transition:transform .3s var(--ease-spring);}
+.entry-card:hover .entry-card-ico{transform:scale(1.08) rotate(-4deg);}
