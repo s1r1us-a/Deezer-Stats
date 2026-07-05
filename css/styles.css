@@ -956,3 +956,147 @@ section > .wrap::after {
 /* Wrapped-Button: Sparkle glitzert */
 .wrapped-btn .sparkle { animation: wbtn-spark 2.8s ease-in-out infinite; transform-origin: center; }
 @keyframes wbtn-spark { 0%,100% { transform: rotate(-6deg) scale(1); } 50% { transform: rotate(6deg) scale(1.15); } }
+
+/* ═══════════════════════════════════════════════════════════════
+   GLAS & TIEFE — Ambient-Farbverlauf, echte Glas-Flächen, 3D-Details
+   (Override-Layer: verfeinert die Regeln oben, ohne sie umzuschreiben)
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Hintergrund: sanfter Farbverlauf statt flachem Grau … */
+body { background: linear-gradient(165deg, #fafbff 0%, #f2f3fb 45%, #f8f2f6 100%); }
+
+/* … plus kräftigere Ambient-Lichter (fixe Ebene, iOS-sicher) */
+body::before {
+  background:
+    radial-gradient(900px 600px at 12% -5%, rgba(10,132,255,.2), transparent 62%),
+    radial-gradient(820px 560px at 96% 15%, rgba(191,90,242,.16), transparent 62%),
+    radial-gradient(860px 620px at 55% 108%, rgba(255,55,95,.13), transparent 62%),
+    radial-gradient(620px 460px at 75% 55%, rgba(100,210,255,.13), transparent 62%);
+}
+.bg-orb { opacity: .3; filter: blur(90px); }
+
+/* ── Haupt-Flächen: echtes Glas mit weißer Kante ── */
+section > .wrap, .hero {
+  background: rgba(255,255,255,.5);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255,255,255,.75);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.9),
+    0 1px 2px rgba(31,38,63,.05),
+    0 12px 32px -12px rgba(31,38,63,.14),
+    0 36px 72px -36px rgba(31,38,63,.18);
+}
+#nowplaying-sec > .wrap, footer .wrap {
+  background: transparent; border: none; box-shadow: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+
+/* ── Innere Karten: milchiges Glas (ohne Blur — Performance), 3D-Kante ── */
+.mc, .chart-glass, .top5-card, .cmp-side {
+  background: rgba(255,255,255,.62);
+  border: 1px solid rgba(255,255,255,.85);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.95),
+    0 1px 2px rgba(31,38,63,.05),
+    0 10px 26px -14px rgba(31,38,63,.2);
+}
+.mc:hover {
+  transform: translateY(-5px) scale(1.01);
+  background: rgba(255,255,255,.85);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 6px 14px -6px rgba(31,38,63,.12),
+    0 26px 52px -18px rgba(94,92,230,.28);
+}
+.chart-glass:hover, .top5-card:hover {
+  background: rgba(255,255,255,.82);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 6px 14px -6px rgba(31,38,63,.12),
+    0 26px 52px -18px rgba(94,92,230,.24);
+}
+.ri.rank1 { background: rgba(255,255,255,.55); border-color: rgba(255,255,255,.85); box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 6px 16px -10px rgba(31,38,63,.2); }
+
+/* ── Nav: stärker gefrostet ── */
+nav {
+  background: rgba(255,255,255,.55);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid rgba(255,255,255,.7);
+  box-shadow: 0 1px 16px rgba(31,38,63,.06);
+}
+
+/* ── Pills, Chips & Buttons: Glas mit Glanzkante ── */
+.pb, .export-btn, .action-btn, .action-btn-sm, .show-more, .np-refresh,
+.adm-close, .modal-close, .modal-btn-secondary, .sort-btn, .nav-hamburger, .nav-close {
+  background: rgba(255,255,255,.5);
+  border-color: rgba(255,255,255,.75);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 1px 3px rgba(31,38,63,.07);
+}
+.pb:hover, .export-btn:hover, .action-btn:hover, .action-btn-sm:hover, .show-more:hover,
+.np-refresh:hover, .adm-close:hover, .modal-close:hover, .modal-btn-secondary:hover, .nav-hamburger:hover {
+  background: rgba(255,255,255,.85);
+}
+.hm-item {
+  background: rgba(255,255,255,.5);
+  border-color: rgba(255,255,255,.75);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 1px 3px rgba(31,38,63,.07);
+}
+.hm-item:hover { background: rgba(255,255,255,.85); }
+.ctabs { background: rgba(255,255,255,.45); border-color: rgba(255,255,255,.75); box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 1px 3px rgba(31,38,63,.06); }
+.tag { background: rgba(255,255,255,.5); border-color: rgba(255,255,255,.75); box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 1px 3px rgba(31,38,63,.06); }
+.tag:hover { background: rgba(255,255,255,.85); }
+.badge { box-shadow: inset 0 1px 0 rgba(255,255,255,.5); }
+.search-input {
+  background: rgba(255,255,255,.55);
+  border-color: rgba(255,255,255,.8);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 1px 3px rgba(31,38,63,.06);
+}
+.search-input:focus { border-color: var(--blue); box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 0 0 3px rgba(10,132,255,.15); }
+
+/* ── Gradient-CTAs: glossy 3D-Pille ── */
+.wrapped-btn, .pb.active, .ctab.active, .modal-btn-primary {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 6px 18px -5px rgba(94,92,230,.55);
+}
+
+/* ── Fortschritts-Grooves: eingelassene Rille + glänzende Füllung ── */
+.bar-c, .top5-bar-c, .yoy-bar-c, .div-meter, .modal-progress-bar-bg, .sync-bar-wrap, .rank-bar {
+  background: rgba(31,38,63,.09);
+  box-shadow: inset 0 1px 2px rgba(31,38,63,.14);
+}
+.bar-f, .top5-bar-f, .yoy-bar-f, .div-fill, .modal-progress-bar, .sync-bar-fill {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.4), 0 0 8px -2px rgba(94,92,230,.5);
+}
+
+/* ── Schwebende Flächen: tiefes Glas ── */
+.np-card {
+  background: rgba(255,255,255,.5);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255,255,255,.75);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 16px 40px -16px rgba(31,38,63,.22);
+}
+.np-cover { box-shadow: 0 14px 30px -10px rgba(31,38,63,.45), 0 2px 6px rgba(31,38,63,.2); }
+.adm-box, .modal-box {
+  background: rgba(255,255,255,.72);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid rgba(255,255,255,.85);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.95), 0 32px 80px -24px rgba(31,38,63,.35);
+}
+#db-toast, .sync-banner-inner {
+  background: rgba(255,255,255,.72);
+  border: 1px solid rgba(255,255,255,.85);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 12px 32px -12px rgba(31,38,63,.25);
+}
+.back-top, .side-nav {
+  background: rgba(255,255,255,.55);
+  border-color: rgba(255,255,255,.8);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.85), 0 8px 24px -10px rgba(31,38,63,.25);
+}
+.back-top:hover { background: rgba(255,255,255,.9); }
+
+/* ── 3D-Akzente ── */
+.hero-avatar img, .hero-avatar-ph { box-shadow: 0 10px 24px -10px rgba(255,55,95,.45), 0 2px 6px rgba(31,38,63,.15); }
+.ri-img, .ri-ph, .rec-img { box-shadow: 0 3px 8px -3px rgba(31,38,63,.3); }
