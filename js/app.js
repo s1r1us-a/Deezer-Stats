@@ -14,9 +14,9 @@ function chartColors(){
   if(_chartColors) return _chartColors;
   const s=getComputedStyle(document.body);
   const tick=s.getPropertyValue('--text3').trim()||'#6e6e73';
-  const grid='rgba(255,255,255,0.06)';
+  const grid='rgba(0,0,0,0.07)';
   const fontFam='-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif';
-  const tooltip={backgroundColor:'rgba(28,28,30,0.95)',borderColor:'rgba(255,255,255,0.12)',borderWidth:1,titleColor:'#f5f5f7',bodyColor:'#a1a1a6',titleFont:{family:fontFam},bodyFont:{family:fontFam},cornerRadius:10,padding:10};
+  const tooltip={backgroundColor:'rgba(255,255,255,0.97)',borderColor:'rgba(0,0,0,0.1)',borderWidth:1,titleColor:'#1d1d1f',bodyColor:'#6e6e73',titleFont:{family:fontFam},bodyFont:{family:fontFam},cornerRadius:10,padding:10};
   _chartColors={tick,grid,tooltip};
   return _chartColors;
 }
@@ -992,7 +992,7 @@ async function loadPie(){
   const cc=chartColors();
   pieInst=new Chart(document.getElementById('pieChart'),{
     type:'doughnut',
-    data:{labels:top.map(a=>a.name),datasets:[{data:top.map(a=>parseInt(a.playcount)),backgroundColor:COLORS,borderColor:'#000',borderWidth:3,hoverOffset:6}]},
+    data:{labels:top.map(a=>a.name),datasets:[{data:top.map(a=>parseInt(a.playcount)),backgroundColor:COLORS,borderColor:'#ffffff',borderWidth:3,hoverOffset:6}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
       plugins:{legend:{display:false},tooltip:{...cc.tooltip,
         callbacks:{label:c=>{const pct=((c.parsed/total)*100).toFixed(1);return ` ${fmt(c.parsed)} Plays (${pct}%)`;}}}}}
@@ -1163,7 +1163,7 @@ function attachHourHover(){
     const hour=parseInt(bw.dataset.hour);
     const count=parseInt(bw.dataset.count);
     const pct=bw.dataset.pct;
-    tooltip.innerHTML=`<span style="color:#ff8fa3;">${String(hour).padStart(2,'0')}:00 – ${String((hour+1)%24).padStart(2,'0')}:00</span><br>${fmt(count)} Plays · ${pct}%`;
+    tooltip.innerHTML=`<span style="color:#ff375f;">${String(hour).padStart(2,'0')}:00 – ${String((hour+1)%24).padStart(2,'0')}:00</span><br>${fmt(count)} Plays · ${pct}%`;
     const glassRect=glass.getBoundingClientRect();
     const bwRect=bw.getBoundingClientRect();
     tooltip.style.left=(bwRect.left-glassRect.left+bwRect.width/2)+'px';
@@ -1213,7 +1213,7 @@ async function renderDayHourHeatmap(){
     });
     if(!total){cont.innerHTML=emptyState('Noch keine Daten im Archiv.','🗓'); return;}
     const cell=(c)=>{
-      if(!c) return 'rgba(255,255,255,0.04)';
+      if(!c) return 'rgba(0,0,0,0.05)';
       const p=c/max;
       if(p<0.25) return 'rgba(255,55,95,0.22)';
       if(p<0.5) return 'rgba(255,55,95,0.45)';
@@ -1659,7 +1659,7 @@ async function loadCompare(){
   }
   const [sideA,sideB]=await Promise.all([getSide(cmpA),getSide(cmpB)]);
   const periodLabel={'overall':'Gesamt','12month':'12 Monate','6month':'6 Monate','3month':'3 Monate','1month':'1 Monat','7day':'7 Tage'};
-  const dupWarning=cmpA===cmpB?`<div style="font-family:var(--mono);font-size:11px;color:#f59e0b;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:8px 12px;margin-bottom:14px;">⚠ Beide Zeiträume sind identisch (${periodLabel[cmpA]}) — der Vergleich zeigt dieselben Daten.</div>`:'';
+  const dupWarning=cmpA===cmpB?`<div style="font-family:var(--mono);font-size:11px;color:#b45309;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:8px 12px;margin-bottom:14px;">⚠ Beide Zeiträume sind identisch (${periodLabel[cmpA]}) — der Vergleich zeigt dieselben Daten.</div>`:'';
   function renderSide(side,label){
     return `<div class="cmp-side">
       <div class="cmp-title">${label}</div>
@@ -1722,7 +1722,7 @@ async function exportPNG(){
   const btn=document.querySelector('.export-btn');
   btn.textContent='Wird erstellt...';btn.disabled=true;
   try{
-    const canvas=await html2canvas(document.getElementById('hero-section'),{backgroundColor:'#000',scale:2});
+    const canvas=await html2canvas(document.getElementById('hero-section'),{backgroundColor:'#f5f5f7',scale:2});
     const a=document.createElement('a');
     a.href=canvas.toDataURL('image/png');
     a.download='s1r1us-a-stats.png';
@@ -2158,7 +2158,7 @@ async function startFullImport(){
 
     if(writeFailed){
       statusEl.innerHTML=
-        `<span style="color:#f59e0b;">⚠ Firebase-Write fehlgeschlagen — Import gestoppt.</span><br>`+
+        `<span style="color:#b45309;">⚠ Firebase-Write fehlgeschlagen — Import gestoppt.</span><br>`+
         `<span style="color:var(--text2);">${Number(savedCount).toLocaleString('de-DE')} Tracks lückenlos gespeichert — "Delta-Sync" setzt den Import fort.</span>`;
       showToast('⚠ Import unterbrochen — Delta-Sync setzt fort','err');
     } else if(!_importAborted){
@@ -2182,7 +2182,7 @@ async function startFullImport(){
       showToast('Import pausiert — Delta-Sync setzt fort','ok');
     }
   }catch(e){
-    statusEl.innerHTML=`<span style="color:#ef4444;">Fehler: ${e.message}</span>`;
+    statusEl.innerHTML=`<span style="color:#d70015;">Fehler: ${e.message}</span>`;
     showToast('Import fehlgeschlagen','err');
   }
   setArchiveBusy(false);
@@ -2261,7 +2261,7 @@ async function startDeltaSync(){
 
     if(writeFailed){
       statusEl.innerHTML=
-        `<span style="color:#f59e0b;">⚠ Firebase-Write fehlgeschlagen — Sync gestoppt.</span><br>`+
+        `<span style="color:#b45309;">⚠ Firebase-Write fehlgeschlagen — Sync gestoppt.</span><br>`+
         `<span style="color:var(--text2);">+${Number(savedCount).toLocaleString('de-DE')} Tracks lückenlos gespeichert — der nächste Sync setzt genau hier fort.</span>`;
       showToast('⚠ Sync unterbrochen — wird fortgesetzt','err');
       invalidateArchiveCaches();
@@ -2292,7 +2292,7 @@ async function startDeltaSync(){
       invalidateArchiveCaches();
     }
   }catch(e){
-    statusEl.innerHTML=`<span style="color:#ef4444;">Fehler: ${e.message}</span>`;
+    statusEl.innerHTML=`<span style="color:#d70015;">Fehler: ${e.message}</span>`;
     showToast('Delta-Sync fehlgeschlagen','err');
   }
   setArchiveBusy(false);
@@ -2517,7 +2517,7 @@ async function startGapFill(){
     invalidateArchiveCaches();
 
   }catch(e){
-    statusEl.innerHTML=`<span style="color:#ef4444;">Fehler: ${e.message}</span>`;
+    statusEl.innerHTML=`<span style="color:#d70015;">Fehler: ${e.message}</span>`;
     showToast('Gap-Fill fehlgeschlagen','err');
     console.error('Gap-Fill error:',e);
   }
@@ -2673,7 +2673,7 @@ async function autoBackgroundSync(silent=false){
       if(!silent){
         const banner=document.getElementById('sync-banner');
         if(banner) banner.classList.remove('visible');
-        updateSyncBadge('aktuell ✓','#22c55e');
+        updateSyncBadge('aktuell ✓','#1d9a3f');
       }
       updateSyncStatusLabel();
       return;
@@ -2707,7 +2707,7 @@ async function autoBackgroundSync(silent=false){
     try{ await prevWrite; }catch(e){ writeFailed=true; }
 
     if(writeFailed){
-      updateSyncBadge(`+${saved} · ⚠ unterbrochen`,'#f59e0b');
+      updateSyncBadge(`+${saved} · ⚠ unterbrochen`,'#b45309');
       syncBanner('err',`⚠ +${Number(saved).toLocaleString('de-DE')} gespeichert — Sync unterbrochen, wird beim nächsten Mal fortgesetzt`);
       invalidateArchiveCaches();
       return;
@@ -2718,7 +2718,7 @@ async function autoBackgroundSync(silent=false){
     const realTotal=await getRealArchiveCount();
     await db.ref('scrobble_meta/count').set(realTotal);
     await db.ref('scrobble_meta/last_sync').set(Date.now());
-    updateSyncBadge(`+${saved} neue Tracks ✓`,'#22c55e');
+    updateSyncBadge(`+${saved} neue Tracks ✓`,'#1d9a3f');
     syncBanner('done-new',`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles synchronisiert`,100);
     if(!silent) showToast(`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles`,'ok');
     updateSyncStatusLabel();
@@ -2732,7 +2732,7 @@ async function autoBackgroundSync(silent=false){
     // Bei stillem Periodic-Sync nicht mit Banner nerven — könnte nur Netzwerkfehler sein
     if(!silent){
       syncBanner('err','Sync fehlgeschlagen: '+e.message);
-      updateSyncBadge('Sync fehlgeschlagen','#ef4444');
+      updateSyncBadge('Sync fehlgeschlagen','#d70015');
     } else {
       console.warn('Silent sync failed:',e.message);
     }

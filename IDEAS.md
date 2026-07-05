@@ -19,18 +19,21 @@ Kontrast-Anhebung, Tag×Stunde-Heatmap, Year-over-Year + Jahres-Hochrechnung.
   Macht Delta-Sync/Import drastisch schneller — weniger Gelegenheit für Abbrüche. _(umgesetzt)_
 - ✅ **Abbrechen = Pausieren** — Abbruch-Meldungen kommunizieren jetzt, dass der Fortschritt
   erhalten bleibt und Delta-Sync fortsetzt (inkl. Hinweistext im Archiv-Modal). _(umgesetzt)_
-- ✅ **Apple-Redesign** — komplette Neufassung von `styles.css` in der Designsprache der
-  gptstats-Seite: System-Fonts (SF Pro/SF Mono-Stack, Google Fonts entfernt), schwarzer
-  Grund mit weichen Farb-Glows, flache translucente Karten (`rgba(255,255,255,.055)`,
-  22px-Radius), Pill-Buttons/-Tabs, große Headlines mit Eyebrow, Apple-Systempalette
+- ✅ **Apple-Redesign (Light)** — komplette Neufassung von `styles.css` in der hellen
+  Designsprache der gptstats-Seite: System-Fonts (SF Pro/SF Mono-Stack, Google Fonts
+  entfernt), `#f5f5f7`-Grund mit weichen Pastell-Glows, weiße Karten (22px-Radius),
+  Pill-Buttons/-Tabs, große Headlines mit Eyebrow, Apple-Systempalette
   (Blau/Indigo/Violett/Pink-Gradient). Alle Selektoren & Legacy-CSS-Variablen blieben
-  erhalten; Chart.js-Farben/Fonts, Heatmap-Rampen und Inline-Farben angepasst. _(umgesetzt)_
+  erhalten; Chart.js-Farben/Fonts, Heatmap-Rampen, Statusfarben und Inline-Farben auf
+  Hell angepasst (Manifest/Meta-Theme-Color inklusive). _(umgesetzt)_
+- ✅ **Wrapped im Apple-Look (Light)** — `wrapped.css` komplett neu im selben hellen
+  Design (Pastell-Slide-Hintergründe, weiße Karten, Hero-Gradient-Headlines,
+  System-Fonts statt Fraunces/DM Sans/Space Mono); Konfetti-Farben in `wrapped.js`
+  auf die Apple-Palette umgestellt. Alle Klassen/Variablennamen erhalten. _(umgesetzt)_
 
 ### Folge-Ideen zum Redesign
-- **Wrapped-Seite** (`wrapped.html`/`wrapped.css`) ebenfalls auf den Apple-Look heben —
-  eigenes, in sich geschlossenes Design; bewusst separater PR. _(medium)_
-- **Light-Theme + Toggle** wie bei gptstats — die neuen Design-Tokens sind darauf
-  vorbereitet (alle Farben laufen über Variablen); Chart.js-Farben müssten beim Umschalten
+- **Dark-Theme + Toggle** wie bei gptstats — die Design-Tokens sind darauf vorbereitet
+  (alle Farben laufen über Variablen); Chart.js-Farben müssten beim Umschalten
   re-initialisiert werden (`_chartColors`-Cache leeren + Charts neu rendern). _(medium)_
 - **Sync-Checkpoint-Anzeige** — im Archiv-Modal anzeigen, wenn ein Import/Sync
   unvollständig ist ("Fortsetzen"-Button statt nur Delta-Sync-Wissen). _(easy)_
