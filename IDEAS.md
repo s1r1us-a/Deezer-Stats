@@ -5,6 +5,39 @@ letzten PRs: Dark-Glassmorphism-Redesign, CSS/JS-Auslagerung, Hero-Breiten-Fix, 
 Layout-Shift, Empty-States, entprellte Suche, Toast-Queue, Fokus-Ringe/Skip-Link/ARIA-Live,
 Kontrast-Anhebung, Tag×Stunde-Heatmap, Year-over-Year + Jahres-Hochrechnung.
 
+## Sync-Zuverlässigkeit & Apple-Redesign (dieser PR)
+- ✅ **Sync-Resume-Fix** — Root-Cause des "unterbrochener Sync macht nicht weiter"-Bugs:
+  Seiten wurden *neueste zuerst* geladen und parallel (fire-and-forget) geschrieben. Bei
+  Abbruch war das Neueste bereits archiviert, in der Mitte blieb ein Loch — und der nächste
+  Delta-Sync (startet ab dem neuesten Eintrag) übersprang es für immer. Jetzt: Seiten
+  **älteste zuerst** in einem **fixierten Zeitfenster** (`to`-Param) + Writes strikt in
+  Reihenfolge → das Archiv wächst immer lückenlos; jeder abgebrochene Sync/Import wird vom
+  nächsten (Auto-)Delta-Sync automatisch an derselben Stelle fortgesetzt. _(umgesetzt)_
+- ✅ **Paging-Fix (~200× weniger API-Calls)** — `totalPages` wurde aus einem `limit=1`-Call
+  übernommen (= Anzahl aller Tracks!), die Sync-Loops fetchten dadurch massiv zu viele
+  Seiten. Jetzt wird die Seitenzahl für `limit=200` korrekt berechnet (`getSyncTotals`).
+  Macht Delta-Sync/Import drastisch schneller — weniger Gelegenheit für Abbrüche. _(umgesetzt)_
+- ✅ **Abbrechen = Pausieren** — Abbruch-Meldungen kommunizieren jetzt, dass der Fortschritt
+  erhalten bleibt und Delta-Sync fortsetzt (inkl. Hinweistext im Archiv-Modal). _(umgesetzt)_
+- ✅ **Apple-Redesign (Light)** — komplette Neufassung von `styles.css` in der hellen
+  Designsprache der gptstats-Seite: System-Fonts (SF Pro/SF Mono-Stack, Google Fonts
+  entfernt), `#f5f5f7`-Grund mit weichen Pastell-Glows, weiße Karten (22px-Radius),
+  Pill-Buttons/-Tabs, große Headlines mit Eyebrow, Apple-Systempalette
+  (Blau/Indigo/Violett/Pink-Gradient). Alle Selektoren & Legacy-CSS-Variablen blieben
+  erhalten; Chart.js-Farben/Fonts, Heatmap-Rampen, Statusfarben und Inline-Farben auf
+  Hell angepasst (Manifest/Meta-Theme-Color inklusive). _(umgesetzt)_
+- ✅ **Wrapped im Apple-Look (Light)** — `wrapped.css` komplett neu im selben hellen
+  Design (Pastell-Slide-Hintergründe, weiße Karten, Hero-Gradient-Headlines,
+  System-Fonts statt Fraunces/DM Sans/Space Mono); Konfetti-Farben in `wrapped.js`
+  auf die Apple-Palette umgestellt. Alle Klassen/Variablennamen erhalten. _(umgesetzt)_
+
+### Folge-Ideen zum Redesign
+- **Dark-Theme + Toggle** wie bei gptstats — die Design-Tokens sind darauf vorbereitet
+  (alle Farben laufen über Variablen); Chart.js-Farben müssten beim Umschalten
+  re-initialisiert werden (`_chartColors`-Cache leeren + Charts neu rendern). _(medium)_
+- **Sync-Checkpoint-Anzeige** — im Archiv-Modal anzeigen, wenn ein Import/Sync
+  unvollständig ist ("Fortsetzen"-Button statt nur Delta-Sync-Wissen). _(easy)_
+
 > Hinweis: Der gemeldete „Chart.js-Memory-Leak" ist **kein** Bug — der Code ruft `.destroy()`
 > vor jedem neuen Chart (`app.js`). Nicht weiterverfolgen.
 
