@@ -119,7 +119,7 @@ body::after { content: none; }
 .spotlight { display: none; }
 
 /* Scroll-Progress: hauchdünn, Apple-Gradient */
-.scroll-progress { position: fixed; top: 0; left: 0; height: 2px; width: 0%; background: var(--grad-hero); z-index: 999; transition: width .1s ease-out; }
+.scroll-progress { position: fixed; top: 0; left: 0; height: 3px; width: 0%; background: var(--grad-hero); z-index: 999; transition: width .1s ease-out; box-shadow: 0 1px 8px rgba(94,92,230,.45); }
 
 /* ── Navigation ──────────────────────────────────────────── */
 nav {
@@ -346,11 +346,11 @@ footer .wrap { background: transparent; border: none; padding: 20px 24px; }
   cursor: pointer; transition: background .25s, color .25s;
 }
 .pb:hover { color: var(--text); background: var(--hover); }
-.pb.active { background: var(--grad-hero); border-color: transparent; color: #fff; }
+.pb.active { background: var(--grad-hero); border-color: transparent; color: #fff; box-shadow: 0 3px 12px -3px rgba(94,92,230,.55); }
 
 .ctabs { display: flex; gap: 3px; background: var(--card); border: 1px solid var(--glass-border); border-radius: 99px; padding: 3px; margin-bottom: 20px; width: max-content; max-width: 100%; overflow-x: auto; }
 .ctab { font-size: 13px; font-weight: 600; padding: 6px 16px; cursor: pointer; color: var(--text2); border-radius: 99px; border: none; background: transparent; transition: background .25s, color .25s; white-space: nowrap; }
-.ctab.active { background: var(--grad-hero); color: #fff; }
+.ctab.active { background: var(--grad-hero); color: #fff; box-shadow: 0 3px 12px -3px rgba(94,92,230,.55); }
 .ctab:hover:not(.active) { color: var(--text); }
 
 /* ── Ranked List ─────────────────────────────────────────── */
@@ -411,6 +411,8 @@ footer .wrap { background: transparent; border: none; padding: 20px 24px; }
   display: flex; flex-direction: column;
   min-width: 0;
 }
+.chart-glass { transition: transform .35s var(--ease), box-shadow .35s; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
+.chart-glass:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
 .chart-glass.wide { padding: 24px 28px; border-radius: var(--radius-lg); }
 .chart-glass--clock { min-height: 220px; }
 .chart-glass-hdr { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
@@ -890,3 +892,67 @@ a[href^="tel"] { color: inherit; text-decoration: none; pointer-events: none; }
   .ld, .metric-grid > *, .top5-grid > *, .rlist > *, .streak-grid > *, .hero-waveform .wf-bar { animation: none !important; }
   .metric-grid > *, .top5-grid > *, .rlist > *, .streak-grid > * { opacity: 1; transform: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   FEINSCHLIFF — Clip-Fix für Gradient-Text, Aurora & Akzente
+   ═══════════════════════════════════════════════════════════════ */
+
+/* background-clip:text füllt nur die Textbox — Puffer verhindert
+   abgeschnittene Unterlängen/Umlaut-Punkte bei Gradient-Text. */
+.hero-name, .mc-val.pink, .mc.hi .mc-val {
+  padding-block: .06em .14em;
+  margin-block: -.03em -.06em;
+}
+
+/* Große Gradient-Texte wandern langsam durch den Verlauf */
+@keyframes grad-pan { 0% { background-position: 0% 50%; } 100% { background-position: 100% 50%; } }
+.hero-name, .mc.hi .mc-val, .mc-val.pink {
+  background-size: 220% auto;
+  animation: grad-pan 7s ease-in-out infinite alternate;
+}
+.nav-logo { background-size: 220% auto; animation: grad-pan 9s ease-in-out infinite alternate; }
+
+/* Aurora hinter dem Hero: weiche, wandernde Pastell-Flächen */
+.hero::after {
+  content: '';
+  position: absolute; inset: 0; border-radius: inherit;
+  pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(520px 280px at 15% 0%, rgba(10,132,255,.1), transparent 60%),
+    radial-gradient(460px 260px at 90% 100%, rgba(255,55,95,.09), transparent 60%),
+    radial-gradient(400px 240px at 60% 20%, rgba(191,90,242,.07), transparent 60%);
+  background-size: 160% 160%;
+  animation: hero-aurora 14s ease-in-out infinite alternate;
+}
+@keyframes hero-aurora {
+  from { background-position: 0% 0%, 100% 100%, 50% 0%; }
+  to   { background-position: 60% 40%, 40% 60%, 20% 60%; }
+}
+
+/* Sektions-Karten: hauchfeine Gradient-Hairline oben */
+section > .wrap::after {
+  content: '';
+  position: absolute; left: 24px; right: 24px; top: 0; height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: linear-gradient(90deg, transparent, rgba(10,132,255,.3), rgba(191,90,242,.3), rgba(255,55,95,.3), transparent);
+  pointer-events: none;
+}
+#nowplaying-sec > .wrap::after, footer .wrap::after { display: none; }
+
+/* Highlight-Kachel (Gesamt-Scrobbles): Gradient-Linie oben */
+.mc.hi::after {
+  content: '';
+  position: absolute; left: 0; right: 0; top: 0; height: 3px;
+  background: var(--grad-hero);
+}
+
+/* Balken-Füllungen: sanfter Schein am Ende */
+.bar-f, .top5-bar-f, .yoy-bar-f, .div-fill { box-shadow: 0 0 8px -2px rgba(94,92,230,.5); }
+
+/* Now-Playing-Cover kippt beim Hover minimal */
+.np-cover { transition: transform .4s var(--ease); }
+.np-card:hover .np-cover { transform: scale(1.03) rotate(-1deg); }
+
+/* Wrapped-Button: Sparkle glitzert */
+.wrapped-btn .sparkle { animation: wbtn-spark 2.8s ease-in-out infinite; transform-origin: center; }
+@keyframes wbtn-spark { 0%,100% { transform: rotate(-6deg) scale(1); } 50% { transform: rotate(6deg) scale(1.15); } }
