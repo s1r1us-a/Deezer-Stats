@@ -253,3 +253,30 @@
   if(document.readyState !== 'loading') update();
   else document.addEventListener('DOMContentLoaded', update);
 })();
+
+/* ── Theme-Toggle (analog gptstats initTheme) ──────────────────────
+   Standard: Light — Dark nur, wenn der Nutzer es per Toggle gewählt hat.
+   Das data-theme-Attribut wird bereits vor dem ersten Paint durch das
+   Inline-Script im <head> gesetzt; hier nur Toggle + Persistenz. */
+(function(){
+  'use strict';
+  const btn = document.getElementById('themeToggle');
+  if(!btn) return;
+  const metaTheme = document.querySelector('meta[name="theme-color"]');
+
+  function applyThemeMeta(){
+    if(!metaTheme) return;
+    const bg = getComputedStyle(document.body).getPropertyValue('--bg').trim();
+    if(bg) metaTheme.setAttribute('content', bg);
+  }
+
+  btn.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    try{ localStorage.setItem('dzs-theme', next); }catch(e){}
+    applyThemeMeta();
+    if(typeof window.applyChartTheme === 'function') window.applyChartTheme();
+  });
+
+  applyThemeMeta();
+})();

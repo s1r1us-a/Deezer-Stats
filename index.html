@@ -1,7 +1,11 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" data-theme="light">
 <head>
 <meta charset="UTF-8">
+<script>
+/* Theme vor dem ersten Paint setzen — verhindert Flash beim Reload */
+try { document.documentElement.dataset.theme = localStorage.getItem('dzs-theme') || 'light'; } catch (e) {}
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <!-- iOS Safari Web-App / Homescreen-Support -->
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -10,7 +14,7 @@
 <meta name="apple-mobile-web-app-title" content="s1r1us-a Stats">
 <meta name="theme-color" content="#f5f5f7">
 <meta name="format-detection" content="telephone=no">
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="light dark">
 <title>s1r1us-a — Ultimate Stats</title>
 <meta name="description" content="Persönliches Musik-Dashboard für s1r1us-a: Top-Künstler, Tracks & Alben, Hör-Heatmaps, Streaks und Year-over-Year-Statistiken aus Last.fm.">
 <link rel="canonical" href="https://s1r1us-a.github.io/Deezer-Stats/">
@@ -72,7 +76,7 @@
 
 <nav>
   <div class="wrap nav-inner">
-    <div class="nav-logo">◈ s1r1us-a / ultimate stats</div>
+    <div class="nav-brand"><span class="nav-logo">✦</span><span class="nav-brand-text">s1r1us-a Stats</span></div>
     <div class="nav-links" id="nav-links">
       <button class="nav-close" data-action="closeNav">✕</button>
       <a href="#overview" data-action="closeNav">Übersicht</a>
@@ -88,6 +92,15 @@
       <button class="nav-hamburger" id="nav-hamburger" data-action="openNav">☰</button>
       <a href="wrapped.html" class="wrapped-btn" title="Dein Wrapped ansehen"><span class="sparkle">✨</span><span>Wrapped</span></a>
       <button class="export-btn" data-action="exportPNG">↓ Export PNG</button>
+      <button class="theme-toggle" id="themeToggle" aria-label="Design umschalten">
+        <svg class="icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <circle cx="12" cy="12" r="4.5"/>
+          <path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/>
+        </svg>
+        <svg class="icon-moon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>
+        </svg>
+      </button>
     </div>
   </div>
 </nav>
@@ -243,7 +256,7 @@
         <span class="chart-glass-sub" id="clock-sub">letzte 30 Tage</span>
       </div>
       <div id="hour-chart" style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;"><div class="ld"><div class="sp"></div></div></div>
-      <div id="hour-tooltip" style="position:absolute;pointer-events:none;background:rgba(255,255,255,0.97);color:#1d1d1f;border:1px solid rgba(0,0,0,0.1);font-family:var(--mono);font-size:11px;padding:6px 10px;border-radius:6px;opacity:0;transform:translate(-50%,-100%);transition:opacity .12s;white-space:nowrap;z-index:5;box-shadow:0 8px 24px rgba(0,0,0,0.12);"></div>
+      <div id="hour-tooltip" class="hour-tooltip"></div>
     </div>
     <div class="chart-glass" style="margin-bottom:16px;">
       <div class="chart-glass-hdr">
@@ -315,7 +328,7 @@
       </div>
     </div>
     <div id="compare-content"><div class="ld"><div class="sp"></div></div></div>
-    <div class="chart-glass-hdr" style="margin-top:24px;border-bottom:1px solid rgba(255,255,255,0.07);">
+    <div class="chart-glass-hdr" style="margin-top:24px;border-bottom:1px solid var(--border);">
       <span class="chart-glass-title">Jahr für Jahr</span>
       <span class="chart-glass-sub">aus dem Archiv</span>
     </div>
