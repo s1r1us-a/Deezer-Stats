@@ -41,10 +41,12 @@ try { document.documentElement.dataset.theme = localStorage.getItem('dzs-theme')
 <!-- Performance: Verbindungen früh aufbauen -->
 <link rel="preconnect" href="https://ws.audioscrobbler.com">
 <link rel="preconnect" href="https://lastfm-stats-default-rtdb.europe-west1.firebasedatabase.app">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/modern-screenshot@4.7.0/dist/index.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-database-compat.js"></script>
+<link rel="stylesheet" href="css/vault-tokens.css">
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -351,7 +353,7 @@ try { document.documentElement.dataset.theme = localStorage.getItem('dzs-theme')
 
 <footer>
   <div class="wrap">
-    <div class="ft">Daten via <a href="https://www.last.fm/user/s1r1us-a" target="_blank">Last.fm API</a> · Hörzeit ≈ Ø 3 Min/Track · Built for s1r1us-a</div>
+    <div class="ft">Daten via <a href="https://www.last.fm/user/s1r1us-a" target="_blank" rel="noopener">Last.fm API</a> · Archiv in Firebase · Hörzeit aus echten Track-Längen (Last.fm/Deezer) · Built for s1r1us-a</div>
   </div>
 </footer>
 
@@ -375,13 +377,15 @@ try { document.documentElement.dataset.theme = localStorage.getItem('dzs-theme')
     <div class="modal-actions">
       <button id="archive-import-btn" data-action="startFullImport" class="modal-btn-primary">⬇ Vollständiger Import</button>
       <button id="archive-delta-btn" data-action="startDeltaSync" class="modal-btn-secondary">↻ Delta-Sync</button>
-      <button id="archive-gapfill-btn" data-action="startGapFill" class="modal-btn-secondary">🩹 Lücken füllen</button>
+      <button id="archive-check-btn" data-action="startArchiveCheck" class="modal-btn-secondary">🔎 Archiv prüfen</button>
+      <button id="archive-repair-btn" data-action="startArchiveRepair" class="modal-btn-secondary" style="display:none;">🩹 Reparieren</button>
       <button id="archive-abort-btn" data-action="abortImport" class="modal-btn-danger">✕ Abbrechen</button>
     </div>
+    <div id="archive-check" class="archive-check" style="display:none;"></div>
     <div class="modal-hint">
-      <b>Vollständiger Import</b> — holt alle Scrobbles einmalig von Last.fm und speichert sie in Firebase. Wird ein Import unterbrochen, bleibt der Fortschritt erhalten — Delta-Sync setzt ihn fort.<br>
-      <b>Delta-Sync</b> — holt nur neue Tracks seit dem letzten gespeicherten Eintrag und setzt unterbrochene Syncs/Importe automatisch an derselben Stelle fort.<br>
-      <b>Lücken füllen</b> — vergleicht das gesamte Archiv mit Last.fm und fügt nur die fehlenden Scrobbles hinzu (ideal wenn Drift trotz Delta-Sync bleibt). Löscht nichts.
+      <b>Delta-Sync</b> — holt neue Scrobbles inkl. 72 h Überlappung (für nachgereichte Deezer-Plays) und setzt unterbrochene Syncs automatisch fort. Läuft auch automatisch.<br>
+      <b>Archiv prüfen</b> — vergleicht jeden Monat mit Last.fm (nur lesend). <b>Reparieren</b> lädt danach nur abweichende Monate neu, ergänzt Fehlendes, entfernt Duplikate und bei Last.fm gelöschte Scrobbles und migriert alte Keys.<br>
+      <b>Vollständiger Import</b> — löscht das Archiv und lädt alles neu. Nur im Notfall.
     </div>
   </div>
 </div>
@@ -430,7 +434,9 @@ try { document.documentElement.dataset.theme = localStorage.getItem('dzs-theme')
 
 <div id="db-toast" role="status" aria-live="polite"><div class="toast-dot"></div><span id="db-toast-msg"></span></div>
 
+<script src="js/core.js"></script>
 <script src="js/app.js"></script>
+<script src="js/sync.js"></script>
 <!-- ✨ MAKEOVER: Eigenständiges Interaktions-Modul (berührt keine bestehende Logik) -->
 <script src="js/ui-effects.js"></script>
 </body>

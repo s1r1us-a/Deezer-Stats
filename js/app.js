@@ -1,45 +1,55 @@
 const USER='s1r1us-a',KEY='b126713de975c43a7a8f046bcf954884',API='https://ws.audioscrobbler.com/2.0/';
-// Apple-Systemfarben (analog gptstats-Design)
-const PINK='#ff375f',PINK2='#ff6482';
-const COLORS=['#ff375f','#bf5af2','#0a84ff','#ff9f0a','#5e5ce6','#64d2ff','#30d158','#ffd60a'];
-const CACHE_KEY='lfm_cache_s1r1us_v2';
+const CACHE_KEY='lfm_cache_s1r1us_v3';
+const C=ScrobbleCore;
 
 // ── HELPERS ────────────────────────────────────────────────
 function escapeHTML(str){
   if(!str&&str!==0) return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+
+// ── VAULT-FARBEN ───────────────────────────────────────────
+// Alle Farben kommen aus den Tokens in css/vault-tokens.css (Apple Glass
+// Light + Layer8). Canvas kann keine CSS-Variablen auflösen, deshalb werden
+// sie hier einmal gelesen und bei jedem Theme-Wechsel neu geholt.
 let _chartColors=null;
+function hexA(hex,a){
+  const h=String(hex).trim().replace('#','');
+  if(!/^[0-9a-f]{6}$/i.test(h)) return hex;
+  const n=parseInt(h,16);
+  return `rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;
+}
 function chartColors(){
   if(_chartColors) return _chartColors;
-  const s=getComputedStyle(document.body);
-  const tick=s.getPropertyValue('--text3').trim()||'#6e6e73';
-  const grid=s.getPropertyValue('--chart-grid').trim()||'rgba(0,0,0,0.07)';
-  const surface=s.getPropertyValue('--bg-soft').trim()||'#ffffff';
-  const fontFam='-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif';
-  const tooltip={backgroundColor:surface,borderColor:s.getPropertyValue('--border').trim()||'rgba(0,0,0,0.1)',borderWidth:1,titleColor:s.getPropertyValue('--text').trim()||'#1d1d1f',bodyColor:s.getPropertyValue('--text2').trim()||'#6e6e73',titleFont:{family:fontFam},bodyFont:{family:fontFam},cornerRadius:10,padding:10};
-  _chartColors={tick,grid,surface,tooltip};
+  const s=getComputedStyle(document.documentElement);
+  const v=(name,fb)=>s.getPropertyValue(name).trim()||fb;
+  const fontFam=v('--font','-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif');
+  const accent=v('--ag-display-blue','#0a84ff');
+  const series=[
+    v('--ag-display-blue','#0a84ff'),v('--ag-display-indigo','#5e5ce6'),v('--ag-display-purple','#bf5af2'),
+    v('--ag-display-pink','#ff375f'),v('--ag-display-teal','#64d2ff'),v('--ag-display-orange','#ff9f0a'),
+    v('--ag-display-green','#30d158'),v('--ag-display-yellow','#ffd60a')
+  ];
+  const tick=v('--text-faint','#86868b');
+  const grid=v('--chart-grid','rgba(32,38,49,.08)');
+  const surface=v('--ag-surface','#ffffff');
+  const tooltip={backgroundColor:surface,borderColor:v('--ag-line-strong','rgba(32,38,49,.15)'),borderWidth:1,
+    titleColor:v('--text','#1d1d1f'),bodyColor:v('--text-dim','#6e6e73'),
+    titleFont:{family:fontFam,weight:'700'},bodyFont:{family:fontFam},cornerRadius:10,padding:10};
+  _chartColors={accent,indigo:series[1],series,other:v('--text-faint','#86868b'),tick,grid,surface,tooltip,fontFam};
   return _chartColors;
 }
 
-// Beim Theme-Wechsel: Cache invalidieren und laufende Chart-Instanzen umfärben
+// Beim Theme-Wechsel: Farben neu lesen und alle Chart-Instanzen neu zeichnen
 window.applyChartTheme=function(){
   _chartColors=null;
-  const cc=chartColors();
   let insts;
-  // Falls app.js vor der Instanz-Deklaration abgebrochen ist (z. B. CDN offline)
   try{insts=[monthlyInst,pieInst,trendInst];}catch(e){return;}
-  insts.forEach(ch=>{
-    if(!ch) return;
-    for(const ax of Object.values(ch.options.scales||{})){
-      if(ax.ticks) ax.ticks.color=cc.tick;
-      if(ax.grid&&ax.grid.color) ax.grid.color=cc.grid;
-    }
-    const tt=ch.options.plugins&&ch.options.plugins.tooltip;
-    if(tt) Object.assign(tt,{backgroundColor:cc.tooltip.backgroundColor,borderColor:cc.tooltip.borderColor,titleColor:cc.tooltip.titleColor,bodyColor:cc.tooltip.bodyColor});
-    ch.update('none');
-  });
-  if(insts[1]){insts[1].data.datasets[0].borderColor=cc.surface;insts[1].update('none');}
+  if(insts.some(Boolean)){
+    try{renderMonthlyChart();}catch(e){}
+    try{loadPie();}catch(e){}
+    try{loadTrend();}catch(e){}
+  }
 };
 
 // ── FIREBASE ───────────────────────────────────────────────
@@ -58,39 +68,36 @@ if(window.Chart){Chart.defaults.font.family='-apple-system, BlinkMacSystemFont, 
 
 let cache={},chartPeriod='today',chartTab='artists',sortMode='plays',allItems=[],showCount=10;
 
-// ── ARCHIVE DATA CACHE ────────────────────────────────────
-// Zentraler Firebase-Fetch: läuft nur einmal, alle weiteren Aufrufe warten auf dasselbe Promise
+// ── ARCHIV (Firebase) ─────────────────────────────────────
+// Das Archiv ist die gemeinsame Quelle fast aller Stats. Es wird einmal
+// geladen; Syncs ändern es danach lokal (siehe sync.js), statt es neu
+// herunterzuladen. archiveChanged() invalidiert alle abgeleiteten Caches.
+let _archiveData=null;
+let _archiveVersion=0;
 let _archivePromise=null;
 let _lastHeroData=null; // zuletzt gerenderte Hero-Meta für Re-Render nach Archiv-Load
+function archiveList(){return C.toList(_archiveData,_archiveVersion);}
+function archiveChanged(){
+  _archiveVersion++;
+  _chartCountCache={};
+  Object.keys(cache).filter(k=>k.startsWith('top_')).forEach(k=>delete cache[k]);
+}
 async function getArchiveData(){
   if(_archiveData) return _archiveData;
   if(!_archivePromise){
     _archivePromise=db.ref('scrobbles').get().then(snap=>{
-      if(snap.exists()){
-        _archiveData=snap.val();
-        // WICHTIG: Erst rendern, dann Stats befüllen — sonst überschreibt
-        // renderOverview() das gerade aktualisierte mc-today-time Element.
-        try{
-          if(_lastHeroData){
-            renderHero(_lastHeroData, isLfmDown());
-            renderOverview({total:_lastHeroData.playcount||0,days:_lastHeroData._days||0,u:_lastHeroData});
-          }
-        }catch(e){console.warn('Re-render after archive load failed:',e);}
-        // Jetzt ist das Grid aktuell — Stats befüllen
-        updateTodayTime();
-        loadStreak();
-        _chartCountCache={};
-        updateChartsTrackCount();
-      }
-      return _archiveData||null;
-    }).catch(()=>null);
+      if(!_archiveData) _archiveData=snap.exists()?snap.val():{};
+      archiveChanged();
+      C.Durations.recompute(archiveList());
+      return _archiveData;
+    }).catch(e=>{console.warn('Archiv-Load fehlgeschlagen:',e);_archivePromise=null;return null;});
   }
   return _archivePromise;
 }
+function hasArchive(){return archiveList().length>0;}
 let cmpA='1month',cmpB='3month',selectedYear=null;
 let monthlyInst=null,pieInst=null,trendInst=null;
 let monthlyMode='12'; // '12' or 'lifetime'
-let monthlyLoadId=0; // cancel token for race condition prevention
 let joinYear=null;
 
 // ── NAV HAMBURGER ──────────────────────────────────────────
@@ -110,20 +117,13 @@ const revealObs=new IntersectionObserver((entries)=>{
 document.querySelectorAll('section').forEach(s=>{s.classList.add('reveal');revealObs.observe(s);});
 
 // ── CACHE ──────────────────────────────────────────────────
-function loadCache(){try{const d=localStorage.getItem(CACHE_KEY);if(d){const p=JSON.parse(d);const age=(Date.now()-p.ts)/60000;if(age<30){cache=p.data;// always drop today's chart cache – it changes throughout the day
-Object.keys(cache).filter(k=>k.startsWith('top_')&&k.endsWith('_today')).forEach(k=>delete cache[k]);document.getElementById('cache-info').textContent='Cache: vor '+Math.round(age)+' Min';return;}}}catch(e){}}
-function saveCache(){try{localStorage.setItem(CACHE_KEY,JSON.stringify({ts:Date.now(),data:cache}));}catch(e){}}
+// Nur langsam veränderliche Last.fm-Antworten (user.getInfo, Top-Listen, Tags)
+// werden 30 Min in localStorage gehalten. user.getRecentTracks nie — sonst
+// sind "Zuletzt gehört" & Co. nach einem Reload bis zu 30 Min alt.
+const NO_PERSIST=['user.getRecentTracks','track.getInfo'];
+function loadCache(){try{const d=localStorage.getItem(CACHE_KEY);if(d){const p=JSON.parse(d);const age=(Date.now()-p.ts)/60000;if(age<30){cache=p.data||{};document.getElementById('cache-info').textContent='Cache: vor '+Math.round(age)+' Min';}}}catch(e){}}
+function saveCache(){try{const keep={};Object.keys(cache).forEach(k=>{if(!k.startsWith('top_')&&!NO_PERSIST.some(p=>k.startsWith(p))) keep[k]=cache[k];});localStorage.setItem(CACHE_KEY,JSON.stringify({ts:Date.now(),data:keep}));}catch(e){}}
 
-// Archiv-Caches nach einem Sync invalidieren, damit neue Scrobbles sichtbar werden.
-// WICHTIG: Auch _archivePromise zurücksetzen — sonst returnt getArchiveData()
-// weiterhin das alte resolved-Promise und der .then()-Callback (der _archiveData
-// neu setzen würde) läuft nicht mehr. Der 'today'-Chart-Cache wird in loadCache()
-// ohnehin verworfen, daher hier nur die historischen top_*-Einträge leeren.
-function invalidateArchiveCaches(){
-  _archiveData=null;
-  _archivePromise=null;
-  Object.keys(cache).filter(k=>k.startsWith('top_')&&!k.endsWith('_today')).forEach(k=>delete cache[k]);
-}
 
 // ── API ────────────────────────────────────────────────────
 // ── LAST.FM OFFLINE-STATUS ────────────────────────────────
@@ -230,10 +230,12 @@ function timeAgo(ts){
 function rankCls(i){return i===0?'g':i===1?'s':i===2?'b':'';}
 function imgEl(src,cls='ri-img'){return src?`<img src="${src}" class="${cls}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'">`:`<div class="${cls.replace('img','ph')}">♪</div>`;}
 
-// Zentrierter, wiederverwendbarer Empty-State
-function emptyState(msg,icon='🎵'){
-  return `<div class="empty-state"><div class="empty-ico" aria-hidden="true">${icon}</div><div class="empty-msg">${escapeHTML(msg)}</div></div>`;
+// Zentrierter, wiederverwendbarer Empty-State mit Luna-Motiv (Sichel,
+// Sternbild). Fehler bekommen bewusst kein Schmuckbild.
+function emptyState(msg,kind='moon'){
+  return `<div class="empty-state is-${kind}"><div class="empty-ico" aria-hidden="true"></div><div class="empty-msg">${escapeHTML(msg)}</div></div>`;
 }
+const noArchiveState=()=>emptyState('Noch kein Archiv — im Archiv-Dialog den vollständigen Import starten.','stars');
 
 // ── TOAST mit einfacher Warteschlange (max. 1 sichtbar) ──────
 let _toastTimer=null,_toastQueue=[],_toastBusy=false;
@@ -281,7 +283,7 @@ function renderHero(meta, offline=false){
   const img=meta.avatar_url||meta.image_ex||'';
   if(img){
     const avEl=document.getElementById('avatar-el');
-    if(avEl) avEl.outerHTML=`<img src="${img}" width="84" height="84" style="border-radius:50%;border:2px solid var(--pink);display:block;" alt="Avatar" id="avatar-el">`;
+    if(avEl) avEl.outerHTML=`<img src="${img}" width="84" height="84" class="hero-avatar-img" alt="Avatar" id="avatar-el">`;
     document.getElementById('hero-bg').style.backgroundImage=`url(${img})`;
     document.getElementById('hero-bg').style.opacity='0.08';
   }
@@ -289,7 +291,7 @@ function renderHero(meta, offline=false){
   const joined=meta.registered_uts?new Date(meta.registered_uts*1000):null;
   const days=joined?Math.floor((Date.now()-joined)/86400000):0;
   // Scrobble-Gesamtzahl: bevorzugt aus Firebase-Archiv (offline-fähig & konsistent)
-  const archiveCount=_archiveData?Object.keys(_archiveData).length:null;
+  const archiveCount=hasArchive()?archiveList().length:null;
   const total=archiveCount!==null?archiveCount:(parseInt(meta.playcount)||0);
   const joinStr=joined?joined.toLocaleDateString('de-DE',{year:'numeric',month:'long',day:'numeric'}):'—';
   const country=meta.country&&meta.country!=='None'?escapeHTML(meta.country):null;
@@ -340,10 +342,10 @@ async function loadHero(npTrack){
     // Last.fm down — Werte aus Cache für den Rückgabewert
     joined=cached.registered_uts?new Date(cached.registered_uts*1000):new Date();
     days=Math.floor((Date.now()-joined)/86400000);
-    total=_archiveData?Object.keys(_archiveData).length:(parseInt(cached.playcount)||0);
+    total=hasArchive()?archiveList().length:(parseInt(cached.playcount)||0);
   } else {
     // Weder Cache noch Last.fm — minimal-Fallback
-    joined=new Date();days=0;total=_archiveData?Object.keys(_archiveData).length:0;
+    joined=new Date();days=0;total=hasArchive()?archiveList().length:0;
   }
   // Now playing — track already loaded by loadNowPlayingCard
   try{
@@ -434,44 +436,71 @@ async function loadNowPlayingCard(){
 }
 
 // ── OVERVIEW ───────────────────────────────────────────────
+// Alle Werte aus dem Archiv (Last.fm nur als Fallback ohne Archiv).
+function listeningInfo(list){
+  if(!list.length) return {mins:0,coverage:0};
+  return {mins:C.Durations.total(list)/60,coverage:C.Durations.coverage(list)};
+}
+function coverageNote(cov){
+  if(!hasArchive()) return 'geschätzt';
+  const p=Math.round(cov*100);
+  return p>=99?'echte Track-Längen':p>0?`${p} % echte Längen`:'geschätzt (Längen laden…)';
+}
 function renderOverview({total,days,u}){
-  // Total: bevorzugt aus Firebase-Archiv (offline-fähig + konsistent mit Archiv-Badge/Heatmap)
-  const archiveCount=_archiveData?Object.keys(_archiveData).length:null;
-  const totalFinal=archiveCount!==null?archiveCount:(parseInt(total)||0);
-  // Discovery-Counts: aus Archiv rechnen (konsistent & offline-fähig), Last.fm als Fallback
+  const list=archiveList();
+  const arch=list.length>0;
+  const totalFinal=arch?list.length:(parseInt(total)||0);
   const disc=getArchiveDiscoveryCounts();
   const artistC=disc?disc.artist_count:(parseInt(u?.artist_count)||0);
   const trackC=disc?disc.track_count:(parseInt(u?.track_count)||0);
   const albumC=disc?disc.album_count:(parseInt(u?.album_count)||0);
-  const estMins=totalFinal*3;
+  const li=arch?listeningInfo(list):{mins:totalFinal*3.5,coverage:0};
   const safedays=days>0?days:1;
+  const activeDays=arch?new Set(list.map(e=>C.dayKey(new Date(e.ts*1000)))).size:null;
   const g=document.getElementById('overview-grid');
   g.innerHTML=`
-    <div class="mc hi"><div class="mc-label">Gesamt Scrobbles</div><div class="mc-val pink counter" id="cnt-total">0</div></div>
-    <div class="mc"><div class="mc-label">Gesch. Hörzeit</div><div class="mc-val">${fmtHours(estMins)}</div><div class="mc-sub">≈ ${fmtTime(estMins/safedays)} / Tag</div></div>
-    <div class="mc"><div class="mc-label">Ø pro Tag</div><div class="mc-val counter" id="cnt-day">0</div><div class="mc-sub">Tracks täglich</div></div>
-    <div class="mc"><div class="mc-label">Ø pro Woche</div><div class="mc-val counter" id="cnt-week">0</div></div>
-    <div class="mc"><div class="mc-label">Ø pro Monat</div><div class="mc-val counter" id="cnt-month">0</div></div>
-    <div class="mc"><div class="mc-label">Heute gehört</div><div class="mc-val" id="mc-today-time">—</div><div class="mc-sub" id="mc-today-sub">wird geladen…</div></div>
-    <div class="mc"><div class="mc-label">Aktive Tage</div><div class="mc-val counter" id="cnt-days">0</div><div class="mc-sub">seit Registrierung</div></div>
-    <div class="mc"><div class="mc-label">Entdeckte Künstler</div><div class="mc-val counter" id="cnt-artists">0</div></div>
-    <div class="mc"><div class="mc-label">Entdeckte Tracks</div><div class="mc-val counter" id="cnt-tracks">0</div></div>
-    <div class="mc"><div class="mc-label">Entdeckte Alben</div><div class="mc-val counter" id="cnt-albums">0</div></div>
-
+    <div class="mc hi" style="--cc:var(--ag-display-blue)"><div class="mc-label">Gesamt Scrobbles</div><div class="mc-val pink counter" id="cnt-total">0</div><div class="mc-sub">${arch?'aus dem Archiv':'laut Last.fm'}</div></div>
+    <div class="mc" style="--cc:var(--ag-display-indigo)"><div class="mc-label">Hörzeit</div><div class="mc-val" id="mc-time-val">${fmtHours(li.mins)}</div><div class="mc-sub" id="mc-time-sub">≈ ${fmtTime(li.mins/safedays)} / Tag · ${coverageNote(li.coverage)}</div></div>
+    <div class="mc" style="--cc:var(--ag-display-purple)"><div class="mc-label">Ø pro Tag</div><div class="mc-val counter" id="cnt-day">0</div><div class="mc-sub">seit Registrierung</div></div>
+    <div class="mc" style="--cc:var(--ag-display-pink)"><div class="mc-label">Ø pro Woche</div><div class="mc-val counter" id="cnt-week">0</div></div>
+    <div class="mc" style="--cc:var(--ag-display-teal)"><div class="mc-label">Ø pro Monat</div><div class="mc-val counter" id="cnt-month">0</div></div>
+    <div class="mc" style="--cc:var(--ag-display-orange)"><div class="mc-label">Heute gehört</div><div class="mc-val" id="mc-today-time">—</div><div class="mc-sub" id="mc-today-sub">wird geladen…</div></div>
+    <div class="mc" style="--cc:var(--ag-display-green)"><div class="mc-label">Aktive Tage</div><div class="mc-val counter" id="cnt-days">0</div><div class="mc-sub">${activeDays!==null?`von ${fmt(days)} Tagen seit Registrierung`:'Archiv fehlt'}</div></div>
+    <div class="mc" style="--cc:var(--ag-display-blue)"><div class="mc-label">Entdeckte Künstler</div><div class="mc-val counter" id="cnt-artists">0</div></div>
+    <div class="mc" style="--cc:var(--ag-display-indigo)"><div class="mc-label">Entdeckte Tracks</div><div class="mc-val counter" id="cnt-tracks">0</div></div>
+    <div class="mc" style="--cc:var(--ag-display-purple)"><div class="mc-label">Entdeckte Alben</div><div class="mc-val counter" id="cnt-albums">0</div></div>
   `;
   setTimeout(()=>{
     animateCounter(document.getElementById('cnt-total'),totalFinal);
     animateCounter(document.getElementById('cnt-day'),parseFloat((totalFinal/safedays).toFixed(1)));
     animateCounter(document.getElementById('cnt-week'),Math.round(totalFinal/(safedays/7)));
     animateCounter(document.getElementById('cnt-month'),Math.round(totalFinal/(safedays/30.44)));
-    animateCounter(document.getElementById('cnt-days'),days);
+    animateCounter(document.getElementById('cnt-days'),activeDays||0);
     animateCounter(document.getElementById('cnt-artists'),artistC);
     animateCounter(document.getElementById('cnt-tracks'),trackC);
     animateCounter(document.getElementById('cnt-albums'),albumC);
-    // "Heute gehört" direkt mit befüllen wenn Archiv schon verfügbar —
-    // sonst würde es bis zum nächsten Archiv-Load-Callback "wird geladen…" bleiben.
-    if(_archiveData) updateTodayTime();
+    updateTodayTime();
   },100);
+}
+
+// Nur die zeitabhängigen Kacheln aktualisieren (nach dem Laden neuer Track-Längen)
+let _durUiT=0;
+function onDurationsUpdated(force=false){
+  if(!force&&Date.now()-_durUiT<20000) return;
+  _durUiT=Date.now();
+  const list=archiveList();
+  if(!list.length) return;
+  const li=listeningInfo(list);
+  const days=_lastHeroData?._days||1;
+  const v=document.getElementById('mc-time-val'),s=document.getElementById('mc-time-sub');
+  if(v) v.textContent=fmtHours(li.mins);
+  if(s) s.textContent=`≈ ${fmtTime(li.mins/Math.max(days,1))} / Tag · ${coverageNote(li.coverage)}`;
+  updateTodayTime();
+  const yr=document.getElementById('yr-total-sub');
+  if(yr&&selectedYear){
+    const sl=C.slice(list,C.sec(new Date(selectedYear,0,1)),C.sec(new Date(selectedYear+1,0,1)));
+    yr.textContent=`Scrobbles · ≈ ${fmtTime(C.Durations.total(sl)/60)}`;
+  }
 }
 
 // ── HEUTE GEHÖRT ───────────────────────────────────────────
@@ -491,14 +520,8 @@ function updateTodayTime(){
   const el=document.getElementById('mc-today-time');
   const sub=document.getElementById('mc-today-sub');
   if(!el||!_archiveData) return;
-  const now=new Date();
-  const midnightTs=Math.floor(new Date(now.getFullYear(),now.getMonth(),now.getDate())/1000);
-  let count=0;
-  Object.keys(_archiveData).forEach(key=>{
-    const ts=parseInt(key.split('_')[0]);
-    if(ts>=midnightTs) count++;
-  });
-  const mins=count*3;
+  const today=C.slice(archiveList(),C.sec(C.midnight()));
+  const mins=C.Durations.total(today)/60;
   if(mins<60){
     animateTodayCounter(el,Math.round(mins),' Min');
   } else {
@@ -506,272 +529,116 @@ function updateTodayTime(){
     const m=Math.round(mins%60);
     animateTodayCounter(el,h,m>0?` Std ${m} Min`:' Std');
   }
-  if(sub) sub.textContent=`${fmt(count)} Scrobbles heute`;
+  if(sub) sub.textContent=`${fmt(today.length)} Scrobbles heute`;
 }
 
 // ── DIVERSITY ──────────────────────────────────────────────
 async function renderDiversity(){
-  const [artistData, tagData] = await Promise.all([
-    lfm('user.getTopArtists',{period:'overall',limit:50}),
-    lfm('user.getTopTags',{limit:20})
-  ]);
-  const artists=artistData?.topartists?.artist||[];
-  if(!artists.length){document.getElementById('diversity-content').innerHTML='<div class="err">Keine Daten</div>';return;}
+  const el=document.getElementById('diversity-content');
+  await getArchiveData();
+  const list=archiveList();
+  const tagData=await lfmSafe('user.getTopTags',{limit:20});
+  if(!list.length){el.innerHTML=noArchiveState();return;}
+  const artists=C.aggregate(list,'artists');
+  const total=artists.reduce((s,a)=>s+a.playcount,0)||1;
 
-  // HHI Score
-  const total=artists.reduce((s,a)=>s+parseInt(a.playcount),0);
-  const hhi=artists.reduce((s,a)=>{const sh=parseInt(a.playcount)/total;return s+sh*sh;},0);
+  // Herfindahl-Index über ALLE Künstler (vorher nur Top-50 → zu optimistisch)
+  const hhi=artists.reduce((s,a)=>{const sh=a.playcount/total;return s+sh*sh;},0);
   const score=Math.round((1-hhi)*100);
-  const label=score>80?'Sehr vielseitig':score>60?'Vielseitig':score>40?'Ausgewogen':score>20?'Fokussiert':'Sehr fokussiert';
+  const effective=Math.round(1/hhi);
+  const label=score>95?'Sehr vielseitig':score>85?'Vielseitig':score>70?'Ausgewogen':score>50?'Fokussiert':'Sehr fokussiert';
 
-  // Tags/Genres — filter out noise tags
   const NOISE=['seen live','favorites','favourite','my favorites','love','loved','awesome','good','best','all','music','new'];
   const tags=(tagData?.toptags?.tag||[])
     .filter(t=>!NOISE.some(n=>t.name.toLowerCase().includes(n)))
     .slice(0,12);
   const maxTagCount=parseInt(tags[0]?.count)||1;
-
-  // Summary sentence
-  const top3Tags=tags.slice(0,3).map(t=>t.name);
-  const mid3Tags=tags.slice(3,6).map(t=>t.name);
+  const top3Tags=tags.slice(0,3).map(t=>escapeHTML(t.name));
+  const mid3Tags=tags.slice(3,6).map(t=>escapeHTML(t.name));
   let summary='';
   if(top3Tags.length){
     summary=`Du hörst hauptsächlich <strong>${top3Tags.join(', ')}</strong>`;
-    if(mid3Tags.length) summary+=` — gelegentlich auch ${mid3Tags.join(', ')}`;
+    if(mid3Tags.length) summary+=` — gelegentlich auch <em>${mid3Tags.join(', ')}</em>`;
     summary+='.';
   }
 
-  // Top-5 Karten bauen (erst mit Last.fm-Zahlen, dann Firebase nachladen)
   const top5=artists.slice(0,5);
-  const maxPct=((parseInt(top5[0].playcount)/total)*100);
+  const maxPct=top5[0].playcount/total*100;
+  const cards=top5.map((a,i)=>{
+    const pct=a.playcount/total*100;
+    const barW=(pct/maxPct*100).toFixed(1);
+    return `<div class="top5-card ${i<3?'rank-'+(i+1):''}" data-artist="${escapeHTML(a.name)}" tabindex="0" role="button">
+      <div class="top5-rank r${i+1}">${i+1}</div>
+      <div class="top5-info">
+        <div class="top5-name">${escapeHTML(a.name)}</div>
+        <div class="top5-meta">${fmt(a.playcount)} Plays</div>
+      </div>
+      <div class="top5-bar-wrap">
+        <div class="top5-bar-c"><div class="top5-bar-f" style="width:${barW}%"></div></div>
+        <div class="top5-pct">${pct.toFixed(1)} %</div>
+      </div>
+    </div>`;
+  }).join('');
 
-  function buildTop5Cards(firebaseCounts){
-    const rankClass=['rank-1','rank-2','rank-3','',''];
-    const rankNumClass=['r1','r2','r3','rn','rn'];
-    return top5.map((a,i)=>{
-      const pct=((parseInt(a.playcount)/total)*100).toFixed(1);
-      const barW=((parseFloat(pct)/maxPct)*100).toFixed(1);
-      const fbCount=firebaseCounts?firebaseCounts[a.name.toLowerCase()]:null;
-      const playsStr=fbCount!=null
-        ? `${Number(fbCount).toLocaleString('de-DE')} Titel gespielt`
-        : `<span class="top5-loading"><span class="sp" style="width:9px;height:9px;border-width:1.5px;display:inline-block;vertical-align:middle;margin-right:4px;"></span>Lädt...</span>`;
-      return `<div class="top5-card ${rankClass[i]}">
-        <div class="top5-rank ${rankNumClass[i]}">${i+1}</div>
-        <div class="top5-info">
-          <div class="top5-name">${escapeHTML(a.name)}</div>
-          <div class="top5-meta">${playsStr}</div>
-        </div>
-        <div class="top5-bar-wrap">
-          <div class="top5-bar-c"><div class="top5-bar-f" style="width:${barW}%"></div></div>
-          <div class="top5-pct">${pct}%</div>
-        </div>
-      </div>`;
-    }).join('');
-  }
-
-  // Initial render mit Ladeindikator
-  document.getElementById('diversity-content').innerHTML=`
-    <div style="display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start;margin-bottom:20px;">
-      <div class="mc hi" style="min-width:130px;">
+  el.innerHTML=`
+    <div class="div-head">
+      <div class="mc hi" style="--cc:var(--ag-display-purple)">
         <div class="mc-label">Diversitäts-Score</div>
         <div class="mc-val pink">${score}/100</div>
-        <div class="mc-sub">${label}</div>
+        <div class="mc-sub">${label} · ≈ ${fmt(effective)} „effektive“ Künstler</div>
       </div>
-      <div style="padding-top:4px;">
-        <div class="div-meter" style="margin-bottom:6px;"><div class="div-fill" style="width:${score}%"></div></div>
-        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:10px;">Herfindahl-Index · Top-50 Künstler</div>
-        ${summary?`<div style="font-size:13px;color:var(--text2);line-height:1.6;">${summary}</div>`:''}
+      <div>
+        <div class="div-meter"><div class="div-fill" style="width:${score}%"></div></div>
+        <div class="kicker-note">Herfindahl-Index · alle ${fmt(artists.length)} Künstler aus dem Archiv</div>
+        ${summary?`<p class="div-summary">${summary}</p>`:''}
       </div>
     </div>
     ${tags.length?`
-    <div style="margin-bottom:20px;">
-      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.07em;">Genre-Verteilung</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+    <div class="div-block">
+      <div class="kicker">Genre-Verteilung <span class="kicker-src">laut Last.fm-Tags</span></div>
+      <div class="tags-wrap">
         ${tags.map(t=>{
-          const w=parseInt(t.count);
-          const rel=Math.round((w/maxTagCount)*100);
-          const size=rel>75?13:rel>40?12:11;
-          const op=rel>75?1:rel>40?.8:.6;
-          return `<span style="font-family:var(--mono);font-size:${size}px;padding:4px 10px;border-radius:20px;border:1px solid var(--border2);background:var(--bg3);color:var(--text);opacity:${op};transition:opacity .2s;" title="${w} Plays">${t.name}</span>`;
+          const rel=Math.round(parseInt(t.count)/maxTagCount*100);
+          return `<span class="tag ${rel>75?'lg':rel>40?'':'sm'}" title="${fmt(t.count)} Gewichtung">${escapeHTML(t.name)}</span>`;
         }).join('')}
       </div>
     </div>`:''}
-    <div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.07em;">Top-5 Künstler-Anteil</div>
-      <div class="top5-grid" id="top5-cards">${buildTop5Cards(null)}</div>
+    <div class="div-block">
+      <div class="kicker">Top-5 Künstler · Anteil an allen ${fmt(total)} Scrobbles</div>
+      <div class="top5-grid" id="top5-cards">${cards}</div>
     </div>
   `;
-
-  // Firebase-Daten nachladen und Plays aktualisieren
-  try{
-    const archiveSnap=await getArchiveData();
-    if(archiveSnap){
-      // Zähle Plays pro Künstler (case-insensitive)
-      const firebaseCounts={};
-      Object.values(archiveSnap).forEach(v=>{
-        const a=(v.artist||'').trim().toLowerCase();
-        if(!a) return;
-        firebaseCounts[a]=(firebaseCounts[a]||0)+1;
-      });
-      // Cards mit echten Zahlen neu rendern
-      const cardsEl=document.getElementById('top5-cards');
-      if(cardsEl) cardsEl.innerHTML=buildTop5Cards(firebaseCounts);
-    }
-  }catch(e){console.warn('Firebase Top-5 Plays fetch failed:',e);}
+  el.querySelectorAll('.top5-card[data-artist]').forEach(c=>{
+    const open=()=>openArtistDrillDown(c.dataset.artist,'overall');
+    c.addEventListener('click',open);
+    c.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();open();}});
+  });
 }
 
 // ── TOP CHARTS ─────────────────────────────────────────────
-// Gibt den from-Timestamp (Unix Sekunden) für eine Periode zurück, oder null für "Gesamt"
-function periodFromTs(period){
-  const now=Date.now();
-  if(period==='7day') return Math.floor((now-7*864e5)/1000);
-  if(period==='1month'){const d=new Date();d.setMonth(d.getMonth()-1);return Math.floor(d/1000);}
-  if(period==='3month'){const d=new Date();d.setMonth(d.getMonth()-3);return Math.floor(d/1000);}
-  if(period==='6month'){const d=new Date();d.setMonth(d.getMonth()-6);return Math.floor(d/1000);}
-  if(period==='12month'){const d=new Date();d.setFullYear(d.getFullYear()-1);return Math.floor(d/1000);}
-  return null; // overall
-}
-
-// Berechnet Top-Charts aus Archive-Daten für eine gegebene Periode und Tab.
-// data kann optional übergeben werden (z.B. frisch aus getArchiveData()) —
-// dann ist die Funktion robust gegen State-Bugs wo _archiveData zwischenzeitlich
-// auf null gesetzt wurde aber getArchiveData() trotzdem Daten liefern kann.
-function calcChartsFromArchive(period,tab,data){
-  const src=data||_archiveData;
-  if(!src) return null;
-  const fromTs=periodFromTs(period);
-  const countMap={};
-  Object.entries(src).forEach(([key,v])=>{
-    const ts=parseInt(key.split('_')[0]);
-    if(fromTs&&ts<fromTs) return;
-    const artist=(v.artist||'').trim();
-    const track=(v.track||'').trim();
-    const album=(v.album||'').trim();
-    let nameKey,displayName,artistName=artist;
-    if(tab==='artists'){
-      if(!artist) return;
-      nameKey=artist.toLowerCase();
-      displayName=artist;
-    } else if(tab==='tracks'){
-      if(!track) return;
-      nameKey=artist.toLowerCase()+'|||'+track.toLowerCase();
-      displayName=track;
-    } else {
-      if(!album) return;
-      nameKey=artist.toLowerCase()+'|||'+album.toLowerCase();
-      displayName=album;
-    }
-    if(!countMap[nameKey]){
-      countMap[nameKey]={
-        name:displayName,
-        artist:{name:artistName},
-        playcount:0,
-        image:[{'#text':'',size:'medium'}],
-        url:''
-      };
-    }
-    countMap[nameKey].playcount++;
-  });
-  return Object.values(countMap).sort((a,b)=>b.playcount-a.playcount);
+function chartItems(period,tab){
+  const {from,to}=C.periodRange(period);
+  return C.aggregate(C.slice(archiveList(),from,to),tab);
 }
 
 async function loadCharts(){
   const key=chartTab+'_'+chartPeriod;
-  let items;
-  // Cache-Hit nur bei NICHT-leerem Array akzeptieren —
-  // ein leeres Array könnte ein altes Race-Condition-Artefakt aus localStorage sein
-  const cached=cache['top_'+key];
-  if(Array.isArray(cached)&&cached.length>0){items=cached;}
-  else{
-    document.getElementById('charts-list').innerHTML='<div class="ld"><div class="sp"></div> Lade...</div>';
-    document.getElementById('show-more-btn').style.display='none';
-
-    // Archiv-Daten AKTIV laden — statt passiv auf _archiveData zu pollen.
-    // getArchiveData() ist idempotent (nutzt internes Promise), also egal wie oft es aufgerufen wird.
-    const archData=await getArchiveData();
-
-    if(chartPeriod==='yesterday'){
-      // Gestern: Mitternacht gestern bis Mitternacht heute
-      const now=new Date();
-      const midnightToday=Math.floor(new Date(now.getFullYear(),now.getMonth(),now.getDate())/1000);
-      const midnightYesterday=midnightToday-86400;
-      const countMap={};
-      if(_archiveData){
-        Object.entries(_archiveData).forEach(([key,v])=>{
-          const ts=parseInt(key.split('_')[0]);
-          if(ts<midnightYesterday||ts>=midnightToday) return;
-          const artist=(v.artist||'').trim();
-          const track=(v.track||'').trim();
-          const album=(v.album||'').trim();
-          let nameKey,displayName,artistName=artist;
-          if(chartTab==='artists'){if(!artist) return;nameKey=artist.toLowerCase();displayName=artist;}
-          else if(chartTab==='tracks'){if(!track) return;nameKey=artist.toLowerCase()+'|||'+track.toLowerCase();displayName=track;}
-          else{if(!album) return;nameKey=artist.toLowerCase()+'|||'+album.toLowerCase();displayName=album;}
-          if(!countMap[nameKey]) countMap[nameKey]={name:displayName,artist:{name:artistName},playcount:0,image:[{'#text':'',size:'medium'}],url:''};
-          countMap[nameKey].playcount++;
-        });
-      }
-      items=Object.values(countMap).sort((a,b)=>b.playcount-a.playcount);
-
-    } else if(chartPeriod==='today'){
-      // Heute: aus Archiv berechnen + nur nowplaying-Track separat von API holen
-      const now=new Date();
-      const midnightTs=Math.floor(new Date(now.getFullYear(),now.getMonth(),now.getDate())/1000);
-
-      // Archiv-Einträge von heute aggregieren
-      const countMap={};
-      if(_archiveData){
-        Object.entries(_archiveData).forEach(([key,v])=>{
-          const ts=parseInt(key.split('_')[0]);
-          if(ts<midnightTs) return;
-          const artist=(v.artist||'').trim();
-          const track=(v.track||'').trim();
-          const album=(v.album||'').trim();
-          let nameKey,displayName,artistName=artist;
-          if(chartTab==='artists'){
-            if(!artist) return;
-            nameKey=artist.toLowerCase(); displayName=artist;
-          } else if(chartTab==='tracks'){
-            if(!track) return;
-            nameKey=artist.toLowerCase()+'|||'+track.toLowerCase(); displayName=track;
-          } else {
-            if(!album) return;
-            nameKey=artist.toLowerCase()+'|||'+album.toLowerCase(); displayName=album;
-          }
-          if(!countMap[nameKey]) countMap[nameKey]={name:displayName,artist:{name:artistName},playcount:0,image:[{'#text':'',size:'medium'}],url:''};
-          countMap[nameKey].playcount++;
-        });
-      }
-
-      // Nur nowplaying-Track von API holen (1 einziger Call)
-      try{
-        const npD=await fetch(`${API}?method=user.getRecentTracks&user=${USER}&api_key=${KEY}&format=json&limit=1`).then(r=>r.json());
-        const npT=npD?.recenttracks?.track?.[0];
-        if(npT?.['@attr']?.nowplaying){
-          const artist=(npT.artist?.['#text']||npT.artist?.name||'').trim();
-          const track=(npT.name||'').trim();
-          const album=(npT.album?.['#text']||'').trim();
-          let nameKey,displayName,artistName=artist;
-          if(chartTab==='artists'){nameKey=artist.toLowerCase();displayName=artist;}
-          else if(chartTab==='tracks'){nameKey=artist.toLowerCase()+'|||'+track.toLowerCase();displayName=track;}
-          else{nameKey=artist.toLowerCase()+'|||'+album.toLowerCase();displayName=album;}
-          if(displayName){
-            if(!countMap[nameKey]) countMap[nameKey]={name:displayName,artist:{name:artistName},playcount:0,image:[{'#text':'',size:'medium'}],url:''};
-            countMap[nameKey].playcount++;
-          }
-        }
-      }catch(e){}
-
-      items=Object.values(countMap).sort((a,b)=>b.playcount-a.playcount);
-
-    } else {
-      // Alle anderen Perioden: aus Firebase-Archiv berechnen
-      // archData direkt übergeben — robuster als über _archiveData global zu gehen
-      items=calcChartsFromArchive(chartPeriod,chartTab,archData)||[];
+  const volatile=chartPeriod==='today'||chartPeriod==='yesterday';
+  let items=volatile?null:cache['top_'+key];
+  if(!Array.isArray(items)){
+    if(!_archiveData){
+      document.getElementById('charts-list').innerHTML='<div class="ld"><div class="sp"></div> Lade...</div>';
+      document.getElementById('show-more-btn').style.display='none';
     }
-    // Cache nur setzen wenn Archiv-Daten wirklich verfügbar sind UND Ergebnis nicht leer —
-    // sonst würde ein leeres Ergebnis aus einem Fehler permanent eingefroren.
-    if(archData&&Array.isArray(items)&&items.length>0) cache['top_'+key]=items;
+    await getArchiveData();
+    if(!hasArchive()){
+      allItems=[];
+      document.getElementById('charts-list').innerHTML=noArchiveState();
+      document.getElementById('show-more-btn').style.display='none';
+      return;
+    }
+    items=chartItems(chartPeriod,chartTab);
+    if(!volatile) cache['top_'+key]=items;
   }
   allItems=items;
   showCount=10;
@@ -814,7 +681,7 @@ function renderCharts(){
       </div>
     </a>`;
   }).join('');
-  document.getElementById('charts-list').innerHTML=html?`<div class="rlist">${html}</div>`:emptyState(q?'Keine Treffer für „'+escapeHTML(q)+'".':'Noch keine Daten für diesen Zeitraum.',q?'🔍':'🎵');
+  document.getElementById('charts-list').innerHTML=html?`<div class="rlist">${html}</div>`:emptyState(q?'Keine Treffer für „'+q+'“.':'Noch keine Daten für diesen Zeitraum.',q?'search':'moon');
   document.getElementById('show-more-btn').style.display=items.length>showCount?'block':'none';
   // Event delegation for artist drill-down (replaces inline onclick with data attribute)
   document.getElementById('charts-list').querySelectorAll('[data-artist]').forEach(el=>{
@@ -841,225 +708,108 @@ let _searchT=null;
 function onSearchInput(){clearTimeout(_searchT);_searchT=setTimeout(renderCharts,180);}
 function setSort(m){sortMode=m;document.getElementById('sb-plays').classList.toggle('active',m==='plays');document.getElementById('sb-alpha').classList.toggle('active',m==='alpha');renderCharts();}
 
-// ── LIFETIME DATA (Firebase) ────────────────────────────────
-function monthKey(y,m){return `${y}-${String(m+1).padStart(2,'0')}`;}
-
-async function fbRead(){
-  try{
-    const snap=await db.ref('monthly').get();
-    return snap.exists()?snap.val():{};
-  }catch(e){console.warn('Firebase read error',e);return {};}
-}
-
-async function fbWrite(data){
-  try{await db.ref('monthly').update(data);}
-  catch(e){console.warn('Firebase write error',e);}
-}
-
-async function loadLifetimeData(startYear,silent=false){
-  const progressEl=document.getElementById('lifetime-progress');
-  const show=(msg)=>{if(!silent&&progressEl){progressEl.style.display='block';progressEl.textContent=msg;}};
-
-  if(!silent) show('Firebase wird gelesen...');
-  else showToast('🔄 DB wird geprüft...','',0);
-
-  const existing=await fbRead();
-
+// ── MONATS-CHART (12 Monate / Lifetime) ────────────────────
+// Beide Modi zählen direkt im Archiv — die frühere Firebase-Tabelle
+// `monthly` konnte Monate bei einem API-Fehler dauerhaft auf 0 setzen.
+function monthlyRange(){
   const now=new Date();
-  const currentKey=monthKey(now.getFullYear(),now.getMonth());
-
-  const allMonths=[];
-  for(let y=startYear;y<=now.getFullYear();y++){
-    const maxM=y===now.getFullYear()?now.getMonth():11;
-    for(let m=0;m<=maxM;m++) allMonths.push({y,m,key:monthKey(y,m)});
+  if(monthlyMode!=='lifetime'){
+    const s=new Date(now.getFullYear(),now.getMonth()-11,1);
+    return C.monthsBetween(s.getFullYear(),s.getMonth());
   }
-
-  const toFetch=allMonths.filter(({key})=>existing[key]===undefined||key===currentKey);
-
-  if(toFetch.length===0){
-    show('✓ Alle Daten aus Firebase geladen');
-    if(!silent) setTimeout(()=>{progressEl.style.display='none';},2000);
-    else showToast('✓ DB ist aktuell','ok');
-    return allMonths.map(({key})=>({key,count:existing[key]||0}));
-  }
-
-  const isOnlyCurrentMonth=toFetch.length===1&&toFetch[0].key===currentKey;
-  if(silent){
-    showToast(isOnlyCurrentMonth?'🔄 Aktuellen Monat aktualisieren...':'🔄 '+toFetch.length+' Monate werden geladen...','',0);
-  } else {
-    show(`Lade ${toFetch.length} fehlende Monate von Last.fm...`);
-  }
-
-  const newData={};
-  for(let i=0;i<toFetch.length;i++){
-    const {y,m,key}=toFetch[i];
-    const from=new Date(y,m,1);
-    const to=new Date(y,m+1,0,23,59,59);
-    try{
-      const d=await lfm('user.getRecentTracks',{from:Math.floor(from/1000),to:Math.floor(to/1000),limit:1});
-      newData[key]=parseInt(d?.recenttracks?.['@attr']?.total||0);
-    }catch(e){newData[key]=0;}
-    if(!silent) show(`Lade... ${i+1}/${toFetch.length} Monate`);
-  }
-
-  const merged={...existing,...newData};
-  await fbWrite(newData);
-
-  show('✓ Gespeichert in Firebase');
-  if(!silent) setTimeout(()=>{progressEl.style.display='none';},2000);
-  else showToast(isOnlyCurrentMonth?'✓ Aktueller Monat aktualisiert':'✓ '+toFetch.length+' Monate aktualisiert','ok');
-
-  return allMonths.map(({key})=>({key,count:merged[key]||0}));
+  const list=archiveList();
+  let start=list.length?new Date(list[0].ts*1000):now;
+  const reg=_lastHeroData?.registered_uts?new Date(_lastHeroData.registered_uts*1000):null;
+  if(reg&&reg<start) start=reg;
+  return C.monthsBetween(start.getFullYear(),start.getMonth());
 }
 
-function renderLifetimeChart(monthData){
-  const labels=monthData.map(({key})=>{
-    const [y,m]=key.split('-');
-    const d=new Date(parseInt(y),parseInt(m)-1,1);
-    return d.toLocaleDateString('de-DE',{month:'short',year:'2-digit'});
-  });
-  const data=monthData.map(({count})=>count);
-  const now=new Date();
-  const currentKey=monthKey(now.getFullYear(),now.getMonth());
-
-  if(monthlyInst) monthlyInst.destroy();
-  const ctx=document.getElementById('monthlyChart');
-
-  // Color: current month = pink, rest = dimmed. Group by year for subtle bands
-  const bgColors=monthData.map(({key})=>{
-    if(key===currentKey) return PINK;
-    return 'rgba(255,55,95,0.3)';
-  });
-
+function renderMonthlyChart(counts){
+  const months=monthlyRange();
+  const list=archiveList();
+  const data=counts||months.map(m=>C.slice(list,m.from,m.to).length);
+  const labels=months.map(m=>new Date(m.y,m.m,1).toLocaleDateString('de-DE',{month:'short',year:'2-digit'}));
   const cc=chartColors();
-  monthlyInst=new Chart(ctx,{
+  const lifetime=monthlyMode==='lifetime';
+  if(monthlyInst) monthlyInst.destroy();
+  monthlyInst=new Chart(document.getElementById('monthlyChart'),{
     type:'bar',
-    data:{labels,datasets:[{
-      label:'Scrobbles',data,
-      backgroundColor:bgColors,
-      borderRadius:2,borderWidth:0
-    }]},
-    options:{
-      responsive:true,maintainAspectRatio:false,
-      plugins:{
-        legend:{display:false},
-        tooltip:{...cc.tooltip,callbacks:{label:c=>' '+fmt(c.parsed.y)+' Scrobbles'}}
-      },
-      scales:{
-        x:{
-          ticks:{color:cc.tick,font:{size:8},maxRotation:90,
-            callback:(val,i)=>i%3===0?labels[i]:''},
-          grid:{display:false},border:{display:false}
-        },
-        y:{
-          ticks:{color:cc.tick,font:{size:9},callback:v=>fmt(v)},
-          grid:{color:cc.grid},border:{display:false}
-        }
-      }
-    }
-  });
-
-  // Stats under chart
-  const total=data.reduce((s,v)=>s+v,0);
-  const best=Math.max(...data);
-  const bestLabel=labels[data.indexOf(best)];
-  const avg=Math.round(total/data.length);
-  const statsEl=document.getElementById('lifetime-stats');
-  if(statsEl){
-    statsEl.innerHTML=`
-      <div class="mc"><div class="mc-label">Lifetime Scrobbles</div><div class="mc-val">${fmt(total)}</div></div>
-      <div class="mc"><div class="mc-label">Bester Monat</div><div class="mc-val" style="font-size:16px;">${bestLabel}</div><div class="mc-sub">${fmt(best)} Scrobbles</div></div>
-      <div class="mc"><div class="mc-label">Ø pro Monat</div><div class="mc-val">${fmt(avg)}</div></div>
-    `;
-  }
-}
-
-// ── MONTHLY CHART ──────────────────────────────────────────
-async function loadMonthly(loadId){
-  const labels=[],ranges=[];
-  for(let i=11;i>=0;i--){
-    const d=new Date();d.setMonth(d.getMonth()-i);
-    labels.push(d.toLocaleDateString('de-DE',{month:'short',year:'2-digit'}));
-    const from=new Date(d.getFullYear(),d.getMonth(),1);
-    const to=new Date(d.getFullYear(),d.getMonth()+1,0,23,59,59);
-    ranges.push({from:Math.floor(from/1000),to:Math.floor(to/1000)});
-  }
-  const results=await Promise.all(ranges.map(r=>
-    lfm('user.getRecentTracks',{from:r.from,to:r.to,limit:1})
-      .then(d=>parseInt(d?.recenttracks?.['@attr']?.total||0)).catch(()=>0)
-  ));
-  if(loadId!==undefined&&loadId!==monthlyLoadId) return results;
-  if(monthlyInst) monthlyInst.destroy();
-  const ctx=document.getElementById('monthlyChart');
-  const cc=chartColors();
-  monthlyInst=new Chart(ctx,{
-    type:'bar',data:{labels,datasets:[{label:'Scrobbles',data:results,
-      backgroundColor:results.map((_,i)=>i===results.length-1?PINK:'rgba(255,55,95,0.35)'),
-      borderRadius:3,borderWidth:0}]},
+    data:{labels,datasets:[{label:'Scrobbles',data,
+      backgroundColor:data.map((_,i)=>i===data.length-1?cc.accent:hexA(cc.accent,.34)),
+      hoverBackgroundColor:cc.indigo,
+      borderRadius:lifetime?2:5,borderWidth:0}]},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{...cc.tooltip,callbacks:{label:c=>' '+fmt(c.parsed.y)+' Scrobbles'}}},
-      scales:{x:{ticks:{color:cc.tick,font:{size:9},maxRotation:45},grid:{display:false},border:{display:false}},
-               y:{ticks:{color:cc.tick,font:{size:9},callback:v=>fmt(v)},grid:{color:cc.grid},border:{display:false}}}}
+      scales:{
+        x:{ticks:{color:cc.tick,font:{size:lifetime?8:9},maxRotation:lifetime?90:45,callback:lifetime?((v,i)=>i%3===0?labels[i]:''):undefined},grid:{display:false},border:{display:false}},
+        y:{ticks:{color:cc.tick,font:{size:9},callback:v=>fmt(v)},grid:{color:cc.grid},border:{display:false}}}}
   });
-  return results;
+  const statsEl=document.getElementById('lifetime-stats');
+  if(statsEl&&lifetime&&data.length){
+    const total=data.reduce((s,v)=>s+v,0);
+    const best=Math.max(...data);
+    statsEl.innerHTML=`
+      <div class="mc" style="--cc:var(--ag-display-blue)"><div class="mc-label">Lifetime Scrobbles</div><div class="mc-val">${fmt(total)}</div></div>
+      <div class="mc" style="--cc:var(--ag-display-purple)"><div class="mc-label">Bester Monat</div><div class="mc-val" style="font-size:18px;">${labels[data.indexOf(best)]}</div><div class="mc-sub">${fmt(best)} Scrobbles</div></div>
+      <div class="mc" style="--cc:var(--ag-display-pink)"><div class="mc-label">Ø pro Monat</div><div class="mc-val">${fmt(Math.round(total/data.length))}</div></div>`;
+  }
+}
+
+async function loadMonthly(){
+  await getArchiveData();
+  const statsEl=document.getElementById('lifetime-stats');
+  if(statsEl) statsEl.style.display=monthlyMode==='lifetime'?'grid':'none';
+  if(hasArchive()) return renderMonthlyChart();
+  // Ohne Archiv: 12 Monate über Last.fm-Totals (1 Call pro Monat)
+  const months=monthlyRange();
+  const counts=await Promise.all(months.map(m=>
+    lfm('user.getRecentTracks',{from:m.from,to:m.to-1,limit:1})
+      .then(d=>parseInt(d?.recenttracks?.['@attr']?.total||0)).catch(()=>0)));
+  renderMonthlyChart(counts);
 }
 
 // ── PIE CHART ──────────────────────────────────────────────
+// Anteil an ALLEN Scrobbles (vorher: nur relativ zu den Top 7).
 async function loadPie(){
-  const d=await lfm('user.getTopArtists',{period:'overall',limit:8});
-  const top=(d?.topartists?.artist||[]).slice(0,7);
-  const total=top.reduce((s,a)=>s+parseInt(a.playcount),0);
-  if(pieInst) pieInst.destroy();
+  await getArchiveData();
+  const legend=document.getElementById('pie-legend');
+  if(!hasArchive()){legend.innerHTML=noArchiveState();return;}
+  const artists=C.aggregate(archiveList(),'artists');
+  const total=artists.reduce((s,a)=>s+a.playcount,0)||1;
+  const top=artists.slice(0,7);
+  const rest=total-top.reduce((s,a)=>s+a.playcount,0);
   const cc=chartColors();
+  const labels=top.map(a=>a.name),values=top.map(a=>a.playcount),colors=cc.series.slice(0,top.length);
+  if(rest>0){labels.push('Andere');values.push(rest);colors.push(hexA(cc.other,.35));}
+  if(pieInst) pieInst.destroy();
   pieInst=new Chart(document.getElementById('pieChart'),{
     type:'doughnut',
-    data:{labels:top.map(a=>a.name),datasets:[{data:top.map(a=>parseInt(a.playcount)),backgroundColor:COLORS,borderColor:cc.surface,borderWidth:3,hoverOffset:6}]},
+    data:{labels,datasets:[{data:values,backgroundColor:colors,borderColor:cc.surface,borderWidth:3,hoverOffset:6}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
       plugins:{legend:{display:false},tooltip:{...cc.tooltip,
-        callbacks:{label:c=>{const pct=((c.parsed/total)*100).toFixed(1);return ` ${fmt(c.parsed)} Plays (${pct}%)`;}}}}}
+        callbacks:{label:c=>` ${fmt(c.parsed)} Plays (${(c.parsed/total*100).toFixed(1)} %)`}}}}
   });
-  document.getElementById('pie-legend').innerHTML=top.map((a,i)=>{
-    const pct=((parseInt(a.playcount)/total)*100).toFixed(1);
-    return `<span style="display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10px;color:var(--text2);"><span style="width:9px;height:9px;border-radius:2px;background:${COLORS[i]};display:inline-block;flex-shrink:0;"></span>${a.name} ${pct}%</span>`;
-  }).join('');
+  legend.innerHTML=labels.map((n,i)=>
+    `<span class="legend-item"><span class="legend-dot" style="background:${colors[i]}"></span>${escapeHTML(n)} <b>${(values[i]/total*100).toFixed(1)} %</b></span>`).join('');
 }
 
 // ── ACTIVITY DATA (Weekday + Clock) ────────────────────────
-// Lädt Aktivitäts-Daten für Wochentag und Tageszeit-Chart.
-// Primär aus Firebase-Archiv (letzte 30 Tage) für repräsentative Verteilung,
-// Fallback auf recent tracks falls Archiv nicht verfügbar.
+// Letzte 30 Tage aus dem Archiv; ohne Archiv aus den letzten 200 Scrobbles.
 async function loadActivityData(fallbackTracks){
-  const now=Date.now();
+  await getArchiveData();
   const days=30;
-  const fromTs=Math.floor((now-days*86400*1000)/1000);
-  const counts=new Array(7).fill(0); // Mo..So
+  const fromTs=Math.floor(Date.now()/1000)-days*86400;
+  const counts=new Array(7).fill(0);
   const hours=new Array(24).fill(0);
   let total=0;
+  for(const e of C.slice(archiveList(),fromTs)){
+    const d=new Date(e.ts*1000);
+    counts[(d.getDay()+6)%7]++;
+    hours[d.getHours()]++;
+    total++;
+  }
+  if(total>0) return {counts,hours,total,label:`Letzte ${days} Tage · ${fmt(total)} gesamt`};
 
-  try{
-    const snap=await db.ref('scrobbles').orderByKey()
-      .startAt(String(fromTs))
-      .get();
-    if(snap.exists()){
-      snap.forEach(child=>{
-        const ts=parseInt(child.key.split('_')[0]);
-        if(!ts||ts<fromTs) return;
-        const d=new Date(ts*1000);
-        const idx=(d.getDay()+6)%7; // Mo=0..So=6
-        counts[idx]++;
-        hours[d.getHours()]++;
-        total++;
-      });
-      if(total>0){
-        return {
-          counts, hours, total,
-          label:`Letzte ${days} Tage · ${fmt(total)} gesamt`
-        };
-      }
-    }
-  }catch(e){console.warn('Activity Firebase fallback:',e);}
-
-  // Fallback: aus den übergebenen recent tracks aggregieren
   const tracks=fallbackTracks||[];
   tracks.forEach(t=>{
     if(t['@attr']?.nowplaying) return;
@@ -1070,10 +820,7 @@ async function loadActivityData(fallbackTracks){
     hours[d.getHours()]++;
     total++;
   });
-  return {
-    counts, hours, total,
-    label:`Letzte ${tracks.length} Scrobbles · ${fmt(total)} gesamt`
-  };
+  return {counts,hours,total,label:`Letzte ${tracks.length} Scrobbles · ${fmt(total)} gesamt`};
 }
 
 // ── WEEKDAY ────────────────────────────────────────────────
@@ -1108,14 +855,14 @@ function renderWeekday(data){
       const isMx=c===max&&c>0;
       const barH=c>0?Math.max(8,Math.round((c/max)*110)):3;
       return `<div class="wd-bw" style="gap:4px;">
-        <div class="wd-c" style="opacity:${c>0?1:0.3};color:${isMx?'var(--pink2)':'var(--text2)'};">${c>0?pct+'%':'—'}</div>
-        <div class="wd-b ${isMx?'mx':''}" style="height:${barH}px;opacity:${c===0?0.18:isMx?1:0.55};${isMx?'box-shadow:0 0 10px rgba(255,55,95,0.45);':''}border-radius:3px 3px 0 0;" title="${days[i]}: ${fmt(c)} Plays${c>0?' ('+pct+'%)':''}"></div>
-        <div class="wd-l" style="opacity:${c===0?0.35:1};color:${isMx?'var(--pink2)':'var(--text3)'};">${days[i]}</div>
+        <div class="wd-c" style="opacity:${c>0?1:0.3};color:${isMx?'var(--peak)':'var(--text2)'};">${c>0?pct+'%':'—'}</div>
+        <div class="wd-b ${isMx?'mx':''}" style="height:${barH}px;opacity:${c===0?0.18:isMx?1:0.55};border-radius:3px 3px 0 0;" title="${days[i]}: ${fmt(c)} Plays${c>0?' ('+pct+'%)':''}"></div>
+        <div class="wd-l" style="opacity:${c===0?0.35:1};color:${isMx?'var(--peak)':'var(--text3)'};">${days[i]}</div>
       </div>`;
     }).join('')}</div>
     <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:12px;">
       <span>${fmt(total)} Plays gesamt</span>
-      ${max>0?`<span style="color:var(--pink2);">Peak: ${topDay} · ${fmt(max)} Plays</span>`:''}
+      ${max>0?`<span style="color:var(--peak);">Peak: ${topDay} · ${fmt(max)} Plays</span>`:''}
     </div>
   `;
 }
@@ -1152,9 +899,9 @@ function renderClock(data){
     const showPct=isMx||(c>0&&pct>=5); // nur relevante Prozente zeigen
     const showLabel=labelVisible.has(i);
     return `<div class="wd-bw" data-hour="${i}" data-count="${c}" data-pct="${pctDisp}" style="gap:4px;cursor:pointer;">
-      <div class="wd-c" style="opacity:${showPct?(isMx?1:0.85):0};color:${isMx?'var(--pink2)':'var(--text2)'};min-height:14px;">${showPct?Math.round(pct)+'%':''}</div>
-      <div class="wd-b ${isMx?'mx':''}" style="height:${barH}px;opacity:${c===0?0.18:isMx?1:0.55};${isMx?'box-shadow:0 0 10px rgba(255,55,95,0.45);':''}border-radius:3px 3px 0 0;transition:opacity .15s;"></div>
-      <div class="wd-l" style="opacity:${showLabel?(isMx?1:0.75):0.35};color:${isMx?'var(--pink2)':'var(--text3)'};">${showLabel?String(i).padStart(2,'0'):'·'}</div>
+      <div class="wd-c" style="opacity:${showPct?(isMx?1:0.85):0};color:${isMx?'var(--peak)':'var(--text2)'};min-height:14px;">${showPct?Math.round(pct)+'%':''}</div>
+      <div class="wd-b ${isMx?'mx':''}" style="height:${barH}px;opacity:${c===0?0.18:isMx?1:0.55};border-radius:3px 3px 0 0;transition:opacity .15s;"></div>
+      <div class="wd-l" style="opacity:${showLabel?(isMx?1:0.75):0.35};color:${isMx?'var(--peak)':'var(--text3)'};">${showLabel?String(i).padStart(2,'0'):'·'}</div>
     </div>`;
   }).join('');
 
@@ -1162,7 +909,7 @@ function renderClock(data){
     <div class="wd-bars" id="hour-bars" style="height:140px;align-items:flex-end;padding-bottom:0;gap:4px;">${bars}</div>
     <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:12px;">
       <span>${fmt(total)} Plays gesamt</span>
-      ${max>0?`<span style="color:var(--pink2);">Peak: ${String(peakHour).padStart(2,'0')}:00 · ${fmt(max)} Plays</span>`:''}
+      ${max>0?`<span style="color:var(--peak);">Peak: ${String(peakHour).padStart(2,'0')}:00 · ${fmt(max)} Plays</span>`:''}
     </div>
   `;
 
@@ -1184,7 +931,7 @@ function attachHourHover(){
     const hour=parseInt(bw.dataset.hour);
     const count=parseInt(bw.dataset.count);
     const pct=bw.dataset.pct;
-    tooltip.innerHTML=`<span style="color:#ff375f;">${String(hour).padStart(2,'0')}:00 – ${String((hour+1)%24).padStart(2,'0')}:00</span><br>${fmt(count)} Plays · ${pct}%`;
+    tooltip.innerHTML=`<span class="tt-head">${String(hour).padStart(2,'0')}:00 – ${String((hour+1)%24).padStart(2,'0')}:00</span><br>${fmt(count)} Plays · ${pct}%`;
     const glassRect=glass.getBoundingClientRect();
     const bwRect=bw.getBoundingClientRect();
     tooltip.style.left=(bwRect.left-glassRect.left+bwRect.width/2)+'px';
@@ -1214,159 +961,128 @@ function attachHourHover(){
   });
 }
 
+// Heatmap-Stufe 0–4 relativ zum Maximum (Farben: CSS .lv1–.lv4)
+function heatLevel(c,max){
+  if(!c) return 0;
+  const p=c/max;
+  return p<.25?1:p<.5?2:p<.75?3:4;
+}
+
 // ── TAG×STUNDE-HEATMAP (7×24, aus Archiv) ──────────────────
-// Additiv: nutzt getArchiveData(), berührt keine bestehende Render-Logik.
 async function renderDayHourHeatmap(){
   const cont=document.getElementById('dayhour-chart');
   if(!cont) return;
   try{
-    const data=await getArchiveData();
-    if(!data){cont.innerHTML=emptyState('Noch kein Archiv geladen.','🗓'); return;}
+    await getArchiveData();
+    const list=archiveList();
+    if(!list.length){cont.innerHTML=noArchiveState(); return;}
     const days=['Mo','Di','Mi','Do','Fr','Sa','So'];
     const matrix=Array.from({length:7},()=>new Array(24).fill(0));
-    let total=0,max=0,peakDay=0,peakHr=0;
-    Object.keys(data).forEach(k=>{
-      const ts=parseInt(k.split('_')[0]); if(!ts) return;
-      const d=new Date(ts*1000);
+    let max=0,peakDay=0,peakHr=0;
+    for(const e of list){
+      const d=new Date(e.ts*1000);
       const day=(d.getDay()+6)%7, hr=d.getHours();
-      const v=++matrix[day][hr]; total++;
+      const v=++matrix[day][hr];
       if(v>max){max=v;peakDay=day;peakHr=hr;}
-    });
-    if(!total){cont.innerHTML=emptyState('Noch keine Daten im Archiv.','🗓'); return;}
-    const cell=(c)=>{
-      if(!c) return 'var(--track)';
-      const p=c/max;
-      if(p<0.25) return 'rgba(255,55,95,0.22)';
-      if(p<0.5) return 'rgba(255,55,95,0.45)';
-      if(p<0.75) return 'rgba(255,55,95,0.7)';
-      return 'var(--pink)';
-    };
+    }
     const hourLabels=[0,6,12,18];
     let grid='';
     for(let dd=0;dd<7;dd++){
       grid+=`<div class="dh-row"><div class="dh-day">${days[dd]}</div>`+
-        matrix[dd].map((c,hh)=>`<div class="dh-cell" style="background:${cell(c)}" title="${days[dd]} ${String(hh).padStart(2,'0')}:00 · ${fmt(c)} Plays"></div>`).join('')+
+        matrix[dd].map((c,hh)=>`<div class="dh-cell lv${heatLevel(c,max)}" title="${days[dd]} ${String(hh).padStart(2,'0')}:00 · ${fmt(c)} Plays"></div>`).join('')+
         `</div>`;
     }
     grid+=`<div class="dh-row dh-axis"><div class="dh-day"></div>`+
       Array.from({length:24},(_,hh)=>`<div class="dh-cell dh-axis-lbl">${hourLabels.includes(hh)?String(hh).padStart(2,'0'):''}</div>`).join('')+`</div>`;
     cont.innerHTML=`<div class="dh-scroll"><div class="dh-grid">${grid}</div></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:12px;">
-        <span>${fmt(total)} Plays gesamt</span>
-        <span style="color:var(--pink2);">Peak: ${days[peakDay]} ${String(peakHr).padStart(2,'0')}:00</span>
-      </div>`;
-  }catch(e){console.warn('DayHour-Heatmap fehlgeschlagen:',e); cont.innerHTML=emptyState('Heatmap konnte nicht geladen werden.','🗓');}
+      <div class="chart-foot"><span>${fmt(list.length)} Plays gesamt</span><span class="peak">Peak: ${days[peakDay]} ${String(peakHr).padStart(2,'0')}:00</span></div>`;
+  }catch(e){console.warn('DayHour-Heatmap fehlgeschlagen:',e); cont.innerHTML=emptyState('Heatmap konnte nicht geladen werden.','error');}
 }
 
 // ── YEAR-OVER-YEAR + Hochrechnung (aus Archiv) ─────────────
+// Teiljahre (Start des Archivs, laufendes Jahr) werden gekennzeichnet und
+// nicht prozentual verglichen — sonst entstehen Schein-Sprünge.
 async function renderYoY(){
   const cont=document.getElementById('yoy-content');
   if(!cont) return;
   try{
-    const data=await getArchiveData();
-    if(!data){cont.innerHTML=emptyState('Noch kein Archiv geladen.','📅'); return;}
+    await getArchiveData();
+    const list=archiveList();
+    if(!list.length){cont.innerHTML=noArchiveState(); return;}
     const months=['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
     const byYear={};
-    Object.keys(data).forEach(k=>{
-      const ts=parseInt(k.split('_')[0]); if(!ts) return;
-      const d=new Date(ts*1000), y=d.getFullYear();
+    for(const e of list){
+      const d=new Date(e.ts*1000), y=d.getFullYear();
       if(!byYear[y]) byYear[y]={total:0,months:new Array(12).fill(0)};
       byYear[y].total++; byYear[y].months[d.getMonth()]++;
-    });
-    const years=Object.keys(byYear).map(Number).sort((a,b)=>b-a);
-    if(!years.length){cont.innerHTML=emptyState('Noch keine Daten im Archiv.','📅'); return;}
-    const maxTotal=Math.max(...years.map(y=>byYear[y].total))||1;
+    }
+    const first=new Date(list[0].ts*1000);
+    const firstPartial=first>new Date(first.getFullYear(),0,15);
     const nowY=new Date().getFullYear();
+    const isPartial=y=>y===nowY||(y===first.getFullYear()&&firstPartial);
+    const years=Object.keys(byYear).map(Number).sort((a,b)=>b-a);
+    const maxTotal=Math.max(...years.map(y=>byYear[y].total))||1;
+    const diffHtml=(a,b)=>{
+      const diff=Math.round((a-b)/b*100);
+      return `<span class="${diff>=0?'up':'down'}">${diff>=0?'▲':'▼'} ${Math.abs(diff)} %</span>`;
+    };
     let projHtml='';
     if(byYear[nowY]){
-      const dayOfYear=Math.floor((Date.now()-new Date(nowY,0,1).getTime())/86400000)+1;
-      const proj=Math.round(byYear[nowY].total/Math.max(dayOfYear,1)*365);
-      const prev=byYear[nowY-1]?.total;
-      const diff=prev?Math.round((proj-prev)/prev*100):null;
-      projHtml=`<div class="yoy-proj">📈 Hochrechnung ${nowY}: <b>${fmt(proj)}</b> Scrobbles${diff!==null?` <span style="color:${diff>=0?'var(--ok)':'var(--bad)'};">(${diff>=0?'+':''}${diff}% vs ${nowY-1})</span>`:''}</div>`;
+      const start=new Date(nowY,0,1);
+      const daysInYear=(new Date(nowY+1,0,1)-start)/864e5;
+      const dayOfYear=(Date.now()-start.getTime())/864e5;
+      const proj=Math.round(byYear[nowY].total/Math.max(dayOfYear,1)*daysInYear);
+      const prev=byYear[nowY-1];
+      const cmp=prev&&!isPartial(nowY-1)?` ${diffHtml(proj,prev.total)} vs ${nowY-1}`:'';
+      projHtml=`<div class="yoy-proj">📈 Hochrechnung ${nowY}: <b>${fmt(proj)}</b> Scrobbles${cmp}</div>`;
     }
     const rows=years.map(y=>{
       const info=byYear[y];
       const peakM=months[info.months.indexOf(Math.max(...info.months))];
-      const prev=byYear[y-1]?.total;
-      const diff=prev?Math.round((info.total-prev)/prev*100):null;
+      const prev=byYear[y-1];
+      let meta='';
+      if(y===nowY) meta='<span class="yoy-tag">läuft</span> · ';
+      else if(isPartial(y)) meta='<span class="yoy-tag">Teiljahr</span> · ';
+      else if(prev&&!isPartial(y-1)) meta=diffHtml(info.total,prev.total)+' · ';
       const w=Math.round(info.total/maxTotal*100);
       return `<div class="yoy-row">
         <div class="yoy-year">${y}</div>
         <div class="yoy-bar-c"><div class="yoy-bar-f" style="width:${w}%"></div></div>
         <div class="yoy-val">${fmt(info.total)}</div>
-        <div class="yoy-meta">${diff!==null?`<span style="color:${diff>=0?'var(--ok)':'var(--bad)'};">${diff>=0?'▲':'▼'} ${Math.abs(diff)}%</span> · `:''}Peak ${peakM}</div>
+        <div class="yoy-meta">${meta}Peak ${peakM}</div>
       </div>`;
     }).join('');
     cont.innerHTML=`${projHtml}<div class="yoy-list">${rows}</div>`;
-  }catch(e){console.warn('YoY fehlgeschlagen:',e); cont.innerHTML=emptyState('Konnte Jahresvergleich nicht laden.','📅');}
+  }catch(e){console.warn('YoY fehlgeschlagen:',e); cont.innerHTML=emptyState('Konnte Jahresvergleich nicht laden.','error');}
 }
 
 // ── TREND CHART ────────────────────────────────────────────
+// Top-3 der letzten 12 Monate (vorher Last.fm-Gesamt-Top-3), Verlauf aus dem Archiv.
 async function loadTrend(){
-  const topD=await lfm('user.getTopArtists',{period:'overall',limit:3});
-  const top3=(topD?.topartists?.artist||[]).slice(0,3);
-  if(!top3.length) return;
-
-  const labels=[],ranges=[];
-  for(let i=11;i>=0;i--){
-    const d=new Date();d.setMonth(d.getMonth()-i);
-    labels.push(d.toLocaleDateString('de-DE',{month:'short',year:'2-digit'}));
-    const from=new Date(d.getFullYear(),d.getMonth(),1);
-    const to=new Date(d.getFullYear(),d.getMonth()+1,0,23,59,59);
-    ranges.push({from:Math.floor(from/1000),to:Math.floor(to/1000)});
-  }
-
-  const datasets=top3.map((artist,ai)=>({
-    label:artist.name,data:new Array(12).fill(0),
-    borderColor:COLORS[ai],backgroundColor:'transparent',
-    borderWidth:2,tension:0.3,pointRadius:3,pointBackgroundColor:COLORS[ai]
-  }));
-
-  // Try Firebase archive first
-  let usedArchive=false;
-  try{
-    const snap=await db.ref('scrobbles').orderByKey()
-      .startAt(String(ranges[0].from))
-      .get();
-    if(snap.exists()){
-      snap.forEach(child=>{
-        const ts=parseInt(child.key.split('_')[0]);
-        if(!ts)return;
-        const mi=ranges.findIndex(r=>ts>=r.from&&ts<=r.to);
-        if(mi<0)return;
-        const artist=child.val()?.artist||'';
-        top3.forEach((a,ai)=>{
-          if(artist.toLowerCase()===a.name.toLowerCase()) datasets[ai].data[mi]++;
-        });
-      });
-      usedArchive=true;
-    }
-  }catch(e){console.warn('Trend Firebase fallback:',e);}
-
-  // Fallback: API calls in parallel
-  if(!usedArchive){
-    const monthResults=await Promise.all(ranges.map(r=>
-      lfm('user.getRecentTracks',{from:r.from,to:r.to,limit:1000})
-        .then(d=>d?.recenttracks?.track||[]).catch(()=>[])
-    ));
-    monthResults.forEach((tracks,mi)=>{
-      const counts={};
-      tracks.forEach(t=>{
-        if(t['@attr']?.nowplaying)return;
-        const n=t.artist?.['#text']||t.artist?.name;
-        if(n){
-          const key=n.toLowerCase();
-          counts[key]=(counts[key]||0)+1;
-        }
-      });
-      top3.forEach((a,ai)=>datasets[ai].data[mi]=counts[a.name.toLowerCase()]||0);
-    });
-  }
-
-  if(trendInst) trendInst.destroy();
+  await getArchiveData();
+  const canvas=document.getElementById('trendChart');
+  const now=new Date();
+  const s=new Date(now.getFullYear(),now.getMonth()-11,1);
+  const months=C.monthsBetween(s.getFullYear(),s.getMonth());
+  const window12=C.slice(archiveList(),months[0].from);
+  const top3=C.aggregate(window12,'artists').slice(0,3);
+  document.getElementById('trend-legend')?.remove();
+  if(!top3.length){ if(trendInst){trendInst.destroy();trendInst=null;} return; }
+  const labels=months.map(m=>new Date(m.y,m.m,1).toLocaleDateString('de-DE',{month:'short',year:'2-digit'}));
   const cc=chartColors();
-  trendInst=new Chart(document.getElementById('trendChart'),{
+  const colors=[cc.series[0],cc.series[2],cc.series[3]];
+  const idx=new Map(top3.map((a,i)=>[a.key,i]));
+  const datasets=top3.map((a,i)=>({label:a.name,data:new Array(months.length).fill(0),
+    borderColor:colors[i],backgroundColor:hexA(colors[i],.12),fill:false,
+    borderWidth:2.5,tension:0.35,pointRadius:3,pointBackgroundColor:colors[i]}));
+  for(const e of window12){
+    const ai=idx.get(e.artist.toLowerCase());
+    if(ai===undefined) continue;
+    const mi=months.findIndex(m=>e.ts>=m.from&&e.ts<m.to);
+    if(mi>=0) datasets[ai].data[mi]++;
+  }
+  if(trendInst) trendInst.destroy();
+  trendInst=new Chart(canvas,{
     type:'line',data:{labels,datasets},
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{...cc.tooltip,callbacks:{label:c=>` ${c.dataset.label}: ${fmt(c.parsed.y)}`}}},
@@ -1374,83 +1090,40 @@ async function loadTrend(){
                y:{ticks:{color:cc.tick,font:{size:9}},grid:{color:cc.grid},border:{display:false}}}}
   });
   const leg=document.createElement('div');
-  leg.style.cssText='display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;';
-  leg.innerHTML=top3.map((a,i)=>`<span style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:${COLORS[i]};"><span style="width:20px;height:2px;background:${COLORS[i]};display:inline-block;"></span>${escapeHTML(a.name)}</span>`).join('');
-  document.getElementById('trendChart').parentElement.after(leg);
+  leg.id='trend-legend';
+  leg.className='chart-legend';
+  leg.innerHTML=top3.map((a,i)=>`<span class="legend-item"><span class="legend-line" style="background:${colors[i]}"></span>${escapeHTML(a.name)}</span>`).join('');
+  canvas.parentElement.after(leg);
 }
 
 // ── CALENDAR HEATMAP ───────────────────────────────────────
 async function loadCalendar(){
   const now=new Date();
-  const yearAgo=new Date(now);yearAgo.setFullYear(now.getFullYear()-1);yearAgo.setDate(yearAgo.getDate()+1);
-  const yearAgoTs=Math.floor(yearAgo/1000);
+  const yearAgo=C.midnight(now);yearAgo.setFullYear(yearAgo.getFullYear()-1);yearAgo.setDate(yearAgo.getDate()+1);
   const dayMap={};
-
-  // Try Firebase archive first – only fetch keys (no value read needed)
-  // Key format: {timestamp}_{artist}_{track}
-  try{
-    const calLoading=document.getElementById('cal-loading');
-    calLoading.textContent='Lade aus Archiv...';
-    const snap=await db.ref('scrobbles').orderByKey()
-      .startAt(String(yearAgoTs))
-      .get();
-    if(snap.exists()){
-      snap.forEach(child=>{
-        const ts=parseInt(child.key.split('_')[0]);
-        if(!ts||ts<yearAgoTs) return;
-        const dd=new Date(ts*1000);
-        const key=`${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`;
-        dayMap[key]=(dayMap[key]||0)+1;
-      });
-      calLoading.textContent=`Archiv · ${Object.keys(dayMap).length} Tage`;
-      setTimeout(()=>{calLoading.textContent='';},2000);
-      renderCalendar(dayMap,yearAgo,now);
-      return;
-    }
-  }catch(e){console.warn('Firebase calendar fallback:',e);}
-
-  // Fallback: Last.fm API – fetch recent tracks in parallel batches
-  document.getElementById('cal-loading').textContent='Lade via API...';
-  try{
-    const pages=5;
-    const results=await Promise.all(
-      Array.from({length:pages},(_,i)=>
-        lfm('user.getRecentTracks',{limit:200,page:i+1}).catch(()=>null)
-      )
-    );
-    results.forEach(d=>{
-      (d?.recenttracks?.track||[]).forEach(t=>{
-        if(t['@attr']?.nowplaying)return;
-        const ts=parseInt(t.date?.uts);if(!ts||ts<yearAgoTs)return;
-        const dd=new Date(ts*1000);
-        const key=`${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`;
-        dayMap[key]=(dayMap[key]||0)+1;
-      });
-    });
-  }catch(e){console.warn('Calendar API fallback failed:',e);}
-  document.getElementById('cal-loading').textContent='';
+  await getArchiveData();
+  if(!hasArchive()){document.getElementById('cal-container').innerHTML=noArchiveState();return;}
+  for(const e of C.slice(archiveList(),C.sec(yearAgo))){
+    const k=C.dayKey(new Date(e.ts*1000));
+    dayMap[k]=(dayMap[k]||0)+1;
+  }
   renderCalendar(dayMap,yearAgo,now);
 }
 
 function renderCalendar(dayMap,start,end){
   const vals=Object.values(dayMap).filter(v=>v>0);
   const maxVal=vals.length?Math.max(...vals):1;
-  // Build weeks
   let cur=new Date(start);
-  // align to Sunday
-  cur.setDate(cur.getDate()-cur.getDay());
+  cur.setDate(cur.getDate()-cur.getDay()); // auf Sonntag ausrichten
   const weeks=[];let week=[];
   while(cur<=end||week.length>0){
     if(week.length===7){weeks.push(week);week=[];}
-    const key=`${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
-    const inRange=cur>=start&&cur<=end;
-    const count=dayMap[key]||0;
-    week.push({date:new Date(cur),count,inRange,key});
+    const key=C.dayKey(cur);
+    week.push({date:new Date(cur),count:dayMap[key]||0,inRange:cur>=start&&cur<=end,key});
     cur.setDate(cur.getDate()+1);
     if(cur>end&&week.length===7){weeks.push(week);week=[];break;}
     if(cur>end&&week.length>0){while(week.length<7)week.push(null);weeks.push(week);break;}
   }
-  // Month labels
   const monthLabels=[];
   let lastMonth=-1;
   weeks.forEach((w,wi)=>{
@@ -1461,88 +1134,67 @@ function renderCalendar(dayMap,start,end){
     }
   });
   const wdLabels=['So','Mo','Di','Mi','Do','Fr','Sa'];
-  function getColor(count){
-    if(!count) return 'var(--bg3)';
-    const p=count/maxVal;
-    if(p<0.25) return 'rgba(255,55,95,0.22)';
-    if(p<0.5) return 'rgba(255,55,95,0.45)';
-    if(p<0.75) return 'rgba(255,55,95,0.7)';
-    return 'var(--pink)';
-  }
-  // Total active days
-  const activeDays=vals.filter(v=>v>0).length;
-  const totalScr=vals.reduce((s,v)=>s+v,0);
+  const bestKey=Object.keys(dayMap).find(k=>dayMap[k]===maxVal);
+  const bestLabel=bestKey?new Date(bestKey+'T12:00').toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'}):'—';
   document.getElementById('cal-container').innerHTML=`
-    <div style="display:flex;flex-direction:column;gap:12px;">
-      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:4px;">
-        <div class="mc" style="flex:1;min-width:120px;"><div class="mc-label">Aktive Tage</div><div class="mc-val">${fmt(activeDays)}</div></div>
-        <div class="mc" style="flex:1;min-width:120px;"><div class="mc-label">Längster Tag</div><div class="mc-val">${fmt(maxVal)}</div><div class="mc-sub">Scrobbles</div></div>
-        <div class="mc" style="flex:1;min-width:120px;"><div class="mc-label">Jahres-Total</div><div class="mc-val">${fmt(totalScr)}</div></div>
-      </div>
-      <div class="cal-wrap">
-        <div style="display:flex;gap:3px;">
-          <div style="display:flex;flex-direction:column;gap:3px;margin-right:4px;padding-top:16px;">${wdLabels.map((l,i)=>i%2===0?`<div class="cal-wday-label">${l}</div>`:'<div class="cal-wday-label"></div>').join('')}</div>
-          <div style="display:flex;flex-direction:column;gap:0;">
-            <div style="display:flex;gap:3px;height:14px;min-width:700px;">${weeks.map((w,wi)=>{const ml=monthLabels.find(m=>m.wi===wi);return `<div style="width:12px;font-family:var(--mono);font-size:8px;color:var(--text3);">${ml?ml.label:''}</div>`;}).join('')}</div>
-            <div style="display:flex;gap:3px;min-width:700px;">${weeks.map(w=>`<div style="display:flex;flex-direction:column;gap:3px;">${w.map(d=>{if(!d)return '<div style="width:12px;height:12px;"></div>';const tip=d.key+': '+d.count+' Scrobbles';return `<div class="cal-day" style="background:${d.inRange?getColor(d.count):'transparent'}" data-tip="${tip}"></div>`;}).join('')}</div>`).join('')}</div>
-          </div>
+    <div class="cal-stats">
+      <div class="mc" style="--cc:var(--ag-display-green)"><div class="mc-label">Aktive Tage</div><div class="mc-val">${fmt(vals.length)}</div><div class="mc-sub">in den letzten 12 Monaten</div></div>
+      <div class="mc" style="--cc:var(--ag-display-pink)"><div class="mc-label">Stärkster Tag</div><div class="mc-val">${fmt(vals.length?maxVal:0)}</div><div class="mc-sub">Scrobbles · ${bestLabel}</div></div>
+      <div class="mc" style="--cc:var(--ag-display-blue)"><div class="mc-label">12-Monats-Total</div><div class="mc-val">${fmt(vals.reduce((s,v)=>s+v,0))}</div></div>
+    </div>
+    <div class="cal-wrap">
+      <div class="cal-frame">
+        <div class="cal-wday-labels">${wdLabels.map((l,i)=>`<div class="cal-wday-label">${i%2===1?l:''}</div>`).join('')}</div>
+        <div>
+          <div class="cal-month-labels">${weeks.map((w,wi)=>{const ml=monthLabels.find(m=>m.wi===wi);return `<div class="cal-month-label">${ml?ml.label:''}</div>`;}).join('')}</div>
+          <div class="cal-grid">${weeks.map(w=>`<div class="cal-week">${w.map(d=>{
+            if(!d||!d.inRange) return '<div class="cal-day is-out"></div>';
+            const tip=d.date.toLocaleDateString('de-DE',{weekday:'short',day:'2-digit',month:'short'})+': '+fmt(d.count)+' Scrobbles';
+            return `<div class="cal-day lv${heatLevel(d.count,maxVal)}" data-tip="${tip}"></div>`;
+          }).join('')}</div>`).join('')}</div>
         </div>
       </div>
-    </div>
-  `;
+    </div>`;
 }
 
 // ── STREAK ────────────────────────────────────────────────
 async function loadStreak(){
-  let daySet=new Set();
-  let dataSource='API';
-
-  // Firebase-Archiv bevorzugen wenn vorhanden — viel akkurater als nur 200 Tracks
-  if(_archiveData){
-    dataSource='Archiv';
-    Object.keys(_archiveData).forEach(key=>{
-      const ts=parseInt(key.split('_')[0]);if(!ts)return;
-      const dd=new Date(ts*1000);
-      daySet.add(`${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`);
-    });
+  await getArchiveData();
+  const list=archiveList();
+  const daySet=new Set();
+  let source='Archiv';
+  if(list.length){
+    for(const e of list) daySet.add(C.dayKey(new Date(e.ts*1000)));
   } else {
-    // Fallback: letzte 200 Scrobbles von Last.fm API
-    try{
-      const d=await lfm('user.getRecentTracks',{limit:200});
-      const tracks=d?.recenttracks?.track||[];
-      tracks.forEach(t=>{
-        if(t['@attr']?.nowplaying)return;
-        const ts=parseInt(t.date?.uts);if(!ts)return;
-        const dd=new Date(ts*1000);
-        daySet.add(`${dd.getFullYear()}-${String(dd.getMonth()+1).padStart(2,'0')}-${String(dd.getDate()).padStart(2,'0')}`);
-      });
-    }catch(e){}
+    source='API';
+    const d=await lfmSafe('user.getRecentTracks',{limit:200});
+    (d?.recenttracks?.track||[]).forEach(t=>{
+      if(t['@attr']?.nowplaying) return;
+      const ts=parseInt(t.date?.uts); if(ts) daySet.add(C.dayKey(new Date(ts*1000)));
+    });
   }
-
-  // Streak: von heute rückwärts zählen
-  let streak=0,d=new Date();
-  // Wenn heute noch kein Scrobble: gestern als Startpunkt erlauben (häufiger Usecase)
-  const todayKey=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  if(!daySet.has(todayKey)) d.setDate(d.getDate()-1); // gestern starten
-  for(let i=0;i<3650;i++){
-    const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    if(daySet.has(key)){streak++;d.setDate(d.getDate()-1);}
-    else break;
+  // Aktueller Streak: heute oder (falls heute noch nichts) ab gestern rückwärts
+  let streak=0;const d=new Date();
+  if(!daySet.has(C.dayKey(d))) d.setDate(d.getDate()-1);
+  while(daySet.has(C.dayKey(d))){streak++;d.setDate(d.getDate()-1);}
+  // Längster Streak
+  const sorted=[...daySet].sort();
+  let longest=0,run=0,prev=null;
+  for(const k of sorted){
+    const t=new Date(k+'T12:00');
+    run=prev&&Math.round((t-prev)/864e5)===1?run+1:1;
+    longest=Math.max(longest,run);prev=t;
   }
-
-  const activeDays=daySet.size;
-  const lastDay=[...daySet].sort().pop()||'—';
-  const sourceNote=dataSource==='Archiv'
-    ?`Streak & aktive Tage basieren auf dem vollständigen Archiv (${Number(Object.keys(_archiveData).length).toLocaleString('de-DE')} Scrobbles)`
-    :`Streak basiert auf letzten 200 Scrobbles — für genaue Daten Archiv befüllen`;
-
+  const lastTs=list.length?list[list.length-1].ts:null;
+  const lastStr=lastTs?new Date(lastTs*1000).toLocaleString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):(sorted.pop()||'—');
   document.getElementById('streak-content').innerHTML=`
     <div class="metric-grid">
-      <div class="mc hi"><div class="mc-label">Aktueller Streak</div><div class="mc-val pink">${streak}</div><div class="mc-sub">Tage in Folge</div></div>
-      <div class="mc"><div class="mc-label">Aktive Tage ${dataSource==='Archiv'?'(Gesamt)':'(letzte 200)'}</div><div class="mc-val">${activeDays}</div><div class="mc-sub">Tage mit Scrobbles</div></div>
-      <div class="mc"><div class="mc-label">Letzter Scrobble</div><div class="mc-val" style="font-size:14px;">${lastDay}</div></div>
+      <div class="mc hi" style="--cc:var(--ag-display-pink)"><div class="mc-label">Aktueller Streak</div><div class="mc-val pink">${fmt(streak)}</div><div class="mc-sub">Tage in Folge</div></div>
+      <div class="mc" style="--cc:var(--ag-display-purple)"><div class="mc-label">Längster Streak</div><div class="mc-val">${fmt(longest)}</div><div class="mc-sub">Tage in Folge</div></div>
+      <div class="mc" style="--cc:var(--ag-display-green)"><div class="mc-label">Aktive Tage ${source==='Archiv'?'(gesamt)':'(letzte 200)'}</div><div class="mc-val">${fmt(daySet.size)}</div><div class="mc-sub">Tage mit Scrobbles</div></div>
+      <div class="mc" style="--cc:var(--ag-display-blue)"><div class="mc-label">Letzter Scrobble</div><div class="mc-val" style="font-size:15px;">${lastStr}</div></div>
     </div>
-    <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:10px;">${sourceNote}</div>
+    <div class="kicker-note" style="margin-top:12px;">${source==='Archiv'?`Basis: vollständiges Archiv (${fmt(list.length)} Scrobbles)`:'Basis: letzte 200 Scrobbles — für genaue Werte Archiv importieren'}</div>
   `;
 }
 
@@ -1562,107 +1214,35 @@ function buildYearSel(joinYear){
 }
 
 async function loadYearReview(year){
-  document.getElementById('year-content').innerHTML='<div class="ld"><div class="sp"></div> Lade Jahresrückblick...</div>';
-
-  // Sicherstellen dass Archiv geladen ist
-  if(!_archiveData) await getArchiveData();
-
-  const artistMap={},trackMap={},albumMap={};
-  let totalD=0;
-
-  if(_archiveData){
-    // Aus Firebase-Archiv rechnen — offline-fähig, schnell, konsistent mit allen anderen Sektionen
-    Object.entries(_archiveData).forEach(([key,v])=>{
-      const ts=parseInt(key.split('_')[0]);
-      if(!ts) return;
-      const d=new Date(ts*1000);
-      if(d.getFullYear()!==year) return;
-      totalD++;
-      const artist=(v.artist||'').trim();
-      const track=(v.track||'').trim();
-      const album=(v.album||'').trim();
-      if(artist){
-        if(!artistMap[artist]) artistMap[artist]={name:artist,playcount:0,image:[{['#text']:''}],url:''};
-        artistMap[artist].playcount++;
-      }
-      if(track&&artist){
-        const k=artist+'|||'+track;
-        if(!trackMap[k]) trackMap[k]={name:track,artist:{name:artist},playcount:0,image:[{['#text']:''}],url:''};
-        trackMap[k].playcount++;
-      }
-      if(album&&artist){
-        const k=artist+'|||'+album;
-        if(!albumMap[k]) albumMap[k]={name:album,artist:{name:artist},playcount:0,image:[{['#text']:''}],url:''};
-        albumMap[k].playcount++;
-      }
-    });
-  } else {
-    // Kein Archiv vorhanden — Fallback auf Last.fm API (wie bisher)
-    const from=new Date(year,0,1),to=new Date(year,11,31,23,59,59);
-    const fromTs=Math.floor(from/1000),toTs=Math.floor(to/1000);
-    const totD=await lfmSafe('user.getRecentTracks',{from:fromTs,to:toTs,limit:1});
-    totalD=parseInt(totD?.recenttracks?.['@attr']?.total||0);
-    if(!totD){
-      document.getElementById('year-content').innerHTML=`<div style="padding:20px;color:var(--text3);">Kein Archiv vorhanden und Last.fm nicht erreichbar. Bitte vollständigen Import starten.</div>`;
-      return;
-    }
-    const totalPages=Math.min(Math.ceil(totalD/200),25);
-    document.getElementById('year-content').innerHTML=`<div class="ld"><div class="sp"></div> Lade Tracks ${year} (0/${totalPages} Seiten)...</div>`;
-    for(let page=1;page<=totalPages;page++){
-      const d=await lfmSafe('user.getRecentTracks',{from:fromTs,to:toTs,limit:200,page});
-      if(!d) break;
-      const tracks=d?.recenttracks?.track||[];
-      tracks.forEach(t=>{
-        if(t['@attr']?.nowplaying)return;
-        const artist=t.artist?.['#text']||t.artist?.name||'';
-        const track=t.name||'';
-        const album=t.album?.['#text']||'';
-        const img=t.image?.find(x=>x.size==='medium')?.['#text']||t.image?.[1]?.['#text']||'';
-        const url=t.url||'';
-        if(artist){
-          if(!artistMap[artist]) artistMap[artist]={name:artist,playcount:0,image:[{['#text']:img}],url};
-          artistMap[artist].playcount++;
-        }
-        if(track&&artist){
-          const k=artist+'|||'+track;
-          if(!trackMap[k]) trackMap[k]={name:track,artist:{name:artist},playcount:0,image:[{['#text']:img}],url};
-          trackMap[k].playcount++;
-        }
-        if(album&&artist){
-          const k=artist+'|||'+album;
-          if(!albumMap[k]) albumMap[k]={name:album,artist:{name:artist},playcount:0,image:[{['#text']:img}],url};
-          albumMap[k].playcount++;
-        }
-      });
-      document.getElementById('year-content').innerHTML=`<div class="ld"><div class="sp"></div> Lade Tracks ${year} (${page}/${totalPages} Seiten)...</div>`;
-    }
-  }
-
-  const sortTop=(map)=>Object.values(map).sort((a,b)=>b.playcount-a.playcount).slice(0,5);
-  const artists=sortTop(artistMap),tracks=sortTop(trackMap),albums=sortTop(albumMap);
+  const el=document.getElementById('year-content');
+  await getArchiveData();
+  const list=archiveList();
+  if(!list.length){el.innerHTML=noArchiveState();return;}
+  const sl=C.slice(list,C.sec(new Date(year,0,1)),C.sec(new Date(year+1,0,1)));
+  const artists=C.aggregate(sl,'artists').slice(0,5);
+  const tracks=C.aggregate(sl,'tracks').slice(0,5);
+  const albums=C.aggregate(sl,'albums').slice(0,5);
   function miniList(items,tab){
-    if(!items.length) return '<div style="color:var(--text3);font-size:12px;">Keine Daten</div>';
+    if(!items.length) return emptyState('Keine Daten für '+year+'.');
     return items.map((item,i)=>{
-      const src=item.image?.find(x=>x.size==='medium')?.['#text']||item.image?.[1]?.['#text'];
-      const sub=tab==='tracks'?escapeHTML(item.artist?.name||''):'';
-      return `<div class="ri" style="padding:7px 10px;">
+      const sub=tab!=='artists'?escapeHTML(item.artist?.name||''):'';
+      return `<div class="ri ri-compact">
         <span class="rn ${rankCls(i)}">${i+1}</span>
-        ${imgEl(src)}
         <div class="ri-info"><div class="ri-name">${escapeHTML(item.name)}</div>${sub?`<div class="ri-sub">${sub}</div>`:''}</div>
-        <span class="plays">${fmt(parseInt(item.playcount||0))}</span>
+        <span class="plays">${fmt(item.playcount)}</span>
       </div>`;
     }).join('');
   }
-  document.getElementById('year-content').innerHTML=`
-    <div class="mc hi" style="margin-bottom:20px;display:inline-block;min-width:200px;">
+  el.innerHTML=`
+    <div class="mc hi year-total" style="--cc:var(--ag-display-indigo)">
       <div class="mc-label">Gesamt ${year}</div>
-      <div class="mc-val pink">${fmt(totalD)}</div>
-      <div class="mc-sub">Scrobbles · ~${fmtTime(totalD*3)}</div>
+      <div class="mc-val pink">${fmt(sl.length)}</div>
+      <div class="mc-sub" id="yr-total-sub">Scrobbles · ≈ ${fmtTime(C.Durations.total(sl)/60)}</div>
     </div>
     <div class="g3">
-      <div><div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Top Künstler</div><div class="rlist">${miniList(artists,'artists')}</div></div>
-      <div><div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Top Tracks</div><div class="rlist">${miniList(tracks,'tracks')}</div></div>
-      <div><div style="font-family:var(--mono);font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Top Alben</div><div class="rlist">${miniList(albums,'albums')}</div></div>
+      <div><div class="kicker">Top Künstler</div><div class="rlist">${miniList(artists,'artists')}</div></div>
+      <div><div class="kicker">Top Tracks</div><div class="rlist">${miniList(tracks,'tracks')}</div></div>
+      <div><div class="kicker">Top Alben</div><div class="rlist">${miniList(albums,'albums')}</div></div>
     </div>
   `;
 }
@@ -1680,7 +1260,7 @@ async function loadCompare(){
   }
   const [sideA,sideB]=await Promise.all([getSide(cmpA),getSide(cmpB)]);
   const periodLabel={'overall':'Gesamt','12month':'12 Monate','6month':'6 Monate','3month':'3 Monate','1month':'1 Monat','7day':'7 Tage'};
-  const dupWarning=cmpA===cmpB?`<div style="font-family:var(--mono);font-size:11px;color:var(--orange);background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:8px 12px;margin-bottom:14px;">⚠ Beide Zeiträume sind identisch (${periodLabel[cmpA]}) — der Vergleich zeigt dieselben Daten.</div>`:'';
+  const dupWarning=cmpA===cmpB?`<div class="callout is-warning">⚠ Beide Zeiträume sind identisch (${periodLabel[cmpA]}) — der Vergleich zeigt dieselben Daten.</div>`:'';
   function renderSide(side,label){
     return `<div class="cmp-side">
       <div class="cmp-title">${label}</div>
@@ -1690,7 +1270,7 @@ async function loadCompare(){
       <div class="rlist">${side.tracks.slice(0,5).map((t,i)=>`<div class="ri" style="padding:6px 10px;"><span class="rn ${rankCls(i)}">${i+1}</span>${imgEl(t.image?.find(x=>x.size==='medium')?.['#text']||t.image?.[1]?.['#text'])}<div class="ri-info"><div class="ri-name">${escapeHTML(t.name)}</div><div class="ri-sub">${escapeHTML(t.artist?.name||'')}</div></div><span class="plays">${fmt(parseInt(t.playcount||0))}</span></div>`).join('')}</div>
     </div>`;
   }
-  document.getElementById('compare-content').innerHTML=`${dupWarning}<div class="cmp-grid">${renderSide(sideA,periodLabel[cmpA])}${renderSide(sideB,periodLabel[cmpB])}</div>`;
+  document.getElementById('compare-content').innerHTML=`${dupWarning}<div class="kicker-note" style="margin-bottom:12px;">Top-Listen laut Last.fm (mit Namens-Autokorrektur) — kann minimal von den Archiv-Charts abweichen.</div><div class="cmp-grid">${renderSide(sideA,periodLabel[cmpA])}${renderSide(sideB,periodLabel[cmpB])}</div>`;
 }
 
 // ── RECENT ─────────────────────────────────────────────────
@@ -1715,158 +1295,55 @@ async function loadRecent(){
   return tracks;
 }
 
-// ── LOVED ──────────────────────────────────────────────────
-async function loadLoved(){
-  const d=await lfm('user.getLovedTracks',{limit:10});
-  const tracks=d?.lovedtracks?.track||[];
-  const total=d?.lovedtracks?.['@attr']?.total;
-  if(total) document.getElementById('loved-total').textContent=fmt(total)+' gesamt';
-  if(!tracks.length){document.getElementById('loved-list').innerHTML='<div style="color:var(--text3);font-size:13px;">Keine Loved Tracks.</div>';return;}
-  const html=tracks.map((t,i)=>{
-    const src=t.image?.find(x=>x.size==='medium')?.['#text']||t.image?.[1]?.['#text'];
-    const href=t.url||'#';
-    return `<a class="ri" href="${href}" target="_blank" rel="noopener"><span class="rn ${rankCls(i)}">${i+1}</span>${imgEl(src)}<div class="ri-info"><div class="ri-name">${escapeHTML(t.name)}</div><div class="ri-sub">${escapeHTML(t.artist?.name||'')}</div></div><span style="color:var(--pink);">♥</span></a>`;
-  }).join('');
-  document.getElementById('loved-list').innerHTML=`<div class="rlist">${html}</div>`;
-}
-
-// ── TAGS ───────────────────────────────────────────────────
-async function loadTags(){
-  const d=await lfm('user.getTopTags',{limit:40});
-  const tags=d?.toptags?.tag||[];
-  if(!tags.length){document.getElementById('tags-content').innerHTML='<div style="color:var(--text3);">Keine Tags.</div>';return;}
-  document.getElementById('tags-content').innerHTML=`<div class="tags-wrap">${tags.map((t,i)=>`<span class="tag ${i<6?'lg':''}" title="${fmt(t.count)} Gewichtung">${escapeHTML(t.name)}</span>`).join('')}</div>`;
-}
-
 // ── EXPORT PNG ─────────────────────────────────────────────
+// modern-screenshot rendert per SVG/foreignObject mit echtem Browser-CSS —
+// html2canvas (nicht mehr gepflegt) scheitert an color-mix() der Vault-Tokens.
 async function exportPNG(){
   const btn=document.querySelector('.export-btn');
   btn.textContent='Wird erstellt...';btn.disabled=true;
   try{
-    const canvas=await html2canvas(document.getElementById('hero-section'),{backgroundColor:getComputedStyle(document.body).getPropertyValue('--bg').trim()||'#f5f5f7',scale:2});
+    const bg=getComputedStyle(document.body).getPropertyValue('--bg').trim()||'#f7f8fb';
+    const url=await modernScreenshot.domToPng(document.getElementById('hero-section'),{scale:2,backgroundColor:bg});
     const a=document.createElement('a');
-    a.href=canvas.toDataURL('image/png');
+    a.href=url;
     a.download='s1r1us-a-stats.png';
     a.click();
-  }catch(e){alert('Export fehlgeschlagen');}
+  }catch(e){console.error(e);showToast('Export fehlgeschlagen','err');}
   btn.textContent='↓ Export PNG';btn.disabled=false;
 }
 
-// ── CHARTS TRACK COUNT (Firebase) ─────────────────────────
+// ── CHARTS TRACK COUNT ────────────────────────────────────
 let _chartCountCache={};
-
 async function updateChartsTrackCount(){
   const el=document.getElementById('charts-track-count');
   if(!el) return;
-
-  const now=new Date();
-  let fromTsSec=0,label='';
-  if(chartPeriod==='yesterday'){
-    const midnightToday=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-    const midnightYesterday=new Date(midnightToday);midnightYesterday.setDate(midnightYesterday.getDate()-1);
-    fromTsSec=Math.floor(midnightYesterday.getTime()/1000);
-    const toTsSec=Math.floor(midnightToday.getTime()/1000);
-    label='Gestern';
-    delete _chartCountCache['yesterday'];
-    // Für gestern brauchen wir einen separaten Zähler mit To-Ts
-    const src=_archiveData;
-    if(!src){el.style.display='none';return;}
-    let count=0;
-    Object.keys(src).forEach(k=>{const ts=parseInt(k.split('_')[0]);if(ts>=fromTsSec&&ts<toTsSec)count++;});
-    el.textContent=`${count.toLocaleString('de-DE')} Scrobbles ${label}`;
-    el.style.display='';
-    return;
-  } else if(chartPeriod==='today'){
-    const midnight=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-    fromTsSec=Math.floor(midnight.getTime()/1000);
-    label='Heute';
-    delete _chartCountCache['today']; // immer frisch
-  } else if(chartPeriod==='7day'){
-    fromTsSec=Math.floor((Date.now()-7*864e5)/1000);
-    label='7 Tage';
-  } else if(chartPeriod==='1month'){
-    const d=new Date(now);d.setMonth(d.getMonth()-1);fromTsSec=Math.floor(d.getTime()/1000);
-    label='1 Monat';
-  } else if(chartPeriod==='3month'){
-    const d=new Date(now);d.setMonth(d.getMonth()-3);fromTsSec=Math.floor(d.getTime()/1000);
-    label='3 Monate';
-  } else if(chartPeriod==='6month'){
-    const d=new Date(now);d.setMonth(d.getMonth()-6);fromTsSec=Math.floor(d.getTime()/1000);
-    label='6 Monate';
-  } else if(chartPeriod==='12month'){
-    const d=new Date(now);d.setMonth(d.getMonth()-12);fromTsSec=Math.floor(d.getTime()/1000);
-    label='12 Monate';
-  } else if(chartPeriod==='overall'){
-    fromTsSec=0;
-    label='Gesamt';
-  } else {
-    el.style.display='none';
-    return;
-  }
-
-  if(_chartCountCache[chartPeriod]!=null){
-    el.textContent=`${Number(_chartCountCache[chartPeriod]).toLocaleString('de-DE')} Scrobbles · ${label}`;
-    el.style.display='block';
-    return;
-  }
-
-  el.textContent='…';
+  await getArchiveData();
+  if(!hasArchive()){el.style.display='none';return;}
+  const {from,to}=C.periodRange(chartPeriod);
+  const n=C.slice(archiveList(),from,to).length;
+  el.textContent=`${fmt(n)} Scrobbles · ${PERIOD_LABEL[chartPeriod]||chartPeriod}`;
   el.style.display='block';
-
-  try{
-    let count=0;
-    // Gecachte Archiv-Daten nutzen wenn bereits geladen – spart Firebase-Read
-    const archData=await getArchiveData();
-    if(!archData){el.style.display='none';return;}
-    Object.keys(archData).forEach(key=>{
-      const tsSec=parseInt(key.split('_')[0]);
-      if(tsSec>=fromTsSec) count++;
-    });
-    _chartCountCache[chartPeriod]=count;
-    el.textContent=`${Number(count).toLocaleString('de-DE')} Scrobbles · ${label}`;
-    el.style.display='block';
-  }catch(e){
-    el.style.display='none';
-  }
 }
 
 // ── EVENT LISTENERS ────────────────────────────────────────
-document.getElementById('monthly-mode-tabs').querySelectorAll('.pb').forEach(b=>b.addEventListener('click',async()=>{
+document.getElementById('monthly-mode-tabs').querySelectorAll('.pb').forEach(b=>b.addEventListener('click',()=>{
   document.getElementById('monthly-mode-tabs').querySelectorAll('.pb').forEach(x=>x.classList.remove('active'));
   b.classList.add('active');
   monthlyMode=b.dataset.m;
-  const myId=++monthlyLoadId;
-  const statsEl=document.getElementById('lifetime-stats');
-  if(monthlyMode==='lifetime'){
-    document.getElementById('monthly-chart-label').textContent='Scrobbles Lifetime';
-    statsEl.style.display='grid';
-    if(joinYear){
-      const data=await loadLifetimeData(joinYear);
-      if(myId!==monthlyLoadId) return;
-      renderLifetimeChart(data);
-    }
-  } else {
-    document.getElementById('monthly-chart-label').textContent='Scrobbles pro Monat (12 Monate)';
-    statsEl.style.display='none';
-    document.getElementById('lifetime-progress').style.display='none';
-    await loadMonthly(myId);
-  }
+  document.getElementById('monthly-chart-label').textContent=monthlyMode==='lifetime'?'Scrobbles Lifetime':'Scrobbles pro Monat (12 Monate)';
+  loadMonthly();
 }));
 
 document.getElementById('chart-periods').querySelectorAll('.pb').forEach(b=>b.addEventListener('click',()=>{
   document.getElementById('chart-periods').querySelectorAll('.pb').forEach(x=>x.classList.remove('active'));
   b.classList.add('active');
-  const prev=chartPeriod;
   chartPeriod=b.dataset.p;
-  // Cache für neue Periode löschen falls _archiveData zwischenzeitlich aktualisiert wurde
-  if(prev!==chartPeriod) delete _chartCountCache[chartPeriod];
   showCount=10;
-  // updateChartsTrackCount zuerst — triggert getArchiveData() und zeigt Badge-Count sofort an
   updateChartsTrackCount();
   loadCharts();
 }));
-document.querySelectorAll('.ctab').forEach(t=>t.addEventListener('click',()=>{
-  document.querySelectorAll('.ctab').forEach(x=>x.classList.remove('active'));
+document.querySelectorAll('#charts-sec .ctab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('#charts-sec .ctab').forEach(x=>x.classList.remove('active'));
   t.classList.add('active');chartTab=t.dataset.t;showCount=10;loadCharts();
 }));
 document.getElementById('cmp-a-tabs').querySelectorAll('.pb').forEach(b=>b.addEventListener('click',()=>{
@@ -1877,50 +1354,6 @@ document.getElementById('cmp-b-tabs').querySelectorAll('.pb').forEach(b=>b.addEv
   document.getElementById('cmp-b-tabs').querySelectorAll('.pb').forEach(x=>x.classList.remove('active'));
   b.classList.add('active');cmpB=b.dataset.p;loadCompare();
 }));
-
-// ── SCROBBLE ARCHIVE ───────────────────────────────────────
-let _importAborted=false;
-const IMPORT_DELAY=100;    // ms zwischen API-Seiten (bei ~200ms Fetch-Zeit + 100ms Pause = ~3 req/s, safe unter Last.fms 5 req/s Limit)
-const RETRY_MAX=3;         // max Wiederholungen pro Seite
-const RETRY_DELAY=4000;    // ms Pause vor einem Retry
-
-function openArchiveModal(){
-  const m=document.getElementById('archive-modal');
-  m.style.opacity='1';m.style.pointerEvents='all';m.classList.add('open');
-  loadArchiveStatus();
-}
-function closeArchiveModal(){
-  const m=document.getElementById('archive-modal');
-  m.style.opacity='0';m.style.pointerEvents='none';m.classList.remove('open');
-}
-document.getElementById('archive-modal').addEventListener('click',function(e){
-  if(e.target===this) closeArchiveModal();
-});
-
-async function getLatestArchivedTs(){
-  try{
-    const snap=await db.ref('scrobbles').orderByKey().limitToLast(1).get();
-    if(!snap.exists()) return null;
-    const key=Object.keys(snap.val())[0];
-    // Key format: <timestamp>_<artistslug>_<trackslug> — extract timestamp part
-    return parseInt(key.split('_')[0]);
-  }catch(e){return null;}
-}
-
-async function getArchiveCount(){
-  try{
-    const snap=await db.ref('scrobble_meta/count').get();
-    return snap.exists()?snap.val():null;
-  }catch(e){return null;}
-}
-
-// Zählt die echten Keys in Firebase (langsamer, nur nach Import nutzen)
-async function getRealArchiveCount(){
-  try{
-    const snap=await db.ref('scrobbles').get();
-    return snap.exists()?Object.keys(snap.val()).length:0;
-  }catch(e){return 0;}
-}
 
 // ── USER META CACHE (Hero-Daten) ──────────────────────────
 // Cached user.getInfo → in Firebase damit Avatar/Country/Registrierung auch
@@ -1950,600 +1383,8 @@ async function cacheUserMeta(u){
 }
 
 // ── ARCHIV-AGGREGATIONEN (Offline-fähig) ──────────────────
-// Unique Artists/Tracks/Albums aus _archiveData zählen.
 function getArchiveDiscoveryCounts(){
-  if(!_archiveData) return null;
-  const artists=new Set(),tracks=new Set(),albums=new Set();
-  Object.values(_archiveData).forEach(v=>{
-    const a=(v.artist||'').trim().toLowerCase();
-    const t=(v.track||'').trim().toLowerCase();
-    const al=(v.album||'').trim().toLowerCase();
-    if(a) artists.add(a);
-    if(a&&t) tracks.add(a+'|||'+t);
-    if(a&&al) albums.add(a+'|||'+al);
-  });
-  return {
-    artist_count:artists.size,
-    track_count:tracks.size,
-    album_count:albums.size
-  };
-}
-
-async function loadArchiveStatus(){
-  const statusEl=document.getElementById('archive-status');
-  statusEl.textContent='Prüfe Firebase-Archiv...';
-  const [latestTs,count]=await Promise.all([getLatestArchivedTs(),getArchiveCount()]);
-  if(!latestTs){
-    statusEl.innerHTML=`<span style="color:var(--text3);">Noch kein Archiv vorhanden.</span><br>Starte den vollständigen Import um alle Scrobbles zu sichern.`;
-  } else {
-    const date=new Date(latestTs*1000).toLocaleString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-    const countStr=count!==null?`<br><span style="color:var(--pink2);font-size:13px;font-weight:700;">${Number(count).toLocaleString('de-DE')}</span> <span style="color:var(--text2);">Scrobbles gespeichert</span>`:'';
-    statusEl.innerHTML=`Letzter Eintrag: <span style="color:var(--pink);">${date}</span>${countStr}`;
-  }
-}
-
-// Fetch mit Retry
-async function fetchScrobblePage(from,to,page,limit=200){
-  const url=new URL(API);
-  const params={method:'user.getRecentTracks',user:USER,api_key:KEY,format:'json',limit,page,extended:0};
-  if(from) params.from=from;
-  if(to) params.to=to;
-  Object.entries(params).forEach(([k,v])=>url.searchParams.set(k,v));
-
-  let lastErr;
-  for(let attempt=1;attempt<=RETRY_MAX;attempt++){
-    let retryAfterMs=null; // bei 429 vom Server vorgegebene Wartezeit
-    try{
-      const r=await fetch(url);
-      if(!r.ok){
-        // 429 = Rate-Limit: deutlich länger warten als bei einem 5xx, möglichst
-        // exakt so lange wie der Server via Retry-After-Header vorgibt.
-        if(r.status===429){
-          const ra=parseInt(r.headers.get('Retry-After'));
-          // Ohne Header exponentiell hochgehen: 4s, 8s, 16s ...
-          retryAfterMs=Number.isFinite(ra)?ra*1000:RETRY_DELAY*Math.pow(2,attempt-1);
-        }
-        throw new Error('HTTP '+r.status);
-      }
-      const d=await r.json();
-      if(d?.error) throw new Error('Last.fm: '+d.message);
-      return d;
-    }catch(e){
-      lastErr=e;
-      if(_importAborted) throw e;
-      if(attempt<RETRY_MAX){
-        const waitMs=retryAfterMs||RETRY_DELAY;
-        const note=retryAfterMs?' (Rate-Limit)':'';
-        updateProgressTxt(`⚠ Fehler${note} (Versuch ${attempt}/${RETRY_MAX}): ${e.message} — warte ${Math.round(waitMs/1000)}s...`);
-        await new Promise(r=>setTimeout(r,waitMs));
-      }
-    }
-  }
-  throw lastErr;
-}
-
-// Ermittelt Gesamtzahl + echte Seitenzahl (bei 200er-Seiten) für ein Sync-Fenster.
-// WICHTIG: totalPages aus einem limit=1-Call ist die Anzahl der EINZEL-Seiten
-// (= Gesamtzahl der Tracks!) — die Seitenzahl für limit=200 muss selbst
-// berechnet werden. Vorher wurden dadurch bis zu 200× zu viele Seiten gefetcht.
-async function getSyncTotals(fromTs,toTs){
-  const first=await fetchScrobblePage(fromTs,toTs,1,1);
-  const total=parseInt(first?.recenttracks?.['@attr']?.total||0);
-  return {total,pages:Math.max(1,Math.ceil(total/200))};
-}
-
-function setArchiveBusy(busy){
-  document.getElementById('archive-import-btn').style.display=busy?'none':'inline-block';
-  document.getElementById('archive-delta-btn').style.display=busy?'none':'inline-block';
-  const gapBtn=document.getElementById('archive-gapfill-btn');
-  if(gapBtn) gapBtn.style.display=busy?'none':'inline-block';
-  document.getElementById('archive-abort-btn').style.display=busy?'inline-block':'none';
-  document.getElementById('archive-progress-wrap').style.display=busy?'block':'none';
-  if(!busy){
-    document.getElementById('archive-progress-bar').style.width='0%';
-    document.getElementById('archive-progress-txt').textContent='';
-  }
-}
-
-function updateProgressTxt(txt){
-  document.getElementById('archive-progress-txt').textContent=txt;
-}
-function updateProgressBar(pct){
-  document.getElementById('archive-progress-bar').style.width=pct+'%';
-}
-
-// Kanonischer Fingerprint eines Scrobbles — identisch zu makeScrobbleKey
-// aber OHNE den seq-Teil. Dient zum Vergleich "ist dieser Scrobble schon da?"
-// unabhängig davon, an welcher Pagination-Position er ursprünglich importiert wurde.
-function canonicalScrobbleId(ts,artist,track){
-  const slug=s=>s.toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,20)||'x';
-  const hashStr=s=>{let h=0;for(let i=0;i<s.length;i++){h=(Math.imul(31,h)+s.charCodeAt(i))|0;}return Math.abs(h).toString(36);};
-  const combined=artist.toLowerCase()+'|'+track.toLowerCase();
-  return `${ts}_${slug(artist)}_${slug(track)}_${hashStr(combined)}`;
-}
-
-// Extrahiert den kanonischen Teil aus einem bestehenden Scrobble-Key (strippt seq-Suffix).
-function keyToCanonical(key){
-  const idx=key.lastIndexOf('_');
-  return idx>0?key.substring(0,idx):key;
-}
-
-function makeScrobbleKey(ts,artist,track,seq){
-  // Timestamp + gekürzte Slugs + Hash + Sequenznummer → garantiert kollisionsfrei
-  const seqPart=String(seq||0).padStart(4,'0');
-  return `${canonicalScrobbleId(ts,artist,track)}_${seqPart}`;
-}
-
-// Firebase multi-path update mit Retry-Logik.
-// Schützt gegen transiente Netzwerkfehler die sonst stumm Pagen beim Import fressen würden.
-async function fbUpdateWithRetry(updates,maxAttempts=3){
-  let lastErr;
-  for(let attempt=1;attempt<=maxAttempts;attempt++){
-    try{
-      await db.ref('/').update(updates);
-      return;
-    }catch(e){
-      lastErr=e;
-      if(attempt<maxAttempts){
-        const wait=1000*attempt; // 1s, 2s, 3s linear Backoff
-        console.warn(`Firebase write failed (Versuch ${attempt}/${maxAttempts}): ${e.message} — retry in ${wait/1000}s`);
-        await new Promise(r=>setTimeout(r,wait));
-      }
-    }
-  }
-  throw lastErr;
-}
-
-async function writeBatch(tracks,pageOffset=0){
-  if(!tracks.length) return 0;
-  const updates={};
-  let count=0;
-  tracks.forEach((t,idx)=>{
-    if(t['@attr']?.nowplaying) return;
-    const ts=parseInt(t.date?.uts);
-    if(!ts) return;
-    const artist=t.artist?.['#text']||t.artist?.name||'';
-    const track=t.name||'';
-    const key=makeScrobbleKey(ts,artist,track,pageOffset+idx);
-    updates[`scrobbles/${key}`]={artist,track,album:t.album?.['#text']||''};
-    count++;
-  });
-  if(Object.keys(updates).length) await fbUpdateWithRetry(updates);
-  return count;
-}
-
-async function startFullImport(){
-  // Bestätigung wenn bereits ein Archiv vorhanden
-  const existingTs=await getLatestArchivedTs();
-  if(existingTs){
-    const count=await getArchiveCount();
-    const countStr=count?` (${Number(count).toLocaleString('de-DE')} Scrobbles)`:'';
-    const confirmed=confirm(
-      `⚠ Es existiert bereits ein Archiv${countStr}.\n\nEin vollständiger Import löscht alle gespeicherten Daten und beginnt von vorne.\n\nFür neue Tracks (oder um einen unterbrochenen Import fortzusetzen) nutze stattdessen "Delta-Sync".\n\nWirklich neu importieren?`
-    );
-    if(!confirmed) return;
-  }
-
-  _importAborted=false;
-  setArchiveBusy(true);
-  const statusEl=document.getElementById('archive-status');
-
-  try{
-    // Alte scrobbles löschen für sauberen Neustart
-    statusEl.innerHTML='🗑 Lösche altes Archiv...';
-    updateProgressTxt('Altes Archiv wird entfernt...');
-    await db.ref('scrobbles').remove();
-    await db.ref('scrobble_meta').remove();
-
-    statusEl.textContent='Ermittle Gesamtanzahl von Last.fm...';
-    // Fixiertes Zeitfenster: Scrobbles die WÄHREND des Imports reinkommen
-    // verschieben sonst die Pagination und erzeugen Duplikate/Lücken.
-    const toTs=Math.floor(Date.now()/1000);
-    const {total:totalTracks,pages:totalPages}=await getSyncTotals(null,toTs);
-
-    let done=0,savedCount=0;
-    let writeFailed=false;
-    statusEl.innerHTML=`Importiere <span style="color:var(--pink);">${Number(totalTracks).toLocaleString('de-DE')}</span> Scrobbles über ${totalPages} Seiten...`;
-
-    const eta=makeETATracker();
-    // RESUME-GARANTIE: Seiten werden von der ÄLTESTEN zur neuesten importiert
-    // und strikt in Reihenfolge geschrieben. Das Archiv wächst dadurch immer
-    // lückenlos von unten — ein abgebrochener Import wird vom nächsten
-    // Delta-Sync automatisch an genau dieser Stelle fortgesetzt.
-    // Pipeline: der Fetch der nächsten Seite läuft parallel zum Write der
-    // aktuellen; geschrieben wird erst, wenn die vorherige Seite sicher ist.
-    let prevWrite=Promise.resolve();
-    for(let page=totalPages;page>=1;page--){
-      if(_importAborted) break;
-
-      const d=await fetchScrobblePage(null,toTs,page,200);
-      const tracks=d?.recenttracks?.track||[];
-      // Vorherige Seite muss geschrieben sein, bevor die nächste startet —
-      // sonst könnte ein fehlgeschlagener Write ein Loch hinterlassen.
-      try{ await prevWrite; }catch(e){ writeFailed=true; break; }
-      prevWrite=writeBatch(tracks,(page-1)*200).then(n=>{savedCount+=n;});
-      done++;
-
-      const pct=Math.round((done/totalPages)*95);
-      updateProgressBar(pct);
-      updateProgressTxt(
-        `${pct}% — Seite ${done}/${totalPages} geladen — `+
-        `${Number(savedCount).toLocaleString('de-DE')}/${Number(totalTracks).toLocaleString('de-DE')} — ${eta.label(pct)}`
-      );
-
-      await new Promise(r=>setTimeout(r,IMPORT_DELAY));
-    }
-
-    // Letzten Write abwarten
-    try{ await prevWrite; }catch(e){ writeFailed=true; }
-
-    if(writeFailed){
-      statusEl.innerHTML=
-        `<span style="color:var(--orange);">⚠ Firebase-Write fehlgeschlagen — Import gestoppt.</span><br>`+
-        `<span style="color:var(--text2);">${Number(savedCount).toLocaleString('de-DE')} Tracks lückenlos gespeichert — "Delta-Sync" setzt den Import fort.</span>`;
-      showToast('⚠ Import unterbrochen — Delta-Sync setzt fort','err');
-    } else if(!_importAborted){
-      const realCount=await getRealArchiveCount();
-      await db.ref('scrobble_meta/count').set(realCount);
-      await db.ref('scrobble_meta/last_import').set(Date.now());
-      updateProgressBar(100);
-      updateProgressTxt(`✓ Fertig — ${Number(realCount).toLocaleString('de-DE')} Tracks importiert`);
-      statusEl.innerHTML=
-        `✓ Import abgeschlossen<br>`+
-        `<span style="color:var(--pink2);font-size:13px;font-weight:700;">${Number(realCount).toLocaleString('de-DE')}</span>`+
-        ` <span style="color:var(--text2);">von</span> `+
-        `<span style="color:var(--text);">${Number(totalTracks).toLocaleString('de-DE')}</span>`+
-        ` <span style="color:var(--text2);">Scrobbles archiviert</span>`+
-        (realCount<totalTracks?`<br><span style="color:var(--text3);font-size:11px;">(${totalTracks-realCount} nowplaying/Duplikate übersprungen)</span>`:'');
-      showToast('✓ Import abgeschlossen','ok');
-    } else {
-      statusEl.innerHTML=
-        `Import pausiert bei Seite ${done}/${totalPages}<br>`+
-        `<span style="color:var(--text2);">${Number(savedCount).toLocaleString('de-DE')} Tracks lückenlos gespeichert — "Delta-Sync" setzt genau hier fort.</span>`;
-      showToast('Import pausiert — Delta-Sync setzt fort','ok');
-    }
-  }catch(e){
-    statusEl.innerHTML=`<span style="color:var(--bad);">Fehler: ${e.message}</span>`;
-    showToast('Import fehlgeschlagen','err');
-  }
-  setArchiveBusy(false);
-  loadArchiveStatus();
-}
-
-async function startDeltaSync(){
-  _importAborted=false;
-  setArchiveBusy(true);
-  const statusEl=document.getElementById('archive-status');
-
-  try{
-    statusEl.textContent='Prüfe letzten archivierten Eintrag...';
-    const latestTs=await getLatestArchivedTs();
-
-    if(!latestTs){
-      statusEl.innerHTML='Kein Archiv gefunden. Bitte zuerst den vollständigen Import durchführen.';
-      setArchiveBusy(false);
-      return;
-    }
-
-    const fromTs=latestTs+1;
-    // fromTs exklusiv (+1): sonst liefert Last.fm den bereits archivierten
-    // Scrobble immer mit und das erzeugt bei jedem Sync einen Phantom-"+1"-Eintrag
-    // (der `seq`-Teil im Scrobble-Key macht den Key nicht deterministisch über Syncs).
-    // Trade-off: Scrobbles mit exakt gleichem uts wie der letzte archivierte werden
-    // nicht per Delta-Sync abgeholt — das passiert praktisch nur bei Bulk-Imports
-    // aus Spotify/YouTube und wird bei Bedarf durch Full-Import gefangen.
-    // toTs fixiert das Fenster: Scrobbles während des Syncs verschieben sonst
-    // die Pagination und erzeugen Duplikate/Lücken.
-    const toTs=Math.floor(Date.now()/1000);
-    const date=new Date(latestTs*1000).toLocaleString('de-DE',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-    statusEl.innerHTML=`Hole neue Tracks seit <span style="color:var(--pink);">${date}</span>...`;
-
-    const {total:totalNew,pages:totalPages}=await getSyncTotals(fromTs,toTs);
-
-    if(totalNew===0){
-      statusEl.innerHTML=
-        `✓ Archiv ist aktuell<br>`+
-        `<span style="color:var(--text3);">Kein neuer Track seit <span style="color:var(--pink);">${date}</span></span>`;
-      setArchiveBusy(false);
-      return;
-    }
-
-    statusEl.innerHTML=
-      `<span style="color:var(--pink);">${Number(totalNew).toLocaleString('de-DE')}</span> neue Tracks gefunden — wird importiert...`;
-
-    let savedCount=0,done=0;
-    let writeFailed=false;
-    const eta=makeETATracker();
-    // RESUME-GARANTIE: älteste Seite zuerst + Writes strikt in Reihenfolge —
-    // das Archiv bleibt lückenlos, ein abgebrochener Sync wird beim nächsten
-    // Delta-Sync automatisch an derselben Stelle fortgesetzt.
-    let prevWrite=Promise.resolve();
-    for(let page=totalPages;page>=1;page--){
-      if(_importAborted) break;
-
-      const d=await fetchScrobblePage(fromTs,toTs,page,200);
-      const tracks=d?.recenttracks?.track||[];
-      try{ await prevWrite; }catch(e){ writeFailed=true; break; }
-      prevWrite=writeBatch(tracks,(page-1)*200).then(n=>{savedCount+=n;});
-      done++;
-
-      const pct=Math.round((done/totalPages)*95);
-      updateProgressBar(pct);
-      updateProgressTxt(
-        `${pct}% — Seite ${done}/${totalPages} geladen — `+
-        `${Number(savedCount).toLocaleString('de-DE')}/${Number(totalNew).toLocaleString('de-DE')} — ${eta.label(pct)}`
-      );
-
-      await new Promise(r=>setTimeout(r,IMPORT_DELAY));
-    }
-
-    // Letzten Write abwarten
-    try{ await prevWrite; }catch(e){ writeFailed=true; }
-
-    if(writeFailed){
-      statusEl.innerHTML=
-        `<span style="color:var(--orange);">⚠ Firebase-Write fehlgeschlagen — Sync gestoppt.</span><br>`+
-        `<span style="color:var(--text2);">+${Number(savedCount).toLocaleString('de-DE')} Tracks lückenlos gespeichert — der nächste Sync setzt genau hier fort.</span>`;
-      showToast('⚠ Sync unterbrochen — wird fortgesetzt','err');
-      invalidateArchiveCaches();
-    } else if(!_importAborted){
-      // Counter aus echter Key-Anzahl ermitteln statt inkrementell —
-      // damit driftet der Counter nicht mehr bei fehlgeschlagenen Writes oder Duplikaten.
-      const newTotal=await getRealArchiveCount();
-      await db.ref('scrobble_meta/count').set(newTotal);
-      await db.ref('scrobble_meta/last_sync').set(Date.now());
-      updateProgressBar(100);
-      updateProgressTxt(`✓ Fertig — ${Number(savedCount).toLocaleString('de-DE')} neue Tracks gespeichert`);
-      statusEl.innerHTML=
-        `✓ Delta-Sync abgeschlossen<br>`+
-        `<span style="color:var(--pink2);font-size:13px;font-weight:700;">+${Number(savedCount).toLocaleString('de-DE')}</span>`+
-        ` <span style="color:var(--text2);">neue Tracks — Gesamt:</span> `+
-        `<span style="color:var(--text);">${Number(newTotal).toLocaleString('de-DE')}</span>`;
-      showToast('✓ Delta-Sync abgeschlossen','ok');
-      // Archiv-Cache invalidieren + komplette UI ohne Reload aktualisieren
-      // (zuvor blieb die Seite nach manuellem Delta-Sync veraltet — anders als
-      // beim automatischen Hintergrund-Sync).
-      invalidateArchiveCaches();
-      await refreshAfterSync();
-      updateSyncStatusLabel();
-    } else {
-      statusEl.innerHTML=
-        `Sync pausiert<br>`+
-        `<span style="color:var(--text2);">+${Number(savedCount).toLocaleString('de-DE')} Tracks lückenlos gespeichert — der nächste Sync setzt genau hier fort.</span>`;
-      invalidateArchiveCaches();
-    }
-  }catch(e){
-    statusEl.innerHTML=`<span style="color:var(--bad);">Fehler: ${e.message}</span>`;
-    showToast('Delta-Sync fehlgeschlagen','err');
-  }
-  setArchiveBusy(false);
-  loadArchiveStatus();
-}
-
-function abortImport(){
-  _importAborted=true;
-  updateProgressTxt('Wird pausiert — Fortschritt bleibt gespeichert...');
-}
-
-// ── GAP-FILL: Findet & schließt Lücken ohne Full Import ────
-// Szenario: Das Archiv ist hinter Last.fm, aber Delta-Sync bringt nichts
-// (weil die fehlenden Scrobbles nicht nach dem letzten uts liegen, sondern
-// mittendrin — verloren durch Race-Conditions, Write-Fehler oder Pagination-
-// Shifts bei früheren Imports). Diese Funktion holt alle Last.fm-Scrobbles,
-// vergleicht kanonische Fingerprints und schreibt nur die fehlenden.
-// Strikt additiv — es wird nichts gelöscht.
-async function startGapFill(){
-  _importAborted=false;
-  setArchiveBusy(true);
-  const statusEl=document.getElementById('archive-status');
-
-  try{
-    // ─── Phase 1: Firebase-Archiv einlesen & kanonische Counts bauen ─────────
-    statusEl.textContent='Lese aktuelles Archiv...';
-    const existingSnap=await db.ref('scrobbles').get();
-    const existingKeys=existingSnap.exists()?Object.keys(existingSnap.val()):[];
-    const archiveCount=existingKeys.length;
-
-    if(archiveCount===0){
-      statusEl.innerHTML='Kein Archiv vorhanden — bitte zuerst vollständigen Import durchführen.';
-      setArchiveBusy(false);
-      return;
-    }
-
-    // Map<canonicalID, count> — wie oft existiert dieser Scrobble in Firebase?
-    const fbCanonCounts=new Map();
-    // Map<canonicalID, maxSeqValue> — höchster seq-Wert pro Canonical, um Kollisionen beim Nachschreiben zu vermeiden
-    const fbMaxSeq=new Map();
-    for(const key of existingKeys){
-      const canon=keyToCanonical(key);
-      fbCanonCounts.set(canon,(fbCanonCounts.get(canon)||0)+1);
-      const seq=parseInt(key.substring(key.lastIndexOf('_')+1))||0;
-      fbMaxSeq.set(canon,Math.max(fbMaxSeq.get(canon)||0,seq));
-    }
-
-    // ─── Phase 2: Last.fm-Übersicht holen ───────────────────────────────────
-    statusEl.textContent='Hole Last.fm Übersicht...';
-    // Fenster fixieren, damit neue Scrobbles während des Abgleichs die
-    // Pagination nicht verschieben.
-    const gfToTs=Math.floor(Date.now()/1000);
-    const {total:totalLfm,pages:totalPages}=await getSyncTotals(1,gfToTs);
-
-    if(totalLfm===0){
-      statusEl.innerHTML='Last.fm meldet keine Scrobbles (API-Fehler?).';
-      setArchiveBusy(false);
-      return;
-    }
-
-    statusEl.innerHTML=
-      `Firebase: <span style="color:var(--pink);">${Number(archiveCount).toLocaleString('de-DE')}</span> · `+
-      `Last.fm: <span style="color:var(--pink);">${Number(totalLfm).toLocaleString('de-DE')}</span><br>`+
-      `<span style="color:var(--text3);font-size:12px;">Lese ${totalPages} Seiten zum Abgleich...</span>`;
-
-    // ─── Phase 3: Alle Last.fm-Scrobbles holen & kanonisch zählen ───────────
-    const lfmTracks=[]; // Vollständige Track-Objekte für späteres Schreiben
-    const lfmCanonCounts=new Map();
-    const etaFetch=makeETATracker();
-
-    for(let page=1;page<=totalPages;page++){
-      if(_importAborted) break;
-
-      const d=await fetchScrobblePage(1,gfToTs,page,200);
-      const tracks=d?.recenttracks?.track||[];
-      for(const t of tracks){
-        if(t['@attr']?.nowplaying) continue;
-        const ts=parseInt(t.date?.uts);
-        if(!ts) continue;
-        const artist=t.artist?.['#text']||t.artist?.name||'';
-        const track=t.name||'';
-        const canon=canonicalScrobbleId(ts,artist,track);
-        lfmCanonCounts.set(canon,(lfmCanonCounts.get(canon)||0)+1);
-        lfmTracks.push({t,canon});
-      }
-
-      // Phase 3 belegt 0–60% der Progress-Bar — ETA rechnet auf lokalen Phase-Fortschritt
-      const phasePct=Math.round((page/totalPages)*100);
-      const barPct=Math.round((page/totalPages)*60);
-      updateProgressBar(barPct);
-      updateProgressTxt(`Lese Seite ${page}/${totalPages} — ${lfmTracks.length} Scrobbles analysiert · ${etaFetch.label(phasePct)}`);
-      await new Promise(r=>setTimeout(r,IMPORT_DELAY));
-    }
-
-    if(_importAborted){
-      statusEl.innerHTML='Gap-Fill abgebrochen vor Schreibphase';
-      setArchiveBusy(false);
-      return;
-    }
-
-    // ─── Phase 4: Diff berechnen ────────────────────────────────────────────
-    // needCount: Wie viele Kopien pro Canonical müssen NOCH geschrieben werden
-    const needCount=new Map();
-    for(const [canon,lfmN] of lfmCanonCounts.entries()){
-      const fbN=fbCanonCounts.get(canon)||0;
-      if(lfmN>fbN) needCount.set(canon,lfmN-fbN);
-    }
-
-    // Umgekehrt: Firebase-Einträge, für die Last.fm weniger Kopien meldet (alte Duplikate,
-    // bei Last.fm gelöschte Scrobbles). Nur loggen, nichts anfassen.
-    let fbOnlyTotal=0;
-    for(const [canon,fbN] of fbCanonCounts.entries()){
-      const lfmN=lfmCanonCounts.get(canon)||0;
-      if(fbN>lfmN) fbOnlyTotal+=(fbN-lfmN);
-    }
-    if(fbOnlyTotal>0){
-      console.info(`Gap-Fill: Firebase hat ${fbOnlyTotal} Scrobble(s) mehr als Last.fm (alte Duplikate o. bei Last.fm gelöschte Tracks) — NICHT entfernt.`);
-    }
-
-    const totalMissing=Array.from(needCount.values()).reduce((a,b)=>a+b,0);
-
-    if(totalMissing===0){
-      updateProgressBar(100);
-      updateProgressTxt('✓ Archiv ist vollständig');
-      await db.ref('scrobble_meta/count').set(archiveCount);
-      await db.ref('scrobble_meta/last_sync').set(Date.now());
-      statusEl.innerHTML=
-        `✓ Keine Lücken gefunden<br>`+
-        `<span style="color:var(--text3);font-size:13px;">`+
-        `Alle ${Number(archiveCount).toLocaleString('de-DE')} abrufbaren Last.fm-Scrobbles sind archiviert`+
-        (fbOnlyTotal>0?` <span style="color:var(--text3);">(+${fbOnlyTotal} Firebase-Extras — siehe Konsole)</span>`:'')+
-        `</span>`;
-      showToast('✓ Archiv vollständig','ok');
-      setArchiveBusy(false);
-      loadArchiveStatus();
-      return;
-    }
-
-    // ─── Phase 5: Fehlende Scrobbles in Batches schreiben ───────────────────
-    statusEl.innerHTML=
-      `<span style="color:var(--pink);">${Number(totalMissing).toLocaleString('de-DE')}</span> Lücken gefunden — werden geschlossen...`;
-
-    const BATCH_SIZE=200;
-    let written=0,queued=0;
-    let batch={};
-    const addedPerCanon=new Map(); // bereits hinzugefügte Kopien in diesem Run
-    const writePromises=[];
-    const etaWrite=makeETATracker();
-
-    for(const {t,canon} of lfmTracks){
-      if(_importAborted) break;
-
-      const need=needCount.get(canon)||0;
-      const already=addedPerCanon.get(canon)||0;
-      if(already>=need) continue; // diesen Canonical haben wir schon ausreichend nachgeholt
-
-      const ts=parseInt(t.date?.uts);
-      const artist=t.artist?.['#text']||t.artist?.name||'';
-      const track=t.name||'';
-      // Neuen seq-Wert wählen der mit existierenden nicht kollidiert
-      const newSeq=(fbMaxSeq.get(canon)||0)+1+already;
-      const key=makeScrobbleKey(ts,artist,track,newSeq);
-      batch[`scrobbles/${key}`]={artist,track,album:t.album?.['#text']||''};
-      addedPerCanon.set(canon,already+1);
-
-      if(Object.keys(batch).length>=BATCH_SIZE){
-        const currentBatch=batch;
-        const batchSize=Object.keys(currentBatch).length;
-        batch={};
-        queued+=batchSize;
-        // Fire-and-forget — nächster Batch kann parallel aufgebaut werden
-        writePromises.push(
-          fbUpdateWithRetry(currentBatch).then(()=>{written+=batchSize;})
-        );
-        // Progress: 60-90% während Queueing, 90-100% für finale Write-Bestätigung
-        const phasePct=Math.round((queued/totalMissing)*100);
-        const barPct=60+Math.round((queued/totalMissing)*30);
-        updateProgressBar(barPct);
-        updateProgressTxt(`${queued}/${totalMissing} Lücken geschrieben · ${etaWrite.label(phasePct)}`);
-      }
-    }
-
-    // Rest-Batch queuen
-    if(Object.keys(batch).length&&!_importAborted){
-      const currentBatch=batch;
-      const batchSize=Object.keys(currentBatch).length;
-      queued+=batchSize;
-      writePromises.push(
-        fbUpdateWithRetry(currentBatch).then(()=>{written+=batchSize;})
-      );
-    }
-
-    // Auf alle Writes warten
-    if(!_importAborted&&writePromises.length>0){
-      updateProgressTxt(`Finalisiere ${writePromises.length} Firebase-Batches... · ${etaWrite.fmtElapsed()} gesamt`);
-      await Promise.all(writePromises);
-    }
-
-    // ─── Phase 6: Counter & Cache aktualisieren ─────────────────────────────
-    const newTotal=await getRealArchiveCount();
-    await db.ref('scrobble_meta/count').set(newTotal);
-    await db.ref('scrobble_meta/last_sync').set(Date.now());
-
-    updateProgressBar(100);
-
-    if(_importAborted){
-      statusEl.innerHTML=
-        `Gap-Fill abgebrochen<br>`+
-        `<span style="color:var(--text2);">${Number(written).toLocaleString('de-DE')} von ${Number(totalMissing).toLocaleString('de-DE')} Lücken geschlossen</span>`;
-    }else{
-      updateProgressTxt(`✓ Fertig — ${written} Lücken geschlossen`);
-      statusEl.innerHTML=
-        `✓ Gap-Fill abgeschlossen<br>`+
-        `<span style="color:var(--pink2);font-size:13px;font-weight:700;">+${Number(written).toLocaleString('de-DE')}</span>`+
-        ` <span style="color:var(--text2);">fehlende Scrobbles — Gesamt:</span> `+
-        `<span style="color:var(--text);">${Number(newTotal).toLocaleString('de-DE')}</span>`+
-        (fbOnlyTotal>0?`<br><span style="color:var(--text3);font-size:11px;">Hinweis: ${fbOnlyTotal} Firebase-Extras (siehe Konsole)</span>`:'');
-      showToast(`✓ ${written} Lücken geschlossen`,'ok');
-    }
-
-    // Archiv-Cache invalidieren damit neue Daten sichtbar werden
-    invalidateArchiveCaches();
-
-  }catch(e){
-    statusEl.innerHTML=`<span style="color:var(--bad);">Fehler: ${e.message}</span>`;
-    showToast('Gap-Fill fehlgeschlagen','err');
-    console.error('Gap-Fill error:',e);
-  }
-  setArchiveBusy(false);
-  loadArchiveStatus();
+  return hasArchive()?C.uniqueCounts(archiveList()):null;
 }
 
 // ── SYNC BANNER HELPERS ────────────────────────────────────
@@ -2603,247 +1444,59 @@ async function updateSyncStatusLabel(){
 }
 
 // ── POST-SYNC REFRESH ─────────────────────────────────────
-// Aktualisiert alle UI-Komponenten, die von Scrobble-Daten abhängen —
-// ohne Full Page Reload. Wird nach jedem erfolgreichen Sync aufgerufen.
+// Aktualisiert alle vom Archiv abhängigen Ansichten ohne Page-Reload.
+// Mehrere gleichzeitige Aufrufe werden zu einem zusammengefasst.
+let _refreshRunning=null;
 async function refreshAfterSync(){
-  try{
-    // Last.fm-Cache leeren für Calls, die sich bei neuen Scrobbles ändern
-    // (user.getRecentTracks, user.getInfo, Top-Listen)
-    Object.keys(cache).forEach(k=>{
-      if(k.startsWith('user.getRecentTracks')||
-         k.startsWith('user.getInfo')||
-         k.startsWith('user.getTopArtists')||
-         k.startsWith('user.getTopTracks')||
-         k.startsWith('user.getTopAlbums')||
-         k.startsWith('user.getTopTags')){
-        delete cache[k];
+  if(_refreshRunning) return _refreshRunning;
+  _refreshRunning=(async()=>{
+    try{
+      Object.keys(cache).forEach(k=>{if(/^user\.(getRecentTracks|getInfo|getTop)/.test(k)) delete cache[k];});
+      archiveChanged();
+      C.Durations.recompute(archiveList());
+      if(_lastHeroData){
+        renderHero(_lastHeroData,isLfmDown());
+        renderOverview({total:_lastHeroData.playcount||0,days:_lastHeroData._days||0,u:_lastHeroData});
       }
-    });
-
-    // 1) Archiv neu laden — triggert intern updateTodayTime, loadStreak,
-    //    updateChartsTrackCount und das Re-Rendering von Hero/Overview
-    await getArchiveData();
-
-    // 2) Charts neu rendern (Cache wurde bereits oben geleert)
-    try{ loadCharts(); }catch(e){}
-
-    // 3) Recent-Sektion neu laden
-    try{
-      const recent = await loadRecent();
-      window._lastRecentTracks = recent;
-    }catch(e){}
-
-    // 4) Now-Playing-Card sofort aktualisieren
-    try{ loadNowPlayingCard(); }catch(e){}
-
-    // 5) Heatmap neu laden
-    try{ loadCalendar(); }catch(e){}
-
-    // 6) Jahresrückblick (aktuelles Jahr) neu laden
-    try{
-      const curYear = new Date().getFullYear();
-      if(selectedYear === null || selectedYear === curYear){
-        loadYearReview(curYear);
-      }
-    }catch(e){}
-
-    // 7) Archiv-Section aktualisieren (Badge, und Liste falls geöffnet)
-    try{
-      await loadArchiveSection();
-      if(_archiveLoaded) renderArchiveList();
-    }catch(e){}
-
-    // 8) Diversity & Compare (nutzen Last.fm-Top-Listen, aber die könnten
-    //    sich nach einem Sync auch minimal verschoben haben)
-    try{ renderDiversity(); }catch(e){}
-  }catch(e){console.warn('refreshAfterSync failed:',e);}
+      try{window._lastRecentTracks=await loadRecent();}catch(e){}
+      renderArchiveViews();
+      loadNowPlayingCard();
+    }catch(e){console.warn('refreshAfterSync failed:',e);}
+    finally{_refreshRunning=null;}
+  })();
+  return _refreshRunning;
 }
 
-
-// Lock gegen parallele Auto-Syncs (periodischer + visibilitychange + manuell)
-let _autoSyncRunning=false;
-
-async function autoBackgroundSync(silent=false){
-  if(_autoSyncRunning) return; // bereits aktiv — nicht überlappen
-  // Wenn manueller Import/Delta-Sync läuft, ebenfalls nicht stören
-  if(document.getElementById('archive-modal')?.classList.contains('busy')) return;
-  _autoSyncRunning=true;
-  try{
-    const hasArchive=await getLatestArchivedTs();
-    if(!hasArchive) return; // kein Archiv vorhanden, nichts zu syncen
-
-    // Im stillen Modus (periodischer Sync / Tab-Rückkehr) kein Banner zeigen,
-    // außer es werden tatsächlich neue Scrobbles gefunden.
-    if(!silent){
-      syncBanner('syncing','Prüfe auf neue Scrobbles...');
-      updateSyncBadge('🔄 synchronisiert...','var(--pink)');
-    }
-
-    const latestTs=await getLatestArchivedTs();
-    if(!latestTs){if(!silent)syncBanner('done-ok','Kein Archiv vorhanden');return;}
-
-    const fromTs=latestTs+1;
-    // fromTs exklusiv (+1), toTs fixiert das Fenster — siehe startDeltaSync.
-    const toTs=Math.floor(Date.now()/1000);
-    const {total:totalNew,pages:totalPages}=await getSyncTotals(fromTs,toTs);
-
-    if(totalNew===0){
-      await db.ref('scrobble_meta/last_sync').set(Date.now());
-      // Kein aufpoppendes Banner mehr — stattdessen dezentes Label im Header.
-      // Falls das Banner vorher im "syncing"-Zustand war (non-silent-Modus), ausblenden.
-      if(!silent){
-        const banner=document.getElementById('sync-banner');
-        if(banner) banner.classList.remove('visible');
-        updateSyncBadge('aktuell ✓','#1d9a3f');
-      }
-      updateSyncStatusLabel();
-      return;
-    }
-
-    // Neue Scrobbles gefunden — jetzt auch im stillen Modus Banner zeigen
-    syncBanner('syncing',`${Number(totalNew).toLocaleString('de-DE')} neue Scrobbles werden gespeichert...`,0);
-    updateSyncBadge('🔄 synchronisiert...','var(--pink)');
-
-    let saved=0,done=0;
-    let writeFailed=false;
-    const eta=makeETATracker();
-    // RESUME-GARANTIE: älteste Seite zuerst + Writes strikt in Reihenfolge —
-    // siehe startDeltaSync. Ein unterbrochener Sync (Tab zu, Netzwerk weg)
-    // wird beim nächsten Sync automatisch an derselben Stelle fortgesetzt.
-    let prevWrite=Promise.resolve();
-    for(let page=totalPages;page>=1;page--){
-      const d=await fetchScrobblePage(fromTs,toTs,page,200);
-      const tracks=d?.recenttracks?.track||[];
-      try{ await prevWrite; }catch(e){ writeFailed=true; break; }
-      prevWrite=writeBatch(tracks,(page-1)*200).then(n=>{saved+=n;});
-      done++;
-      const pct=Math.round((done/totalPages)*95);
-      syncBanner('syncing', `Scrobbles werden geladen... ${done}/${totalPages} · ${eta.label(pct)}`, pct);
-      updateSyncBadge(`${pct}%`,'var(--pink)');
-      await new Promise(r=>setTimeout(r,0)); // DOM rendern lassen
-      await new Promise(r=>setTimeout(r,IMPORT_DELAY));
-    }
-
-    // Letzten Write abwarten bevor Counter/Cache aktualisiert werden
-    try{ await prevWrite; }catch(e){ writeFailed=true; }
-
-    if(writeFailed){
-      updateSyncBadge(`+${saved} · ⚠ unterbrochen`,'var(--orange)');
-      syncBanner('err',`⚠ +${Number(saved).toLocaleString('de-DE')} gespeichert — Sync unterbrochen, wird beim nächsten Mal fortgesetzt`);
-      invalidateArchiveCaches();
-      return;
-    }
-
-    // Counter aus echter Key-Anzahl ermitteln statt inkrementell —
-    // damit driftet der Counter nicht mehr bei fehlgeschlagenen Writes oder Duplikaten.
-    const realTotal=await getRealArchiveCount();
-    await db.ref('scrobble_meta/count').set(realTotal);
-    await db.ref('scrobble_meta/last_sync').set(Date.now());
-    updateSyncBadge(`+${saved} neue Tracks ✓`,'#1d9a3f');
-    syncBanner('done-new',`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles synchronisiert`,100);
-    if(!silent) showToast(`✓ +${Number(saved).toLocaleString('de-DE')} neue Scrobbles`,'ok');
-    updateSyncStatusLabel();
-
-    // Archiv-Cache invalidieren damit neue Daten sichtbar werden.
-    invalidateArchiveCaches();
-    // Alle UI-Komponenten neu laden — ohne full page reload
-    await refreshAfterSync();
-
-  }catch(e){
-    // Bei stillem Periodic-Sync nicht mit Banner nerven — könnte nur Netzwerkfehler sein
-    if(!silent){
-      syncBanner('err','Sync fehlgeschlagen: '+e.message);
-      updateSyncBadge('Sync fehlgeschlagen','var(--bad)');
-    } else {
-      console.warn('Silent sync failed:',e.message);
-    }
-  } finally {
-    _autoSyncRunning=false;
-  }
+// Alle Sektionen, die aus dem Archiv rechnen
+function renderArchiveViews(){
+  const safe=(fn)=>{try{const r=fn();if(r&&r.catch)r.catch(e=>console.warn(e));}catch(e){console.warn(e);}};
+  safe(updateTodayTime);
+  safe(loadStreak);
+  safe(loadCharts);
+  safe(updateChartsTrackCount);
+  safe(renderDiversity);
+  safe(loadMonthly);
+  safe(loadPie);
+  safe(loadTrend);
+  safe(loadCalendar);
+  safe(renderDayHourHeatmap);
+  safe(renderYoY);
+  safe(()=>loadActivityData(window._lastRecentTracks).then(a=>{renderWeekday(a);renderClock(a);}));
+  safe(()=>loadYearReview(selectedYear||new Date().getFullYear()));
+  safe(()=>loadArchiveSection().then(()=>{if(_archiveLoaded) renderArchiveList();}));
 }
 
-// ── HEALTH-CHECK: Firebase vs. Last.fm Drift-Erkennung ────
-// Vergleicht die tatsächliche Key-Anzahl in Firebase mit der Anzahl, die
-// Last.fm via `getRecentTracks` als abrufbar meldet.
-// WICHTIG: NICHT gegen `user.getInfo.playcount` vergleichen — der Counter
-// enthält strukturell immer mehr (Now-Playing, gelöschte/bearbeitete Scrobbles,
-// interne Counter-Lags zwischen den Endpoints). Er driftet permanent von dem
-// ab, was via `getRecentTracks` überhaupt holbar ist. Da Delta-Sync aus
-// `getRecentTracks` liest, muss der Health-Check dieselbe Quelle nutzen —
-// sonst zeigt er Drift an, die durch keinen Sync jemals geschlossen werden
-// kann ("Archiv ist X hinter Last.fm" trotz leerem Delta-Sync).
-async function checkArchiveHealth(){
-  if(isLfmDown()) return; // Ohne Last.fm kein Vergleich möglich
-  try{
-    // `from=1` setzen, damit Last.fm wirklich die Gesamtzahl aller je
-    // abrufbaren Scrobbles zurückgibt (ohne from/to kann es im Einzelfall
-    // einen Window-begrenzten Total liefern).
-    const [firstPage, archiveCount] = await Promise.all([
-      fetchScrobblePage(1,null,1,1),
-      getRealArchiveCount()
-    ]);
-    const lfmCount = parseInt(firstPage?.recenttracks?.['@attr']?.total)||0;
-    if(!lfmCount) return; // Last.fm nicht erreichbar oder leer
-    const drift = lfmCount - archiveCount;
-    // Counter in Firebase auch gleich auf Realwert syncen (für Archiv-Badge)
-    const metaCount = await getArchiveCount();
-    if(metaCount !== archiveCount){
-      try{ await db.ref('scrobble_meta/count').set(archiveCount); }catch(e){}
-    }
-    // Drift-Threshold: Da wir jetzt gegen `getRecentTracks.total` vergleichen
-    // (dieselbe Quelle wie Delta-Sync) sollte die Drift im Idealfall 0 sein.
-    // Kleine Toleranz für Race-Conditions (Sync läuft parallel zu neuem Scrobble).
-    const driftThreshold = Math.max(5, Math.floor(lfmCount * 0.0005));
-    if(drift > driftThreshold && archiveCount > 0){
-      const pct = Math.round((archiveCount/lfmCount)*100);
-      const driftPct = drift / lfmCount;
-      // Drift besteht obwohl wir gegen getRecentTracks.total vergleichen (dieselbe
-      // Quelle wie Delta-Sync). Das heißt: Delta-Sync bringt definitionsgemäß nichts —
-      // die Lücken liegen nicht am Ende sondern mittendrin. Gap-Fill ist das richtige
-      // Werkzeug. Full Import nur bei sehr großer Drift anbieten.
-      const action = driftPct < 0.05
-        ? `<a href="#" onclick="startGapFill();openArchiveModal();return false;" style="color:var(--pink);text-decoration:underline;">Lücken füllen</a>`
-        : `<a href="#" onclick="openArchiveModal();return false;" style="color:var(--pink);text-decoration:underline;">Vollständigen Import starten</a>`;
-      syncBanner('err',
-        `⚠ Archiv ist ${drift} Scrobbles hinter Last.fm (${pct}% synchronisiert). `+action,
-        null, true  // html=true — Link wird gerendert statt als Text angezeigt
-      );
-      console.warn(`Archive health: ${archiveCount}/${lfmCount} (drift ${drift}, threshold ${driftThreshold})`);
-    } else if(drift > 0){
-      // Kleine Drift ignorieren — normales API-Rauschen / Race-Condition
-      console.info(`Archive health: ${archiveCount}/${lfmCount} (drift ${drift} innerhalb Toleranz ${driftThreshold})`);
-    } else if(drift < 0){
-      // Archiv > Last.fm — kann durch gelöschte Scrobbles bei Last.fm passieren
-      console.info(`Archive health: ${archiveCount}/${lfmCount} (archive ahead by ${-drift})`);
-    }
-  }catch(e){console.warn('checkArchiveHealth failed:',e);}
-}
-
-
-let _archiveData=null; // cache der geladenen Daten
 let archivePeriod='all',archiveTab='tracks';
-
 let _archiveLoaded=false;
 
 async function loadArchiveSection(){
   const sec=document.getElementById('archive-sec');
-  const badgeEl=document.getElementById('archive-sec-badge');
-
-  const count=await getArchiveCount();
-  if(!count){sec.style.display='none';return;}
-
+  await getArchiveData();
+  if(!hasArchive()){sec.style.display='none';return;}
   sec.style.display='block';
   const navLink=document.getElementById('nav-archive-link');
   if(navLink) navLink.style.display='';
-  badgeEl.textContent=`(${Number(count).toLocaleString('de-DE')} Tracks)`;
-
-  // Archiv-Daten vorladen damit Streak und Track-Count-Badge davon profitieren
-  try{
-    if(!_archiveData){
-      await getArchiveData();
-    }
-  }catch(e){}
-  // Data loads lazily on first expand
+  document.getElementById('archive-sec-badge').textContent=`(${fmt(archiveList().length)} Scrobbles)`;
 }
 
 async function toggleArchive(){
@@ -2852,80 +1505,44 @@ async function toggleArchive(){
   const isOpen=body.style.display!=='none';
   body.style.display=isOpen?'none':'block';
   icon.style.transform=isOpen?'':'rotate(180deg)';
-
   if(!isOpen&&!_archiveLoaded){
     _archiveLoaded=true;
-    const listEl=document.getElementById('archive-list');
-    listEl.innerHTML='<div class="ld"><div class="sp"></div> Lade Archiv-Daten...</div>';
-    try{
-      const archToggleData=await getArchiveData();
-      if(!archToggleData){listEl.innerHTML='<div style="color:var(--text3);">Kein Archiv.</div>';return;}
-    }catch(e){
-      listEl.innerHTML='<div class="err">Fehler beim Laden des Archivs.</div>';return;
-    }
+    await getArchiveData();
     renderArchiveList();
   }
 }
 
-function archiveFilteredEntries(){
+function archiveFilteredList(){
   const now=new Date();
-  const entries=Object.entries(_archiveData||{});
-  if(archivePeriod==='all') return entries;
-  return entries.filter(([key])=>{
-    const ts=parseInt(key.split('_')[0])*1000;
-    const d=new Date(ts);
-    if(archivePeriod==='year') return d.getFullYear()===now.getFullYear();
-    if(archivePeriod==='month') return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();
-    return true;
-  });
+  if(archivePeriod==='year') return C.slice(archiveList(),C.sec(new Date(now.getFullYear(),0,1)));
+  if(archivePeriod==='month') return C.slice(archiveList(),C.sec(new Date(now.getFullYear(),now.getMonth(),1)));
+  return archiveList();
 }
 
 let _archiveShowCount=50;
 
 function renderArchiveList(){
   const listEl=document.getElementById('archive-list');
-  const entries=archiveFilteredEntries();
-  const countMap={};
-
-  entries.forEach(([key,v])=>{
-    let mapKey,display,sub;
-    if(archiveTab==='tracks'){
-      mapKey=v.artist+'||||'+v.track;
-      display=escapeHTML(v.track);sub=escapeHTML(v.artist);
-    } else if(archiveTab==='artists'){
-      mapKey=v.artist;display=escapeHTML(v.artist);sub='';
-    } else {
-      if(!v.album) return;
-      mapKey=v.artist+'||||'+v.album;
-      display=escapeHTML(v.album);sub=escapeHTML(v.artist);
-    }
-    if(!display) return;
-    if(!countMap[mapKey]) countMap[mapKey]={display,sub,count:0};
-    countMap[mapKey].count++;
-  });
-
-  const sorted=Object.values(countMap).sort((a,b)=>b.count-a.count);
-  if(!sorted.length){listEl.innerHTML='<div style="color:var(--text3);font-size:13px;padding:12px;">Keine Einträge für diesen Zeitraum.</div>';return;}
+  const sorted=C.aggregate(archiveFilteredList(),archiveTab);
+  if(!sorted.length){listEl.innerHTML=emptyState('Keine Einträge für diesen Zeitraum.');return;}
   const visible=sorted.slice(0,_archiveShowCount);
-  const max=sorted[0].count;
+  const max=sorted[0].playcount;
   const html=visible.map((item,i)=>{
-    const pct=Math.round((item.count/max)*100);
-    const rc=i===0?'g':i===1?'s':i===2?'b':'';
+    const pct=Math.round(item.playcount/max*100);
+    const sub=archiveTab==='artists'?'':escapeHTML(item.artist.name);
     return `<div class="ri ${i===0?'rank1':i<3?'top3':''}" style="cursor:default;">
-      <span class="rn ${rc}">${i+1}</span>
+      <span class="rn ${rankCls(i)}">${i+1}</span>
       <div class="ri-ph">♪</div>
-      <div class="ri-info"><div class="ri-name">${item.display}</div>${item.sub?`<div class="ri-sub">${item.sub}</div>`:''}</div>
+      <div class="ri-info"><div class="ri-name">${escapeHTML(item.name)}</div>${sub?`<div class="ri-sub">${sub}</div>`:''}</div>
       <div class="ri-right">
         <div class="bar-c"><div class="bar-f" style="width:${pct}%"></div></div>
-        <span class="plays">${Number(item.count).toLocaleString('de-DE')} ▶</span>
+        <span class="plays">${fmt(item.playcount)} ▶</span>
       </div>
     </div>`;
   }).join('');
-
   const moreBtn=sorted.length>_archiveShowCount
-    ?`<button class="show-more" onclick="_archiveShowCount+=50;renderArchiveList()">+ Mehr anzeigen (${sorted.length-_archiveShowCount} weitere)</button>`
+    ?`<button class="show-more" onclick="_archiveShowCount+=50;renderArchiveList()">+ Mehr anzeigen (${fmt(sorted.length-_archiveShowCount)} weitere)</button>`
     :'';
-
   listEl.innerHTML=`<div class="rlist">${html}</div>${moreBtn}`;
 }
 
@@ -2977,23 +1594,9 @@ async function exportArchiveCSV(btn){
 }
 
 // ── ARTIST DRILL-DOWN ──────────────────────────────────────
-function getArchivePeriodFilter(){
-  const now=new Date();
-  if(chartPeriod==='today'){
-    const midnight=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-    return ts=>ts>=midnight.getTime();
-  }
-  if(chartPeriod==='7day'){const d=new Date(now-7*864e5);return ts=>ts>=d.getTime();}
-  if(chartPeriod==='1month'){const d=new Date(now);d.setMonth(d.getMonth()-1);return ts=>ts>=d.getTime();}
-  if(chartPeriod==='3month'){const d=new Date(now);d.setMonth(d.getMonth()-3);return ts=>ts>=d.getTime();}
-  if(chartPeriod==='6month'){const d=new Date(now);d.setMonth(d.getMonth()-6);return ts=>ts>=d.getTime();}
-  if(chartPeriod==='12month'){const d=new Date(now);d.setMonth(d.getMonth()-12);return ts=>ts>=d.getTime();}
-  return ()=>true; // overall
-}
-
 const PERIOD_LABEL={'overall':'Gesamt','12month':'12 Monate','6month':'6 Monate','3month':'3 Monate','1month':'1 Monat','7day':'7 Tage','yesterday':'Gestern','today':'Heute'};
 
-async function openArtistDrillDown(artistName){
+async function openArtistDrillDown(artistName,period=chartPeriod){
   const overlay=document.getElementById('adm-overlay');
   const titleEl=document.getElementById('adm-title');
   const subEl=document.getElementById('adm-sub');
@@ -3005,51 +1608,27 @@ async function openArtistDrillDown(artistName){
   overlay.classList.add('open');
   document.body.style.overflow='hidden';
 
-  // Archiv laden falls noch nicht gecacht
-  if(!_archiveData){
-    try{
-      const admData=await getArchiveData();
-      if(!admData){bodyEl.innerHTML='<div class="err">Kein Archiv gefunden.</div>';return;}
-    }catch(e){bodyEl.innerHTML='<div class="err">Fehler: '+e.message+'</div>';return;}
-  }
-
-  const periodFilter=getArchivePeriodFilter();
-  const trackMap={};
-  Object.entries(_archiveData).forEach(([key,v])=>{
-    const ts=parseInt(key.split('_')[0])*1000;
-    if(!periodFilter(ts)) return;
-    const a=(v.artist||'').trim();
-    if(a.toLowerCase()!==artistName.toLowerCase()) return;
-    const t=(v.track||'').trim();
-    if(!t) return;
-    trackMap[t]=(trackMap[t]||0)+1;
-  });
-
-  const sorted=Object.entries(trackMap).sort((a,b)=>b[1]-a[1]);
-  const total=sorted.reduce((s,[,c])=>s+c,0);
-  subEl.textContent=`${PERIOD_LABEL[chartPeriod]||chartPeriod} · ${Number(total).toLocaleString('de-DE')} Plays · ${sorted.length} Tracks`;
-
-  if(!sorted.length){
-    bodyEl.innerHTML='<div style="color:var(--text3);font-size:13px;padding:12px;">Keine Tracks für diesen Zeitraum gefunden.</div>';
-    return;
-  }
-
-  const max=sorted[0][1];
-  const html=sorted.map(([track,count],i)=>{
-    const pct=Math.round((count/max)*100);
-    const rc=i===0?'g':i===1?'s':i===2?'b':'';
-    const rankCls2=i===0?'rank1':i<3?'top3':'';
-    return `<div class="ri ${rankCls2}" style="cursor:default;">
-      <span class="rn ${rc}">${i+1}</span>
+  await getArchiveData();
+  if(!hasArchive()){bodyEl.innerHTML=noArchiveState();return;}
+  const {from,to}=C.periodRange(period);
+  const a=artistName.toLowerCase();
+  const sl=C.slice(archiveList(),from,to).filter(e=>e.artist.toLowerCase()===a);
+  const sorted=C.aggregate(sl,'tracks');
+  subEl.textContent=`${PERIOD_LABEL[period]||period} · ${fmt(sl.length)} Plays · ${fmt(sorted.length)} Tracks · ≈ ${fmtTime(C.Durations.total(sl)/60)}`;
+  if(!sorted.length){bodyEl.innerHTML=emptyState('Keine Tracks für diesen Zeitraum gefunden.');return;}
+  const max=sorted[0].playcount;
+  bodyEl.innerHTML=`<div class="rlist">${sorted.map((t,i)=>{
+    const pct=Math.round(t.playcount/max*100);
+    return `<div class="ri ${i===0?'rank1':i<3?'top3':''}" style="cursor:default;">
+      <span class="rn ${rankCls(i)}">${i+1}</span>
       <div class="ri-ph">♪</div>
-      <div class="ri-info"><div class="ri-name">${escapeHTML(track)}</div></div>
+      <div class="ri-info"><div class="ri-name">${escapeHTML(t.name)}</div></div>
       <div class="ri-right">
         <div class="bar-c"><div class="bar-f" style="width:${pct}%"></div></div>
-        <span class="plays">${Number(count).toLocaleString('de-DE')} ▶</span>
+        <span class="plays">${fmt(t.playcount)} ▶</span>
       </div>
     </div>`;
-  }).join('');
-  bodyEl.innerHTML=`<div class="rlist">${html}</div>`;
+  }).join('')}</div>`;
 }
 
 function closeArtistDrillDown(e){
@@ -3068,87 +1647,52 @@ document.addEventListener('keydown',(e)=>{
 });
 
 // ── INIT ───────────────────────────────────────────────────
-(async()=>{
+// Läuft nach DOMContentLoaded, also erst wenn auch sync.js geladen ist.
+async function init(){
   loadCache();
   try{
-    // Archiv parallel starten — braucht keine Last.fm
-    const archivePromise=getArchiveData();
-
+    const archivePromise=getArchiveData(); // parallel, braucht kein Last.fm
     const npTrack=await loadNowPlayingCard();
     const ud=await loadHero(npTrack);
-    // Wenn Last.fm down + kein Cache: ud.joined ist heute — dann Jahr aus Archiv ableiten
+    await archivePromise;
     let heroJoinYear=ud.joined.getFullYear();
-    if(isLfmDown() && _archiveData){
-      const tsList=Object.keys(_archiveData).map(k=>parseInt(k.split('_')[0])).filter(x=>x);
-      if(tsList.length){
-        const earliest=Math.min(...tsList);
-        heroJoinYear=new Date(earliest*1000).getFullYear();
-      }
-    }
+    if(hasArchive()) heroJoinYear=Math.min(heroJoinYear,new Date(archiveList()[0].ts*1000).getFullYear());
     joinYear=heroJoinYear;
+    if(_lastHeroData) renderHero(_lastHeroData,isLfmDown());
     renderOverview(ud);
-    renderDiversity();
-    loadCharts();
-    updateChartsTrackCount();
-    loadCompare();
     buildYearSel(heroJoinYear);
-    loadYearReview(new Date().getFullYear());
-    loadStreak();
-    renderDayHourHeatmap();
-    renderYoY();
-
-    const [recent,_monthly]=await Promise.all([loadRecent(),loadMonthly(++monthlyLoadId)]);
-    window._lastRecentTracks=recent;
-    loadActivityData(recent).then(act=>{
-      renderWeekday(act);
-      renderClock(act);
-    });
-    loadPie();
-    loadTrend();
-    loadCalendar();
-
+    loadCompare();
+    try{window._lastRecentTracks=await loadRecent();}catch(e){window._lastRecentTracks=[];}
+    renderArchiveViews();
     saveCache();
-
-    // Sync-Status-Label sofort aus DB befüllen (zeigt "vor X Min" auch bevor autoBackgroundSync läuft)
     updateSyncStatusLabel();
+    loadDurations().then(()=>onDurationsUpdated(true)).catch(()=>{});
 
-    // Background DB sync – always check if Firebase is up to date
-    if(joinYear) loadLifetimeData(joinYear,true).catch(()=>showToast('⚠ Firebase-Sync fehlgeschlagen','err'));
-
-    // Auto Delta-Sync im Hintergrund, danach Health-Check
+    // Sync-Kette: Delta → letzte Monate abgleichen → Health-Check → Track-Längen
     autoBackgroundSync()
+      .then(()=>autoReconcileRecent())
       .then(()=>checkArchiveHealth())
-      .catch(()=>{});
+      .then(()=>enrichDurations())
+      .catch(e=>console.warn(e));
 
-    // ── KONTINUIERLICHE SYNC-MECHANISMEN ──────────────────
-    // Damit Firebase auch bei offenem Tab aktuell bleibt (ohne Reload nötig)
-
-    // 1) Periodischer Sync alle 5 Minuten — still, kein Banner-Spam
+    // Periodisch alle 5 Min (nur sichtbarer Tab) und bei Tab-Rückkehr
     setInterval(()=>{
-      if(document.hidden) return; // Tab im Hintergrund → nicht syncen (schont API)
-      if(isLfmDown()) return;     // Last.fm weg → warten bis wieder da
+      if(document.hidden||isLfmDown()) return;
       autoBackgroundSync(true).catch(()=>{});
-    }, 5*60*1000);
-
-    // 2) Sync bei Tab-Rückkehr — mit kleinem Debounce
-    // (Wenn man schnell zwischen Tabs hin- und herspringt, nicht jedes Mal syncen)
+    },5*60*1000);
     let _lastVisSync=0;
-    document.addEventListener('visibilitychange', ()=>{
-      if(document.hidden) return;
-      if(isLfmDown()) return;
-      const now=Date.now();
-      if(now-_lastVisSync < 60*1000) return; // min. 1 Min zwischen Tab-Visibility-Syncs
-      _lastVisSync=now;
+    document.addEventListener('visibilitychange',()=>{
+      if(document.hidden||isLfmDown()) return;
+      if(Date.now()-_lastVisSync<60*1000) return;
+      _lastVisSync=Date.now();
       autoBackgroundSync(true).catch(()=>{});
     });
-
-    // Archiv-Sektion laden
-    loadArchiveSection().catch(()=>{});
   }catch(e){
     console.error(e);
-    document.body.insertAdjacentHTML('afterbegin',`<div class="wrap"><div class="err" style="margin:16px 0;">Fehler: ${e.message}</div></div>`);
+    document.body.insertAdjacentHTML('afterbegin',`<div class="wrap"><div class="err" style="margin:16px 0;">Fehler: ${escapeHTML(e.message)}</div></div>`);
   }
-})();
+}
+document.addEventListener('DOMContentLoaded',init);
 
 // ── EVENT-DELEGATION (ersetzt Inline-onclick) ──────────────
 // Zentrale Verdrahtung: Buttons/Links tragen data-action (+ optional data-arg),
