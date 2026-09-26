@@ -1,0 +1,214 @@
+/* ==========================================================================
+   LAYER8 // SCHAU  1.0
+   --------------------------------------------------------------------------
+   Zwei Blickfaenger, die im Stillstand nichts kosten.
+
+   Leitgedanke dieser Datei ist derselbe wie in Layer8-Performance.css, nur
+   von der anderen Seite: dauerhaft laufende Animationen sind teuer, weil der
+   Compositor wach bleibt, auch wenn niemand hinsieht. Alles hier haengt
+   stattdessen an etwas, das der Mensch gerade selbst tut - klicken oder mit
+   der Maus auf etwas zeigen. Passiert nichts, wird nichts gezeichnet.
+
+     3. Aufklappen+Glanz  transition, laeuft nur bei Klick bzw. Hover
+     4. Typografie        reine Layout-Eigenschaften, null Laufzeitkosten
+
+   Umkehrbar: Snippet in Einstellungen > Erscheinungsbild abschalten, oder
+   einzeln ueber Style Settings > Layer8 Schau. Die Schalter sind bewusst
+   Aus-Schalter ("Ohne ..."), damit das Snippet sofort nach dem Einschalten
+   vollstaendig wirkt - dieselbe Logik wie ag-plain-tree im Theme.
+
+   Farben kommen ausschliesslich aus den vorhandenen Tokens des Themes
+   (--ag-grad-hero, --ag-display-*, --ag-ease). Diese Datei definiert keine
+   eigene Palette und faerbt nichts um.
+   ========================================================================== */
+
+/* @settings
+
+name: Layer8 Schau
+id: layer8-schau
+settings:
+  -
+    id: l8s-info
+    title: Zwei Blickfaenger ohne Dauerlast
+    description: Alles hier haengt an Klicken oder Hovern. Solange nichts passiert, zeichnet auch nichts.
+    type: heading
+    level: 2
+  -
+    id: l8-ohne-aufklappen
+    title: Ohne weiches Aufklappen
+    description: Faltbare Callouts springen dann wieder auf und zu, statt weich zu wachsen. Schaltet auch den Glanz auf Tags ab.
+    type: class-toggle
+    default: false
+  -
+    id: l8-ohne-typografie
+    title: Ohne Typografie-Feinschliff
+    description: Ueberschriften duerfen dann wieder ein einzelnes Wort in die zweite Zeile schieben, Absaetze wieder mit einem Wort enden.
+    type: class-toggle
+    default: false
+*/
+
+
+/* --------------------------------------------------------------------------
+   0. TOKENS
+   -------------------------------------------------------------------------- */
+
+@property --l8s-glanz {
+  syntax: "<percentage>";
+  initial-value: 0%;
+  inherits: false;
+}
+
+
+/* --------------------------------------------------------------------------
+   3a. WEICHES AUFKLAPPEN FALTBARER CALLOUTS
+   `interpolate-size: allow-keywords` macht den Uebergang von `height: 0` nach
+   `height: auto` erstmals animierbar. Bis dahin ging das in CSS gar nicht -
+   dafuer brauchte es entweder eine feste Pixelhoehe oder ein Skript, das die
+   Hoehe misst. Hier genuegt eine Zeile.
+
+   Die Eigenschaft steht bewusst nur auf .callout-content und nicht auf :root:
+   sie veraendert zwar kein Layout, aber sie veraendert, wie sich bestehende
+   Uebergaenge auf Groessen-Schluesselwoerter verhalten. Eng gefasst bleibt
+   der Effekt ueberschaubar.
+
+   `overflow: clip` statt `hidden` - Hausregel: `hidden` macht einen
+   eingebetteten Preview zum Scroll-Container mit Nullhoehe, Obsidian rendert
+   dann gar keinen Inhalt mehr. `clip` schneidet, ohne einen Scrollport
+   anzulegen.
+
+   Das !important gilt nur dem `display`: Obsidian setzt auf eingeklappte
+   Callouts selbst `display: none`, und ein verstecktes Element hat keine
+   Hoehe, die man animieren koennte.
+   -------------------------------------------------------------------------- */
+
+body:not(.l8-ohne-aufklappen) .markdown-rendered .callout.is-collapsible > .callout-content {
+  interpolate-size: allow-keywords;
+  overflow: clip;
+  transition:
+    height var(--ag-duration) var(--ag-ease),
+    padding-top var(--ag-duration) var(--ag-ease),
+    opacity 160ms ease;
+}
+
+body:not(.l8-ohne-aufklappen) .markdown-rendered .callout.is-collapsible.is-collapsed > .callout-content {
+  display: block !important;
+  height: 0;
+  padding-top: 0;
+  opacity: 0;
+}
+
+/* Das Faltdreieck dreht mit, statt umzuspringen. */
+body:not(.l8-ohne-aufklappen) .markdown-rendered .callout.is-collapsible > .callout-title > .callout-fold {
+  transition: transform var(--ag-duration) var(--ag-ease);
+}
+
+
+/* --------------------------------------------------------------------------
+   3b. GLANZ AUF TAGS
+   Tags sind klickbar und hatten als einzige Klickflaeche in der Notiz bisher
+   keinerlei Hover-Zustand. Sie bekommen einen Lichtstreifen, der einmal
+   durchlaeuft.
+
+   Der Trick ist `@property`: eine als <percentage> typisierte Variable kann
+   CSS interpolieren. Ohne die Typisierung waere --l8s-glanz nur eine
+   Zeichenkette und wuerde hart umspringen. Damit laesst sich ein Verlauf
+   sauber durchschieben, ohne ihn endlos rotieren zu lassen - die Arbeit
+   faellt ausschliesslich in den 620ms an, in denen die Maus wirklich darauf
+   steht.
+
+   Die Farbe kommt aus --ag-tag-color, das das Theme pro Tag-Thema setzt
+   (Pruefung rot, Fertig gruen, Design violett ...). Der Glanz traegt also die
+   Farbe des jeweiligen Tags statt einer eigenen.
+   -------------------------------------------------------------------------- */
+
+body.theme-light:not(.l8-ohne-aufklappen) .markdown-rendered a.tag,
+body.theme-dark:not(.l8-ohne-aufklappen) .markdown-rendered a.tag {
+  --l8s-glanz: -60%;
+  background-image: linear-gradient(
+    104deg,
+    transparent 40%,
+    color-mix(in srgb, var(--ag-tag-color) 34%, #fff) 50%,
+    transparent 60%
+  );
+  background-repeat: no-repeat;
+  background-size: 220% 100%;
+  background-position: var(--l8s-glanz) 50%;
+  transition:
+    --l8s-glanz 620ms var(--ag-ease),
+    border-color 200ms ease;
+}
+
+body.theme-light:not(.l8-ohne-aufklappen) .markdown-rendered a.tag:hover,
+body.theme-dark:not(.l8-ohne-aufklappen) .markdown-rendered a.tag:hover {
+  --l8s-glanz: 160%;
+  border-color: color-mix(in srgb, var(--ag-tag-color) 42%, transparent);
+}
+
+
+/* --------------------------------------------------------------------------
+   4a. TYPOGRAFIE-FEINSCHLIFF
+   Zwei Zeilen, die zur Laufzeit exakt nichts kosten und trotzdem jede Notiz
+   aufgeraeumter aussehen lassen.
+
+   `balance` verteilt eine Ueberschrift gleichmaessig auf ihre Zeilen, statt
+   ein einzelnes Wort allein in die zweite zu schieben. Der Browser begrenzt
+   das von sich aus auf wenige Zeilen, deshalb steht es nur auf
+   Ueberschriften, Callout-Titeln und Tabellenkoepfen - nicht auf Fliesstext.
+
+   `pretty` beseitigt im Fliesstext Schusterjungen: ein Absatz endet nicht
+   mehr mit einem einzelnen Wort in der letzten Zeile.
+   -------------------------------------------------------------------------- */
+
+body:not(.l8-ohne-typografie) .markdown-rendered :is(h1, h2, h3, h4, h5, h6),
+body:not(.l8-ohne-typografie) .markdown-rendered .callout-title-inner,
+body:not(.l8-ohne-typografie) .markdown-rendered th {
+  text-wrap: balance;
+}
+
+body:not(.l8-ohne-typografie) .markdown-rendered :is(p, li, blockquote) {
+  text-wrap: pretty;
+}
+
+
+/* --------------------------------------------------------------------------
+   4b. INITIALBUCHSTABE
+   Opt-in pro Notiz. Im Frontmatter:
+
+       ---
+       cssclass: l8-initial
+       ---
+
+   Bewusst nicht global: ein Zierbuchstabe in jeder der 712 Notizen waere kein
+   Blickfang mehr, sondern Tapete. So bleibt er den Seiten vorbehalten, bei
+   denen er etwas bedeutet.
+
+   Vollfarbe statt Verlauf: `background-clip: text` ist auf ::first-letter in
+   Chromium nicht verlaesslich. Die Farbe kommt aus der H1-Achse
+   (--ag-display-indigo), liegt also im selben Farbklang wie alle
+   Ueberschriften.
+
+   `initial-letter: 2` heisst: zwei Zeilen hoch, Grundlinie auf der zweiten.
+   Der Browser rechnet Groesse und Versatz selbst aus - keine handgesetzten
+   Pixel, die bei anderer Schriftgroesse auseinanderfallen.
+   -------------------------------------------------------------------------- */
+
+body .l8-initial .markdown-preview-sizer > div:first-of-type > p:first-child::first-letter,
+body .l8-initial .markdown-preview-sizer > div:first-of-type + div > p:first-child::first-letter {
+  initial-letter: 2;
+  margin-right: .09em;
+  color: var(--ag-display-indigo);
+  font-weight: 680;
+}
+
+
+/* --------------------------------------------------------------------------
+   5. REDUZIERTE BEWEGUNG RESPEKTIEREN
+   Steht Windows auf "Animationen reduzieren", bleibt alles Dekorative stehen.
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  body .markdown-rendered .callout.is-collapsible > .callout-content,
+  body .markdown-rendered a.tag {
+    transition: none;
+  }
+}

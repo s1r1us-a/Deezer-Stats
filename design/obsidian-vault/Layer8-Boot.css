@@ -1,0 +1,367 @@
+/* ==========================================================================
+   LAYER8 // BOOT
+   --------------------------------------------------------------------------
+   Startbildschirm für den Vault. Ersetzt Layer8-Startup-Aurora.
+
+   Gestaltung: derselbe Papier- und Aurora-Hintergrund wie das Apple-Glass-
+   Theme, damit der Übergang vom Ladebildschirm in den Vault nahtlos wirkt —
+   der Hintergrund bleibt stehen, nur der Inhalt wechselt. Wortmarke und
+   Fortschrittsbalken tragen den Signature-Gradient Blau -> Indigo -> Violett
+   -> Pink aus --ag-grad-hero.
+
+   Technik: Obsidian stellt beim Start nur fünf Elemente bereit
+   (.progress-bar-container, .progress-bar, .progress-bar-message,
+   .progress-bar-indicator, .progress-bar-context). Alles Weitere entsteht
+   hier aus Pseudo-Elementen. Die Farben sind bewusst fest eingetragen statt
+   über --ag-*-Tokens bezogen: der Ladebildschirm erscheint, bevor das Theme
+   sicher angewandt ist. Werte identisch mit Apple Glass Light/Dark.
+
+   Timing: der komplette Aufbau ist nach rund 430 ms fertig. Bewusst knapp
+   gehalten — Obsidian entfernt den Ladebildschirm hart aus dem DOM, ohne
+   Ausblendung (siehe obsidian.asar: .progress-bar-container hat weder
+   transition noch Fade-Klasse). Eine laengere Staffelung wuerde also mitten
+   im Aufbau abgeschnitten und liesse den Start langsamer wirken, als er ist.
+
+   24.09.2026 — Entwurf A „Asterismus“: Wortmarke exakt im H1-Verlauf,
+   darunter die Stern-Trennlinie der Notizen statt der Haarlinie,
+   Sternbild + Vierzack-Funken als statische Hintergrundebene,
+   Statuszeile in Pastell-Indigo.
+
+   Performance: animiert werden ausschließlich transform und opacity
+   (Compositor-Eigenschaften, kein Layout, kein Repaint). Kein
+   backdrop-filter, kein grossflaechiger Blur, kein will-change. Die einzige
+   Endlos-Animation ist ein Schimmer auf der kleinen Wortmarke; sie existiert
+   nur für die Dauer des Ladevorgangs und verschwindet mit dem Element.
+   ========================================================================== */
+
+body > .progress-bar-container {
+  /* Palette — identisch mit Apple Glass Light */
+  --l8b-paper: #f7f8fb;
+  --l8b-ink: #202124;
+  --l8b-muted: #5f646d;
+  --l8b-faint: #9aa0aa;
+  --l8b-line: rgba(32, 38, 49, .13);
+
+  --l8b-blue: #0a84ff;
+  --l8b-indigo: #5e5ce6;
+  --l8b-purple: #bf5af2;
+  --l8b-pink: #ff375f;
+  --l8b-teal: #64d2ff;
+
+  /* Exakt --ag-h1-gradient des Themes (94deg, abgedunkelter Start).
+     Seit 24.09.2026 Grundlage von Wortmarke, Asterismus und Balken. */
+  --l8b-h1: linear-gradient(94deg,
+    #0b77e5 0%,
+    var(--l8b-blue) 15%,
+    var(--l8b-indigo) 46%,
+    var(--l8b-purple) 76%,
+    var(--l8b-pink) 100%);
+
+  --l8b-ease: cubic-bezier(.2, .8, .2, 1);
+  --l8b-rise: cubic-bezier(.16, 1, .3, 1);
+
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 100000;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  overflow: hidden !important;
+  isolation: isolate;
+
+  color: var(--l8b-ink);
+  font-family: Inter, "SF Pro Display", "Segoe UI Variable", "Segoe UI", sans-serif;
+
+  /* Exakt die vier Aurora-Ecken des Themes, auf dessen Papierton.
+     Dadurch steht der Hintergrund beim Übergang in den Vault still. */
+  background:
+    radial-gradient(44% 40% at 6% 2%, rgba(10, 132, 255, .34), transparent 70%),
+    radial-gradient(40% 36% at 94% 4%, rgba(94, 92, 230, .28), transparent 70%),
+    radial-gradient(42% 44% at 90% 97%, rgba(255, 55, 95, .17), transparent 72%),
+    radial-gradient(48% 44% at 6% 96%, rgba(100, 210, 255, .26), transparent 72%),
+    var(--l8b-paper);
+
+  animation: l8b-veil 160ms linear both;
+}
+
+/* Weicher Lichtkern hinter der Wortmarke. Ein einzelnes Element, nur
+   opacity und scale animiert. */
+body > .progress-bar-container::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  width: min(540px, 68vw);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  pointer-events: none;
+  /* Viele flache Stopps statt weniger harter: sonst zeichnet der Verlauf
+     eine sichtbare Kreiskante in die Flaeche. */
+  background: radial-gradient(circle,
+    rgba(255, 255, 255, .70) 0 8%,
+    rgba(255, 255, 255, .58) 24%,
+    rgba(255, 255, 255, .40) 40%,
+    rgba(255, 255, 255, .22) 55%,
+    rgba(255, 255, 255, .09) 68%,
+    rgba(255, 255, 255, .03) 80%,
+    rgba(255, 255, 255, 0) 92%);
+  animation:
+    l8b-core 380ms var(--l8b-rise) both,
+    l8b-breathe 4.2s ease-in-out 380ms infinite alternate;
+}
+
+
+/* Sternbild oben rechts plus vier verstreute Vierzack-Funken in den
+   H1-Farben. Eine einzige statische Ebene, die nur einblendet. Das
+   Sternbild ist derselbe Kleine Baer wie im leeren Bereich
+   (Layer8-Luna.css, Abschnitt 11). */
+body > .progress-bar-container::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 150'><g stroke='%23b9a0d9' stroke-width='1.1' stroke-linecap='round' fill='none' opacity='.55'><path d='M28 104 L74 116 L120 100 L150 112 L186 88 L214 60 L178 44 L150 112'/></g><g fill='%23a9bcd9'><circle cx='28' cy='104' r='2.6'/><circle cx='74' cy='116' r='3.4'/><circle cx='120' cy='100' r='2.4'/><circle cx='150' cy='112' r='3.9'/><circle cx='186' cy='88' r='2.7'/><circle cx='214' cy='60' r='3.2'/><circle cx='178' cy='44' r='2.5'/></g></svg>") right 7% top 9% / min(230px, 26vw) auto no-repeat,
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'><defs><path id='s' d='M10 0C10.9 6.3 13.7 9.1 20 10 13.7 10.9 10.9 13.7 10 20 9.1 13.7 6.3 10.9 0 10 6.3 9.1 9.1 6.3 10 0z'/></defs><use href='%23s' x='40' y='50' transform='scale(.5)' fill='%230a84ff' opacity='.55'/><use href='%23s' x='120' y='470' transform='scale(.5)' fill='%23bf5af2' opacity='.5'/><use href='%23s' x='700' y='520' transform='scale(.45)' fill='%23ff375f' opacity='.45'/><use href='%23s' x='30' y='250' fill='%235e5ce6' opacity='.35' transform='scale(.7)'/></svg>") center / cover no-repeat;
+  opacity: .8;
+  animation: l8b-fade 700ms ease 120ms both;
+}
+
+
+/* --------------------------------------------------------------------------
+   Inhaltsstapel
+   -------------------------------------------------------------------------- */
+
+body > .progress-bar-container > .progress-bar {
+  position: relative;
+  z-index: 1;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  gap: 0 !important;
+  max-width: none !important;
+  padding: 0 !important;
+  background: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Wortmarke. Der Signature-Gradient läuft als Tinte durch den Text,
+   ein langsamer Schimmer wandert darüber. */
+body > .progress-bar-container > .progress-bar::before {
+  /* „Layer 9¾“ (Gleis 9¾), seit 24.09.2026. ¾ als CSS-Escape, damit die
+     Datei-Kodierung keine Rolle spielt. */
+  content: "Layer 9\00BE";
+  display: block;
+  font-size: clamp(38px, 7.2vmin, 68px);
+  font-weight: 700;
+  letter-spacing: -.022em;
+  line-height: 1.05;
+
+  /*
+     Abgeschnittene Unterlaenge, behoben am 22.09.2026.
+
+     background-clip: text malt den Verlauf ausschliesslich innerhalb der
+     Polsterungsbox. Bei line-height 1.05 ragt die Unterlaenge des "y" in
+     "Layer" darunter hinaus — und weil -webkit-text-fill-color transparent
+     ist, bekommt dieser Teil des Buchstabens ueberhaupt keine Farbe mehr.
+     Er verschwindet also, statt nur blass zu werden.
+
+     Sichtbar wurde das nur manchmal, weil die Schriftgroesse ueber clamp an
+     der Fenstergroesse haengt: je groesser die Wortmarke, desto weiter ragt
+     die Unterlaenge hinaus.
+
+     Die Polsterung vergroessert die Malflaeche nach unten und oben, der
+     gleich grosse negative Aussenabstand haelt das Layout exakt wie vorher —
+     Haarlinie und Statuszeile ruecken also nicht nach.
+  */
+  padding: .12em 0 .26em;
+  margin: -.12em 0 -.26em;
+
+  /* 120 % statt eines breiten Wertes: so bleibt die komplette Palette von
+     Blau bis Pink jederzeit lesbar, der Schimmer ist ein sanftes Driften
+     statt eines Ausschnitts, der das Blau verschluckt. */
+  background-image: var(--l8b-h1);
+  background-size: 120% 100%;
+  background-position: 0 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  animation:
+    l8b-mark 340ms var(--l8b-rise) 30ms both,
+    l8b-sheen 3.6s ease-in-out 360ms infinite;
+}
+
+/* Asterismus unter der Wortmarke (seit 24.09.2026, Entwurf A).
+   Dieselbe Trennlinie wie in den Notizen (Layer8-Akzente.css, TRENNLINIE):
+   drei ausgefuellte Vierzack-Sterne in einer Luecke der Verlaufslinie.
+   Alles in EINEM Pseudoelement: die Sterne als SVG mit eigenem Verlauf,
+   die beiden Linienstuecke als Hintergrundebenen. Der Aufzug oeffnet sich
+   per clip-path aus der Mitte — dadurch erscheinen zuerst die Sterne, dann
+   die Linie. Einmalig, 520 ms, danach steht alles still. */
+body > .progress-bar-container > .progress-bar::after {
+  content: "";
+  display: block;
+  width: 250px;
+  height: 26px;
+  margin: 16px 0 0;
+  background:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 76 26'><defs><linearGradient id='g' x1='0' x2='1' y1='0' y2='1'><stop offset='0' stop-color='%230a84ff'/><stop offset='.4' stop-color='%235e5ce6'/><stop offset='.7' stop-color='%23bf5af2'/><stop offset='1' stop-color='%23ff375f'/></linearGradient></defs><g fill='url(%23g)'><path transform='translate(4 7) scale(.6)' d='M10 0C10.9 6.3 13.7 9.1 20 10 13.7 10.9 10.9 13.7 10 20 9.1 13.7 6.3 10.9 0 10 6.3 9.1 9.1 6.3 10 0z'/><path transform='translate(27 2) scale(1.1)' d='M10 0C10.9 6.3 13.7 9.1 20 10 13.7 10.9 10.9 13.7 10 20 9.1 13.7 6.3 10.9 0 10 6.3 9.1 9.1 6.3 10 0z'/><path transform='translate(60 7) scale(.6)' d='M10 0C10.9 6.3 13.7 9.1 20 10 13.7 10.9 10.9 13.7 10 20 9.1 13.7 6.3 10.9 0 10 6.3 9.1 9.1 6.3 10 0z'/></g></svg>") center / 66px 22px no-repeat,
+    linear-gradient(90deg, transparent, #0b77e5 30%, var(--l8b-blue)) left center / calc(50% - 42px) 2px no-repeat,
+    linear-gradient(90deg, var(--l8b-purple), var(--l8b-pink) 70%, transparent) right center / calc(50% - 42px) 2px no-repeat;
+  animation: l8b-aster 520ms var(--l8b-rise) 140ms both;
+}
+
+
+/* --------------------------------------------------------------------------
+   Statuszeile, Fortschritt, Fusszeile
+   -------------------------------------------------------------------------- */
+
+body > .progress-bar-container .progress-bar-message {
+  order: 3;
+  margin: 18px 0 0 !important;
+  font-size: 11px;
+  font-weight: 560;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--l8b-indigo) 62%, var(--l8b-muted));
+  animation: l8b-in 240ms var(--l8b-ease) 150ms both;
+}
+
+body > .progress-bar-container .progress-bar-indicator {
+  order: 4;
+  position: relative;
+  width: 210px !important;
+  height: 3px !important;
+  margin: 16px 0 0 !important;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--l8b-line);
+  transform-origin: 50% 50%;
+  animation: l8b-track 260ms var(--l8b-rise) 120ms both;
+}
+
+/* Obsidians eigene Fortschrittsteile einfärben — unabhängig davon, wie die
+   Kindelemente in der jeweiligen Version heissen. */
+body > .progress-bar-container .progress-bar-indicator > * {
+  background: var(--l8b-h1) !important;
+  border-radius: 999px;
+}
+
+body > .progress-bar-container .progress-bar-context {
+  order: 5;
+  margin: 14px 0 0 !important;
+  font-size: 10.5px;
+  letter-spacing: .04em;
+  color: var(--l8b-faint);
+  animation: l8b-in 240ms var(--l8b-ease) 190ms both;
+}
+
+
+/* --------------------------------------------------------------------------
+   Dunkler Modus — gespiegelt nach der Konvention der beiden Themes
+   -------------------------------------------------------------------------- */
+
+body.theme-dark > .progress-bar-container {
+  --l8b-paper: #0f1219;
+  --l8b-ink: #f5f5f7;
+  --l8b-muted: #a1a1a6;
+  --l8b-faint: #7d7d82;
+  --l8b-line: rgba(228, 234, 246, .095);
+
+  background:
+    radial-gradient(42% 38% at 8% 4%, rgba(10, 132, 255, .22), transparent 72%),
+    radial-gradient(38% 34% at 92% 5%, rgba(94, 92, 230, .18), transparent 72%),
+    radial-gradient(40% 42% at 88% 96%, rgba(255, 55, 95, .10), transparent 74%),
+    radial-gradient(46% 42% at 8% 94%, rgba(100, 210, 255, .14), transparent 74%),
+    var(--l8b-paper);
+}
+
+body.theme-dark > .progress-bar-container::before {
+  background: radial-gradient(circle,
+    rgba(138, 156, 220, .11) 0 8%,
+    rgba(128, 144, 212, .085) 26%,
+    rgba(112, 112, 205, .058) 44%,
+    rgba(100, 98, 232, .032) 60%,
+    rgba(94, 92, 230, .012) 76%,
+    rgba(94, 92, 230, 0) 92%);
+}
+
+
+/* --------------------------------------------------------------------------
+   Bewegungsablauf
+   -------------------------------------------------------------------------- */
+
+@keyframes l8b-veil {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes l8b-core {
+  from { opacity: 0; transform: scale(.86); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes l8b-breathe {
+  from { opacity: .82; transform: scale(1); }
+  to   { opacity: 1;   transform: scale(1.045); }
+}
+
+@keyframes l8b-mark {
+  from { opacity: 0; transform: translateY(16px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes l8b-sheen {
+  0%, 100% { background-position: 0 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+@keyframes l8b-aster {
+  from { opacity: 0; clip-path: inset(0 46% 0 46%); }
+  40%  { opacity: 1; }
+  to   { opacity: 1; clip-path: inset(0 0 0 0); }
+}
+
+@keyframes l8b-fade {
+  from { opacity: 0; }
+  to   { opacity: .8; }
+}
+
+@keyframes l8b-track {
+  from { opacity: 0; transform: scaleX(.3); }
+  to   { opacity: 1; transform: scaleX(1); }
+}
+
+@keyframes l8b-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+
+
+/* --------------------------------------------------------------------------
+   Reduzierte Bewegung: alles sofort da, nichts bewegt sich.
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  body > .progress-bar-container,
+  body > .progress-bar-container::before,
+  body > .progress-bar-container::after,
+  body > .progress-bar-container > .progress-bar::before,
+  body > .progress-bar-container > .progress-bar::after,
+  body > .progress-bar-container .progress-bar-message,
+  body > .progress-bar-container .progress-bar-indicator,
+  body > .progress-bar-container .progress-bar-context {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}

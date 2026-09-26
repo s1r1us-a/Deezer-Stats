@@ -1,0 +1,959 @@
+/* ==========================================================================
+   LAYER8 // AKZENTE
+   --------------------------------------------------------------------------
+   Farbe aus der Vault-Palette dort, wo sie Bedeutung traegt — statt als
+   Flaeche ueber den Fliesstext.
+
+   Bewusst NICHT enthalten, weil das Theme das bereits loest:
+     Tags (.cm-hashtag, a.tag),
+     interne Links, aktive Zeile (.cm-line.cm-active), Caret (--ag-caret),
+     Omnisearch-Trefferhervorhebung (macht OS-Spotlight.css in Indigo).
+
+   Offen war nur Fett und Kursiv — beides hatte im Theme gar keine Farbe.
+   Fett traegt seit 21.09.2026 Rosa (#d9269b hell, 4,2:1; #ff9ae0 dunkel).
+   Zwei Dinge dazu:
+   - Pink wird lesbar ueber den Farbton, nicht ueber die Helligkeit. Bei 319
+     Grad bleibt es rosa, ab etwa 340 Grad kippt es in Karminrot.
+   - 4,2:1 liegt knapp unter der AA-Schwelle von 4,5:1 fuer Fliesstext.
+     Bewusste Entscheidung: Fett sind einzelne Woerter in fetter Schrift,
+     keine Absaetze. Der Fliesstext selbst haelt 9,7:1.
+
+   Stufen zum Nachjustieren:
+     #c81f83  Magenta-Pink, AA-sicher (5,0:1)
+     #d9269b  aktuell, Fuchsia — dieselbe Farbe wie H3 (4,2:1)
+     #e02ba6  Fuchsia (3,9:1)
+     #e63cae  Rosa, vorheriger Stand (3,5:1)
+     #ee4ab8  helles Rosa, Grenze des Zumutbaren (3,1:1)
+
+   Farbwerte kommen aus den Tokens --ag-indigo und --ag-purple. Das Dark-Theme
+   definiert beide eigens neu (#7d7aff / #d47aff), dadurch stimmen Hell und
+   Dunkel ohne zweiten Regelsatz.
+
+   Kosten: ausschliesslich die Eigenschaft `color`. Keine Maske, kein
+   background-clip, kein Filter, keine zusaetzliche Compositing-Ebene — also
+   kein messbarer Einfluss auf das Tippen.
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   1. FLIESSTEXT IN TINTENBLAU
+   Einfarbig. Der Versuch mit background-clip: text auf dem Container hat den
+   Text im Editor unsichtbar gemacht und ist komplett entfernt — im Fliesstext
+   wird kein -webkit-text-fill-color mehr gesetzt, Ruecksetzungen entfallen.
+
+   Farbwahl: Pflaumentinte auf der Achse des H1-Verlaufs — tief genug fuer
+   lange Notizen, violett genug, dass Fett (Pink) und Kursiv (Violett) wie
+   Teile derselben Palette wirken statt wie Fremdkoerper.
+
+   Kontrast gegen den Papierton #f7f8fb: 9,7:1 — deutlich ueber der
+   AAA-Schwelle fuer Fliesstext.
+
+   Stufen zum Nachjustieren (dunkel nach hell):
+     #43348f  Indigo-Violett (9,3:1)
+     #4b2f86  aktuell, Pflaume (9,7:1)
+     #552b7a  Aubergine (9,8:1)
+     #6b2a63  Pink-Tinte, am naechsten am Fett (9,3:1)
+   -------------------------------------------------------------------------- */
+
+:root {
+  --l8-ink: #4b2f86;
+  --l8-bold: #d9269b;
+}
+
+body.theme-dark {
+  --l8-ink: #c3b4ff;
+  --l8-bold: #ff9ae0;
+}
+
+.markdown-rendered,
+.markdown-preview-view,
+.markdown-preview-sizer,
+.cm-editor .cm-content,
+.cm-editor .cm-line {
+  color: var(--l8-ink);
+}
+
+
+/* --------------------------------------------------------------------------
+   2. FETT UND KURSIV IM TEXT
+   Gilt in Leseansicht und Live Preview gleichermassen.
+   -------------------------------------------------------------------------- */
+
+.markdown-rendered :is(strong, b),
+.cm-editor .cm-strong {
+  color: var(--l8-bold);
+}
+
+.markdown-rendered :is(em, i),
+.cm-editor .cm-em {
+  color: var(--ag-purple);
+}
+
+/* Ueberschriften tragen ihren eigenen Verlauf. Fett innerhalb einer
+   Ueberschrift darf den nicht durchbrechen. */
+.markdown-rendered :is(h1, h2, h3, h4, h5, h6) :is(strong, b, em, i) {
+  color: inherit;
+}
+
+/* In Codebloecken und Tabellenkoepfen bleibt Fett neutral. */
+.markdown-rendered :is(pre, code, th) :is(strong, b, em, i) {
+  color: inherit;
+}
+
+
+/* --------------------------------------------------------------------------
+   3. OMNISEARCH-ERGEBNISTITEL
+   Ergebnistitel sind grosser, fetter Display-Text — genau die Kategorie, fuer
+   die das Theme die kraeftige Palette vorsieht. Es sind zehn bis zwanzig
+   Elemente, die nur bei geoeffneter Suche existieren.
+
+   Die mehrfachen [class] heben die Spezifitaet ueber die Regel in
+   OS-Spotlight.css, die den Titel auf --text-normal festnagelt. Sie aendern
+   sonst nichts und sind unabhaengig von der Reihenfolge der Snippets.
+   -------------------------------------------------------------------------- */
+
+body .prompt :is(
+  .omnisearch-result__title,
+  .omnisearch-result-title
+)[class][class][class] {
+  background-image: var(--ag-grad-hero);
+  background-size: 130% 100%;
+  background-position: 0 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Wichtig: die Trefferhervorhebung liegt IM Titel. Ohne Ruecksetzung erbt sie
+   -webkit-text-fill-color: transparent und wird unsichtbar. Sie bekommt ihre
+   Farbe aus OS-Spotlight.css zurueck. */
+body .prompt :is(.omnisearch-result__title, .omnisearch-result-title)
+:is(.omnisearch-highlight, .omnisearch-default-highlight, mark) {
+  -webkit-background-clip: border-box !important;
+  background-clip: border-box !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+/* Trefferzaehler dezent in Indigo, damit er sich vom Titel absetzt. */
+body .prompt .omnisearch-result__counter {
+  color: var(--ag-indigo);
+  opacity: .8;
+}
+
+
+/* --------------------------------------------------------------------------
+   SCHIMMER DER AKTIVEN LINKEN SEITENLEISTE (24.09.2026)
+   Das Theme faerbt den aktiven Dateibaum mit Systemblau und Cyan (#52d6ff),
+   stark an der rechten Kante. Cyan kommt sonst nirgends im Vault vor, der
+   Schimmer wirkte dadurch wie ein Fremdkoerper.
+
+   Jetzt exakt die H1-Achse - gleicher Winkel (94deg), gleiche Reihenfolge
+   Blau, Indigo, Lila, Rosa - als sehr leiser Schleier (4,5-5 %). Welche
+   Seite aktiv ist, zeigt weiterhin der Rahmen im H1-Verlauf.
+
+   Gleiche Spezifitaet wie die Theme-Regel; Snippets laden nach dem Theme
+   und gewinnen damit.
+   -------------------------------------------------------------------------- */
+
+body.theme-light .workspace-split.mod-left-split .workspace-leaf.mod-active .workspace-leaf-content {
+  background:
+    linear-gradient(94deg,
+      color-mix(in srgb, var(--ag-display-blue) 5%, transparent) 0%,
+      color-mix(in srgb, var(--ag-display-indigo) 4.5%, transparent) 40%,
+      color-mix(in srgb, var(--ag-display-purple) 4.5%, transparent) 72%,
+      color-mix(in srgb, var(--ag-display-pink) 5%, transparent) 100%),
+    var(--ag-content-bg) !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   TABELLEN AUF DER H1-ACHSE (24.09.2026)
+   Das Theme faerbt Tabellenkopf und Hover-Zeile mit Systemblau und Cyan
+   (#52d6ff) - wie vorher die Seitenleiste. Jetzt dieselbe Achse wie die H1.
+
+   Der Kopfverlauf liegt auf <thead> statt auf jedem <th>: Hintergruende von
+   Zeilengruppen spannen sich ueber alle Zellen, der Verlauf laeuft also
+   einmal durch die ganze Breite, statt in jeder Spalte neu anzufangen.
+   Die Zellen selbst tragen nur einen senkrechten Glanz, der darf sich
+   wiederholen. Unten am Kopf eine 2px-Linie im vollen H1-Verlauf.
+
+   Reines Paint, keine Animation, kein Filter. Die Uebergaenge des Themes
+   auf td (Farbe/Hintergrund beim Hover) bleiben unveraendert.
+   -------------------------------------------------------------------------- */
+
+body.theme-light .markdown-rendered thead {
+  background:
+    var(--ag-h1-gradient) bottom / 100% 2px no-repeat,
+    linear-gradient(94deg,
+      color-mix(in srgb, var(--ag-display-blue) 11%, #fff) 0%,
+      color-mix(in srgb, var(--ag-display-indigo) 10%, #fff) 40%,
+      color-mix(in srgb, var(--ag-display-purple) 10%, #fff) 72%,
+      color-mix(in srgb, var(--ag-display-pink) 10%, #fff) 100%);
+}
+
+body.theme-light .markdown-rendered th {
+  color: color-mix(in srgb, var(--ag-display-indigo) 55%, #1d2233);
+  background: linear-gradient(180deg, rgba(255, 255, 255, .55), transparent 55%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+
+/* Hover-Zeile: ein Hauch Lila ueber die ganze Zeile, ohne Cyan. */
+body.theme-light .markdown-rendered tbody tr:hover td {
+  color: color-mix(in srgb, var(--ag-display-indigo) 32%, var(--text-normal));
+  background: color-mix(in srgb, var(--ag-display-purple) 7%, rgba(255, 255, 255, .7));
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--ag-display-purple) 12%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--ag-display-purple) 12%, transparent);
+}
+
+body.theme-light .markdown-rendered table:hover {
+  border-color: color-mix(in srgb, var(--ag-display-indigo) 20%, rgba(255, 255, 255, .9));
+}
+
+
+/* --------------------------------------------------------------------------
+   MARKIERTER TEXT (24.09.2026)
+   Zartes Lila aus der Mitte der H1-Achse statt Systemblau - in Lese- und
+   Bearbeitungsansicht gleich.
+   -------------------------------------------------------------------------- */
+
+body.theme-light {
+  --l8-auswahl: color-mix(in srgb, color-mix(in srgb, var(--ag-display-indigo) 45%, var(--ag-display-purple)) 22%, transparent);
+  --text-selection: var(--l8-auswahl);
+}
+
+body.theme-light ::selection {
+  background: var(--l8-auswahl);
+}
+
+body.theme-light .markdown-source-view .cm-selectionBackground,
+body.theme-light .markdown-source-view .cm-line ::selection {
+  background: var(--l8-auswahl) !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   TRENNLINIE (24.09.2026)
+   Asterismus: drei ausgefuellte Vierzack-Sterne (klein - gross - klein) in
+   einer Luecke der Verlaufslinie, alles auf der H1-Achse. Ersetzt die
+   Doppellinie des Themes in Hell und Dunkel. Die Sterne sind eine SVG-Maske
+   statt Schriftzeichen, damit sie nicht von der Schriftart abhaengen.
+   Ohne Animation und ohne Weichzeichner.
+   -------------------------------------------------------------------------- */
+
+body:is(.theme-light, .theme-dark) :is(.markdown-rendered hr, .cm-hr, .markdown-source-view .cm-line hr) {
+  --l8-hr-luecke: 50px;
+  position: relative;
+  height: 26px;
+  margin: 1.9em 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+body:is(.theme-light, .theme-dark) :is(.markdown-rendered hr, .cm-hr, .markdown-source-view .cm-line hr)::before {
+  content: "";
+  position: absolute;
+  inset: 50% 0 auto;
+  height: 2.5px;
+  margin-top: -1.25px;
+  border-radius: 99px;
+  background: linear-gradient(94deg,
+    color-mix(in srgb, var(--ag-display-blue) 88%, #111827) 0%,
+    var(--ag-display-blue) 15%,
+    var(--ag-display-indigo) 46%,
+    var(--ag-display-purple) 76%,
+    var(--ag-display-pink) 100%);
+  --l8-hr-maske: linear-gradient(90deg,
+    transparent, #000 12%,
+    #000 calc(50% - var(--l8-hr-luecke)), transparent calc(50% - var(--l8-hr-luecke) + 6px),
+    transparent calc(50% + var(--l8-hr-luecke) - 6px), #000 calc(50% + var(--l8-hr-luecke)),
+    #000 88%, transparent);
+  -webkit-mask: var(--l8-hr-maske);
+          mask: var(--l8-hr-maske);
+}
+
+body:is(.theme-light, .theme-dark) :is(.markdown-rendered hr, .cm-hr, .markdown-source-view .cm-line hr)::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto auto 50%;
+  width: 76px;
+  height: 26px;
+  margin: 0;
+  transform: translateX(-50%);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: linear-gradient(135deg,
+    var(--ag-display-blue), var(--ag-display-indigo) 40%,
+    var(--ag-display-purple) 70%, var(--ag-display-pink));
+  --l8-hr-sterne: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 76 26"><path transform="translate(4 7) scale(.6)" d="M10 0C10.9 6.3 13.7 9.1 20 10 13.7 10.9 10.9 13.7 10 20 9.1 13.7 6.3 10.9 0 10 6.3 9.1 9.1 6.3 10 0z"/><path transform="translate(27 2) scale(1.1)" d="M10 0C10.9 6.3 13.7 9.1 20 10 13.7 10.9 10.9 13.7 10 20 9.1 13.7 6.3 10.9 0 10 6.3 9.1 9.1 6.3 10 0z"/><path transform="translate(60 7) scale(.6)" d="M10 0C10.9 6.3 13.7 9.1 20 10 13.7 10.9 10.9 13.7 10 20 9.1 13.7 6.3 10.9 0 10 6.3 9.1 9.1 6.3 10 0z"/></svg>') center / contain no-repeat;
+  -webkit-mask: var(--l8-hr-sterne);
+          mask: var(--l8-hr-sterne);
+}
+
+
+/* --------------------------------------------------------------------------
+   LISTEN, ZITATE, BILDER, MARKIERUNG (24.09.2026)
+   Aus gerenderten Entwuerfen gewaehlt, jeweils Variante A. Alles auf der
+   H1-Achse (Blau -> Indigo -> Violett -> Pink), ohne Animation.
+   -------------------------------------------------------------------------- */
+
+body.theme-light {
+  --l8-verlauf-diagonal: linear-gradient(135deg,
+    var(--ag-display-blue), var(--ag-display-indigo) 40%,
+    var(--ag-display-purple) 70%, var(--ag-display-pink));
+  --l8-verlauf-senkrecht: linear-gradient(180deg,
+    var(--ag-display-blue), var(--ag-display-indigo) 35%,
+    var(--ag-display-purple) 70%, var(--ag-display-pink));
+}
+
+/* Nummerierte Listen: Verlaufsplakette.
+   counter(list-item) ist der eingebaute Listenzaehler - er beachtet also
+   auch Listen, die nicht bei 1 anfangen (start="4"). */
+body.theme-light .markdown-rendered ol { padding-inline-start: 2.05em; }
+
+body.theme-light .markdown-rendered ol > li:not(.task-list-item) {
+  position: relative;
+  list-style: none;
+}
+
+body.theme-light .markdown-rendered ol > li:not(.task-list-item)::before {
+  content: counter(list-item);
+  position: absolute;
+  left: -2.6em;
+  top: .42em;
+  display: grid;
+  width: 1.5em;
+  height: 1.5em;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  font-size: .78em;
+  font-weight: 750;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .35), transparent 55%),
+    var(--l8-verlauf-diagonal);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--ag-display-indigo) 35%, transparent);
+}
+
+/* Unterebenen: kleinere, einfarbig violette Plakette. */
+body.theme-light .markdown-rendered li ol > li:not(.task-list-item)::before {
+  background: var(--ag-display-purple);
+  box-shadow: none;
+  transform: scale(.86);
+}
+
+/* Live Preview: dort steht die Zahl als Text im Editor. Eine Plakette wuerde
+   beim Tippen die Zeile verschieben, deshalb nur fette Ziffer im Verlauf. */
+body.theme-light .markdown-source-view .cm-formatting-list-ol {
+  background: var(--l8-verlauf-diagonal);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+}
+
+/* Zitate: Verlaufskante. Die Kante ist eine Hintergrundebene, damit sie der
+   Rundung folgt; ::before traegt das Anführungszeichen (vorher rechts oben). */
+body.theme-light .markdown-rendered blockquote,
+body.theme-light .markdown-rendered blockquote:hover {
+  padding: .95em 1.2em .95em 3.1em;
+  border: 1px solid color-mix(in srgb, var(--ag-display-indigo) 12%, transparent);
+  border-radius: 6px 18px 18px 6px;
+  color: inherit;
+  background:
+    var(--l8-verlauf-senkrecht) left / 4px 100% no-repeat,
+    linear-gradient(100deg,
+      color-mix(in srgb, var(--ag-display-indigo) 8%, #fff),
+      color-mix(in srgb, var(--ag-display-purple) 6%, #fff) 60%,
+      color-mix(in srgb, var(--ag-display-pink) 5%, #fff));
+  box-shadow: 0 6px 18px -8px color-mix(in srgb, var(--ag-display-indigo) 30%, transparent);
+}
+
+body.theme-light .markdown-rendered blockquote:hover {
+  box-shadow: 0 10px 24px -8px color-mix(in srgb, var(--ag-display-indigo) 36%, transparent);
+}
+
+body.theme-light .markdown-rendered blockquote > :first-child { margin-top: 0; }
+body.theme-light .markdown-rendered blockquote > :last-child { margin-bottom: 0; }
+
+body.theme-light .markdown-rendered blockquote::before {
+  content: "\201C";
+  top: .08em;
+  right: auto;
+  left: .32em;
+  font: 700 2.6em/1 Georgia, serif;
+  background: var(--l8-verlauf-diagonal);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Bilder: Verlaufsrahmen. Im Editor nur echte Bildeinbettungen (dort gibt es
+   auch Symbolbilder in Plugin-Widgets); das Dashboard behaelt seine Bilder. */
+body.theme-light .markdown-rendered img:not(.emoji):not(.home-dash *),
+body.theme-light .markdown-rendered img:not(.emoji):not(.home-dash *):hover,
+body.theme-light .markdown-source-view .image-embed img,
+body.theme-light .markdown-source-view .image-embed img:hover {
+  box-sizing: border-box;
+  padding: 3px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--l8-verlauf-diagonal);
+  box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--ag-display-indigo) 45%, transparent);
+}
+
+/* Markierter Text (==so==): Textmarker in Pastell, wie von Hand gezogen. */
+body.theme-light :is(.markdown-rendered mark, .cm-highlight) {
+  margin: 0 -.06em;
+  padding: 0 .22em;
+  border-radius: .5em .25em .6em .3em / .3em .6em .25em .5em;
+  color: inherit;
+  background:
+    linear-gradient(100deg,
+      color-mix(in srgb, var(--ag-display-blue) 34%, transparent),
+      color-mix(in srgb, var(--ag-display-purple) 38%, transparent) 55%,
+      color-mix(in srgb, var(--ag-display-pink) 34%, transparent)) 0 72% / 100% 66% no-repeat;
+  box-shadow: none;
+}
+
+
+/* --------------------------------------------------------------------------
+   CODEBLOECKE: NACHTGLAS IN H1-FARBEN (24.09.2026)
+   Flaeche = H1-Verlauf, zu 92 % Farbe und 8 % Mond-Indigo (#1c1d45), damit
+   weisse Schrift traegt. Schwaechste Stelle 3,95:1 auf Violett/Pink, bewusst
+   so gewaehlt; die Alternativen waren 85 % (4,4:1) und 78 % (4,9:1) - dafuer
+   nur --l8-code-anteil aendern.
+   Statt der Mac-Ampel der glatte Mond aus dem Dashboard, die Sprache links
+   oben in Weiss, darunter eine Haarlinie. Ersetzt Kopfleiste, Sprachpille und
+   Syntaxfarben des Themes (dort Gruen/Orange/Cyan). Live Preview bekommt
+   denselben Verlauf waagerecht, weil jede Editorzeile eine eigene Box ist.
+   -------------------------------------------------------------------------- */
+
+body.theme-light {
+  --l8-code-anteil: 92%;
+  --l8-code-nacht: #1c1d45;
+  /* Pastellschleier: Anteil Luna-Flieder ueber dem Verlauf ("einen Ticken
+     pastelliger"). 12 % = schwaechste Stelle 3,46:1; 20 % = 3,16:1,
+     28 % = 2,88:1. 0 % = der kraeftige Stand davor. */
+  --l8-code-pastell: 20%;
+  --l8-code-flieder: #e7ddf7;
+  --l8-code-a: color-mix(in srgb, var(--l8-code-flieder) var(--l8-code-pastell), color-mix(in srgb, var(--ag-display-blue) var(--l8-code-anteil), var(--l8-code-nacht)));
+  --l8-code-b: color-mix(in srgb, var(--l8-code-flieder) var(--l8-code-pastell), color-mix(in srgb, var(--ag-display-indigo) var(--l8-code-anteil), var(--l8-code-nacht)));
+  --l8-code-c: color-mix(in srgb, var(--l8-code-flieder) var(--l8-code-pastell), color-mix(in srgb, var(--ag-display-purple) var(--l8-code-anteil), var(--l8-code-nacht)));
+  --l8-code-d: color-mix(in srgb, var(--l8-code-flieder) var(--l8-code-pastell), color-mix(in srgb, var(--ag-display-pink) var(--l8-code-anteil), var(--l8-code-nacht)));
+  --l8-code-mond: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><defs><linearGradient id="s" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%233b3d7e"/><stop offset="1" stop-color="%231c1d45"/></linearGradient><linearGradient id="l" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%23eef5ff"/><stop offset=".5" stop-color="%23f4f0ff"/><stop offset="1" stop-color="%23fdeef7"/></linearGradient></defs><circle cx="20" cy="20" r="17" fill="url(%23s)"/><path d="M20 3A17 17 0 0 1 20 37A9 17 0 0 0 20 3z" fill="url(%23l)"/><circle cx="20" cy="20" r="17" fill="none" stroke="%23c9bdf0" stroke-width="1.2"/><ellipse cx="29" cy="12" rx="2.6" ry="1.6" fill="white" opacity=".7"/></svg>');
+  --l8-code-funke: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill="white" d="M10 0C10.9 6.3 13.7 9.1 20 10 13.7 10.9 10.9 13.7 10 20 9.1 13.7 6.3 10.9 0 10 6.3 9.1 9.1 6.3 10 0z"/></svg>');
+
+  /* Syntax auf dem bunten Grund. Zahlen in Hellgold: liegt nicht auf der
+     Achse, war aber das Einzige, was sich hier noch abhebt. */
+  --l8-code-text: #ffffff;
+  --l8-code-kommentar: rgba(255, 255, 255, .68);
+  --l8-code-zeichen: rgba(255, 255, 255, .7);
+  --l8-code-schluessel: #ffffff;
+  --l8-code-funktion: #c6e2ff;
+  --l8-code-string: #ffd1ea;
+  --l8-code-zahl: #ffe0a8;
+  --l8-code-eingebaut: #dcd9ff;
+}
+
+/* --- Leseansicht: Flaeche ---------------------------------------------- */
+
+body.theme-light .markdown-rendered pre,
+body.theme-light .markdown-rendered pre:has(code) {
+  position: relative;
+  padding: 3.2em 1.3em 1.25em;
+  border: 0;
+  border-radius: 18px;
+  color: var(--l8-code-text);
+  text-shadow: 0 1px 1px rgba(20, 16, 60, .25);
+  background:
+    radial-gradient(70% 90% at 100% 0%, color-mix(in srgb, var(--ag-display-pink) 28%, transparent), transparent 60%),
+    radial-gradient(60% 90% at 0% 100%, color-mix(in srgb, var(--ag-display-blue) 26%, transparent), transparent 65%),
+    linear-gradient(125deg, var(--l8-code-a) 0%, var(--l8-code-b) 38%, var(--l8-code-c) 72%, var(--l8-code-d) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .18),
+    inset 0 0 0 1px rgba(255, 255, 255, .12),
+    0 14px 28px -16px color-mix(in srgb, var(--ag-display-indigo) 70%, transparent);
+}
+
+body.theme-light .markdown-rendered pre code {
+  color: var(--l8-code-text);
+  -webkit-text-fill-color: currentColor;
+  background: none;
+}
+
+/* Mond statt Mac-Ampel (vorher drei Punkte ueber box-shadow). */
+body.theme-light .markdown-rendered pre:has(code)::before {
+  top: 10px;
+  right: 14px;
+  left: auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 0;
+  background: var(--l8-code-mond) center / contain no-repeat;
+  box-shadow: none;
+  filter: drop-shadow(0 0 8px rgba(238, 245, 255, .45));
+}
+
+/* Haarlinie unter dem Kopf. */
+body.theme-light .markdown-rendered pre:has(code)::after {
+  content: "";
+  position: absolute;
+  top: 42px;
+  left: 18px;
+  right: 18px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, .1), rgba(255, 255, 255, .55) 50%, rgba(255, 255, 255, .1));
+  pointer-events: none;
+}
+
+/* Sprache links oben in Weiss mit Funke; bleibt beim Ueberfahren stehen,
+   weil rechts jetzt Platz fuer den Kopierknopf ist. Die Textzuordnung
+   (Python, Shell, ...) kommt weiter aus dem Theme. */
+body.theme-light .markdown-rendered pre:is(pre) > code[class*="language-"]::before,
+body.theme-light .markdown-rendered pre:is(pre):hover > code[class*="language-"]::before {
+  top: 21px;
+  right: auto;
+  left: 18px;
+  padding: 0 17px 0 0;
+  border: 0;
+  border-radius: 0;
+  color: rgba(255, 255, 255, .92);
+  background: var(--l8-code-funke) right center / 9px 9px no-repeat;
+  box-shadow: none;
+  font-size: 11px;
+  font-weight: 780;
+  letter-spacing: .1em;
+  text-shadow: none;
+  opacity: 1;
+}
+
+/* Kopierknopf als Glaspille links vom Mond; erscheint wie gewohnt erst beim
+   Ueberfahren. */
+body.theme-light .markdown-rendered pre .copy-code-button {
+  position: absolute;
+  top: 9px;
+  right: 46px;
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, .35);
+  border-radius: 99px;
+  color: #fff;
+  background: rgba(255, 255, 255, .16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25);
+  text-shadow: none;
+}
+
+body.theme-light .markdown-rendered pre .copy-code-button:hover {
+  background: rgba(255, 255, 255, .28);
+}
+
+/* --- Leseansicht: Syntax (Prism) --------------------------------------- */
+
+body.theme-light .markdown-rendered pre :is(.token.comment, .token.prolog, .token.doctype, .token.cdata) {
+  color: var(--l8-code-kommentar);
+  font-style: italic;
+}
+body.theme-light .markdown-rendered pre :is(.token.keyword, .token.rule, .token.important, .token.atrule, .token.tag, .token.selector) {
+  color: var(--l8-code-schluessel);
+  font-weight: 750;
+}
+body.theme-light .markdown-rendered pre :is(.token.function, .token.function-name, .token.class-name) {
+  color: var(--l8-code-funktion);
+  font-weight: 600;
+}
+body.theme-light .markdown-rendered pre :is(.token.string, .token.char, .token.attr-value, .token.regex, .token.inserted, .token.url) {
+  color: var(--l8-code-string);
+}
+body.theme-light .markdown-rendered pre :is(.token.number, .token.boolean, .token.constant, .token.unit, .token.symbol) {
+  color: var(--l8-code-zahl);
+  font-weight: 600;
+}
+body.theme-light .markdown-rendered pre :is(.token.property, .token.attr-name, .token.builtin, .token.namespace, .token.deleted) {
+  color: var(--l8-code-eingebaut);
+}
+body.theme-light .markdown-rendered pre :is(.token.operator, .token.punctuation, .token.entity) {
+  color: var(--l8-code-zeichen);
+  background: none;
+}
+body.theme-light .markdown-rendered pre .token.variable {
+  color: var(--l8-code-text);
+}
+
+/* --- Live Preview ------------------------------------------------------ */
+
+body.theme-light .markdown-source-view.mod-cm6 .cm-line.HyperMD-codeblock {
+  color: var(--l8-code-text);
+  caret-color: #fff;
+  background: linear-gradient(90deg, var(--l8-code-a), var(--l8-code-b) 38%, var(--l8-code-c) 72%, var(--l8-code-d));
+  text-shadow: 0 1px 1px rgba(20, 16, 60, .25);
+}
+
+body.theme-light .markdown-source-view.mod-cm6 .cm-line.HyperMD-codeblock-begin { border-radius: 14px 14px 0 0; }
+body.theme-light .markdown-source-view.mod-cm6 .cm-line.HyperMD-codeblock-end { border-radius: 0 0 14px 14px; }
+
+body.theme-light .markdown-source-view.mod-cm6 .HyperMD-codeblock :is(.cm-formatting-code-block, .code-block-flair) {
+  color: var(--l8-code-kommentar);
+}
+body.theme-light .markdown-source-view.mod-cm6 .HyperMD-codeblock span.cm-comment { color: var(--l8-code-kommentar); font-style: italic; }
+body.theme-light .markdown-source-view.mod-cm6 .HyperMD-codeblock :is(span.cm-keyword, span.cm-tag, span.cm-header) { color: var(--l8-code-schluessel); font-weight: 750; }
+body.theme-light .markdown-source-view.mod-cm6 .HyperMD-codeblock :is(span.cm-def, span.cm-variable-2, span.cm-type) { color: var(--l8-code-funktion); font-weight: 600; }
+body.theme-light .markdown-source-view.mod-cm6 .HyperMD-codeblock :is(span.cm-string, span.cm-string-2) { color: var(--l8-code-string); }
+body.theme-light .markdown-source-view.mod-cm6 .HyperMD-codeblock :is(span.cm-number, span.cm-atom) { color: var(--l8-code-zahl); font-weight: 600; }
+body.theme-light .markdown-source-view.mod-cm6 .HyperMD-codeblock :is(span.cm-property, span.cm-attribute, span.cm-builtin) { color: var(--l8-code-eingebaut); }
+body.theme-light .markdown-source-view.mod-cm6 .HyperMD-codeblock :is(span.cm-operator, span.cm-punctuation, span.cm-bracket, span.cm-meta) { color: var(--l8-code-zeichen); }
+body.theme-light .markdown-source-view.mod-cm6 .HyperMD-codeblock span.cm-variable { color: var(--l8-code-text); }
+
+/* --- Inline-Code: kleine Pille im selben Verlauf ------------------------- */
+
+body.theme-light :is(.markdown-rendered :not(pre) > code, .cm-inline-code) {
+  padding: .12em .45em .16em;
+  border: 0;
+  border-radius: 7px;
+  color: #fff;
+  background: linear-gradient(100deg, var(--l8-code-a), var(--l8-code-c));
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+
+/* --------------------------------------------------------------------------
+   LIVE PREVIEW: UEBERSCHRIFTEN UND INTERNE LINKS (24.09.2026)
+
+   1) Ueberschriften. theme.css:1919ff faerbt fuer Code-Hervorhebung
+      `.cm-s-obsidian span.cm-header` in --ag-pink. Dieselbe Klasse traegt
+      aber auch der Text jeder Markdown-Ueberschrift im Editor — deshalb
+      waren H1 bis H6 alle gleich rosa, obwohl die Zeile (.HyperMD-header-N)
+      die richtige Ebenenfarbe hat. Der Text erbt jetzt wieder von seiner
+      Zeile; in Codebloecken bleibt die Hervorhebung.
+      Spezifitaet: das :is() des Themes zaehlt mit seinem staerksten
+      Argument (.markdown-rendered .token.tag) = (0,4,1); hier (0,5,2).
+
+   2) Interne Links. Das Theme malt sie per background-clip: text mit
+      durchsichtiger Fuellung. Im Editor liegt der Text aber in einem
+      inneren .cm-underline, das die durchsichtige Fuellung erbt, den
+      Verlauf aber nicht — der Link war eine leere Linie. Jetzt: volle
+      Schriftfarbe auf der H1-Achse, darunter eine feine Verlaufslinie
+      als Hintergrundebene. Kein Filter, kein Clip.
+      Hinweis: Obsidian markiert noch nicht angelegte Links im Editor NICHT
+      (kein .is-unresolved) — dort sehen sie aus wie alle anderen. Die
+      Unterscheidung gibt es nur in der Leseansicht.
+   -------------------------------------------------------------------------- */
+
+body:is(.theme-light, .theme-dark) .markdown-source-view .cm-line:not(.HyperMD-codeblock) span.cm-header {
+  color: inherit;
+}
+
+body.theme-light .markdown-source-view .cm-content .cm-hmd-internal-link,
+body.theme-light .markdown-source-view .cm-content .cm-hmd-internal-link .cm-underline {
+  color: color-mix(in srgb, color-mix(in srgb, var(--ag-display-blue) 45%, var(--ag-display-indigo)) 86%, #1c1d45);
+  -webkit-text-fill-color: currentColor;
+  -webkit-background-clip: border-box;
+          background-clip: border-box;
+  text-decoration: none;
+}
+
+body.theme-light .markdown-source-view .cm-content .cm-hmd-internal-link {
+  background: linear-gradient(94deg,
+    var(--ag-display-blue), var(--ag-display-indigo) 46%,
+    var(--ag-display-purple) 76%, var(--ag-display-pink)) left bottom / 100% 1.5px no-repeat;
+  box-shadow: none;
+  font-weight: 640;
+}
+
+body.theme-light .markdown-source-view .cm-content .cm-hmd-internal-link .cm-underline {
+  background: none;
+}
+
+
+/* --------------------------------------------------------------------------
+   TAGS: PASTELL-PILLE AUF DER H1-ACHSE (24.09.2026, Entwurf C ohne Stern)
+   Zarte Flaeche im Verlauf der Tag-Farbe Richtung Pink, ungleiche Radien
+   wie der Textmarker (==Markierung==), Schrift in der tiefen Tag-Farbe.
+   Die Themenfarben des Themes (theme.css:1572ff: Rot, Orange, Gruen …)
+   werden auf die H1-Achse umgelegt:
+     lernen/wissen/schule  Blau        fertig/done/erledigt  Blau-Indigo
+     alles andere          Indigo      idee/design/projekt   Violett
+     wichtig/achtung       Violett-Pink  pruefung/exam       Pink
+   Achtung: im Editor schreibt Obsidian Umlaute NICHT in die Klasse —
+   #prüfung wird zu .cm-tag-prfung.
+   Im Editor zerlegt Obsidian einen Tag in .cm-hashtag-begin („#“) und
+   -end (Wort); beide Haelften ergeben zusammen eine Pille.
+   Der Hover-Glanz aus Layer8-Schau.css bleibt erhalten und liegt als
+   zweite Ebene ueber der Flaeche (Schau laedt nach Akzente, daher die
+   hoehere Spezifitaet unten).
+   -------------------------------------------------------------------------- */
+
+body.theme-light :is(.markdown-rendered a.tag, .markdown-source-view .cm-hashtag) {
+  --ag-tag-color: var(--ag-display-indigo);
+  --l8-tag-fill: linear-gradient(100deg,
+    color-mix(in srgb, var(--ag-tag-color) 16%, #fff),
+    color-mix(in srgb, color-mix(in srgb, var(--ag-tag-color) 40%, var(--ag-display-pink)) 16%, #fff));
+  display: inline-block;
+  padding: .08em .62em .12em;
+  border: 0;
+  border-radius: .9em .45em .95em .5em / .6em .9em .5em .95em;
+  color: color-mix(in srgb, var(--ag-tag-color) 72%, #1c1d45) !important;
+  background: var(--l8-tag-fill);
+  box-shadow: none;
+  font-size: .82em;
+  font-weight: 720;
+  line-height: 1.45;
+  text-decoration: none;
+}
+
+body.theme-light .markdown-rendered a.tag:is([href*="lernen" i], [href*="wissen" i], [href*="schule" i]),
+body.theme-light .markdown-source-view .cm-hashtag:is([class*="cm-tag-lernen" i], [class*="cm-tag-wissen" i], [class*="cm-tag-schule" i]) {
+  --ag-tag-color: var(--ag-display-blue);
+}
+body.theme-light .markdown-rendered a.tag:is([href*="fertig" i], [href*="done" i], [href*="erledigt" i]),
+body.theme-light .markdown-source-view .cm-hashtag:is([class*="cm-tag-fertig" i], [class*="cm-tag-done" i], [class*="cm-tag-erledigt" i]) {
+  --ag-tag-color: color-mix(in srgb, var(--ag-display-blue) 50%, var(--ag-display-indigo));
+}
+body.theme-light .markdown-rendered a.tag:is([href*="idee" i], [href*="design" i], [href*="projekt" i]),
+body.theme-light .markdown-source-view .cm-hashtag:is([class*="cm-tag-idee" i], [class*="cm-tag-design" i], [class*="cm-tag-projekt" i]) {
+  --ag-tag-color: var(--ag-display-purple);
+}
+body.theme-light .markdown-rendered a.tag:is([href*="wichtig" i], [href*="important" i], [href*="achtung" i]),
+body.theme-light .markdown-source-view .cm-hashtag:is([class*="cm-tag-wichtig" i], [class*="cm-tag-important" i], [class*="cm-tag-achtung" i]) {
+  --ag-tag-color: color-mix(in srgb, var(--ag-display-purple) 50%, var(--ag-display-pink));
+}
+body.theme-light .markdown-rendered a.tag:is([href*="prüfung" i], [href*="pruefung" i], [href*="exam" i]),
+body.theme-light .markdown-source-view .cm-hashtag:is([class*="cm-tag-prüfung" i], [class*="cm-tag-pruefung" i], [class*="cm-tag-prfung" i], [class*="cm-tag-exam" i]) {
+  --ag-tag-color: var(--ag-display-pink);
+}
+
+/* Editor: „#“ und Wort bilden eine gemeinsame Pille. */
+body.theme-light .markdown-source-view .cm-hashtag.cm-hashtag-begin {
+  padding-right: .04em;
+  border-radius: .9em 0 0 .5em / .6em 0 0 .95em;
+}
+body.theme-light .markdown-source-view .cm-hashtag.cm-hashtag-end {
+  padding-left: 0;
+  border-radius: 0 .45em .95em 0 / 0 .9em .5em 0;
+}
+
+/* Hover-Glanz (Layer8-Schau.css) als zweite Ebene ueber der Flaeche. */
+body.theme-light:not(.l8-ohne-aufklappen) .markdown-rendered a.tag[href] {
+  background-image:
+    linear-gradient(104deg, transparent 40%, color-mix(in srgb, var(--ag-tag-color) 34%, #fff) 50%, transparent 60%),
+    var(--l8-tag-fill);
+  background-size: 220% 100%, 100% 100%;
+  background-position: var(--l8s-glanz) 50%, 0 0;
+  background-repeat: no-repeat;
+}
+
+
+
+
+/* --------------------------------------------------------------------------
+   ORDNERLEISTE „STERNBILD“ (24.09.2026)
+   Entwurf B mit Hinterlegung und Kopflinie aus Entwurf A: Die Glaszeilen
+   des Themes bleiben. Jeder Ordner traegt statt des Ordnersymbols einen
+   Vierzack-Stern, hohl wenn zu, gefuellt und gedreht wenn offen. Die
+   Einruecklinie ist eine gepunktete Konstellation mit einem Knoten pro
+   Eintrag, und die offene Notiz leuchtet als Stern auf der Linie.
+   Oben: Wortmarke + Asterismus-Linie wie beim Ladebildschirm.
+   Unten: statisches Sternbild am Ende der Liste.
+
+   Alles statisch; nur der Stern dreht sich per Transition beim Hover.
+
+   Falle: Obsidian 1.13 zieht jede Zeile (.tree-item-self) per Inline-Style
+   bis an den linken Rand (margin-inline-start: -N; padding: N+10) und
+   belegt ::before selbst; Ordnerzeilen tragen im Theme zusaetzlich
+   overflow:hidden. Alle Knoten haengen deshalb am unverschobenen
+   Umschlag (.nav-file / .nav-folder).
+   -------------------------------------------------------------------------- */
+
+body.theme-light {
+  --l8-stern-rund: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M10 .4C10.8 5.9 14.1 9.2 19.6 10 14.1 10.8 10.8 14.1 10 19.6 9.2 14.1 5.9 10.8.4 10 5.9 9.2 9.2 5.9 10 .4z"/></svg>');
+  --l8-stern-offen: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M8.6 3.4C9.2 7.8 11.8 10.4 16.2 11 11.8 11.6 9.2 14.2 8.6 18.6 8 14.2 5.4 11.6 1 11 5.4 10.4 8 7.8 8.6 3.4z"/><path d="M16.6.4C16.9 2.4 17.6 3.1 19.6 3.4 17.6 3.7 16.9 4.4 16.6 6.4 16.3 4.4 15.6 3.7 13.6 3.4 15.6 3.1 16.3 2.4 16.6.4z"/></svg>');
+}
+
+/* Kopf: Wortmarke mittig unter den Knoepfen, darunter die Asterismus-Linie
+   (zwei Verlaufsstriche, dazwischen drei ausgefuellte Vierzack-Sterne).
+   Beides sitzt in .nav-header, also AUSSERHALB des scrollenden
+   .nav-files-container, und bleibt beim Scrollen stehen. Die Linie ist
+   Hintergrund des Kopfes, weil die Wortmarke ihren eigenen Hintergrund
+   fuer die Verlaufsschrift braucht (background-clip: text).
+   Abstaende: Knoepfe 14 | Schrift | 12 | Linie | 6 */
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-header {
+  padding-bottom: 26px;
+  background:
+    linear-gradient(90deg, var(--ag-display-blue), var(--ag-display-indigo)) left 16px bottom 9px / calc(50% - 38px) 2px no-repeat,
+    linear-gradient(90deg, var(--ag-display-purple), var(--ag-display-pink)) right 16px bottom 9px / calc(50% - 38px) 2px no-repeat,
+    url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 8"><defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="%235e5ce6"/><stop offset="1" stop-color="%23bf5af2"/></linearGradient></defs><g fill="url(%23g)"><path d="M5 1.5l.6 1.9 1.9.6-1.9.6L5 6.5l-.6-1.9L2.5 4l1.9-.6z"/><path d="M17 0l.9 3.1L21 4l-3.1.9L17 8l-.9-3.1L13 4l3.1-.9z"/><path d="M29 1.5l.6 1.9 1.9.6-1.9.6-.6 1.9-.6-1.9-1.9-.6 1.9-.6z"/></g></svg>') center bottom 6px / 34px 8px no-repeat;
+}
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-header::after {
+  content: "\2726  Layer 9\00BE";
+  display: block;
+  width: fit-content;
+  margin: 14px auto 0;
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: -.02em;
+  line-height: 1.35;
+  white-space: pre;
+  background: var(--ag-h1-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+
+/* Zeilen: Pfeil weg, Stern steht vorne. */
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-folder-title > :is(.nav-folder-collapse-indicator, .collapse-icon, .tree-item-icon) {
+  display: none;
+}
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] :is(.nav-folder-title, .nav-file-title) {
+  padding-inline-start: 10px;
+}
+
+/* Ordnerstern im Ordnerverlauf, immer ausgefuellt (seit 24.09.2026 abends,
+   Wunsch: „schoener und ausgefuellt“): geschwungener Vierzack wie beim
+   Glass-Typing-Staub und Ladebildschirm, oben ein weisser Glanz.
+   Offen = derselbe Stern etwas kleiner plus Begleitfunke oben rechts.
+   Nur mask-image wird getauscht, Groesse/Lage der Maske aus dem Theme. */
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-folder-title .nav-folder-title-content::before {
+  width: 16px;
+  height: 16px;
+  margin-right: 9px;
+  vertical-align: -3px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .55) 0%, rgba(255, 255, 255, 0) 46%),
+    linear-gradient(135deg,
+      var(--folder-color, var(--ag-accent)) 15%,
+      var(--folder-color-end, var(--folder-color, var(--ag-accent))) 85%);
+  filter: none;
+  -webkit-mask-image: var(--l8-stern-rund);
+  mask-image: var(--l8-stern-rund);
+  transition: transform 220ms cubic-bezier(.3, 1.4, .5, 1);
+}
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-folder:not(.is-collapsed) > .nav-folder-title .nav-folder-title-content::before {
+  -webkit-mask-image: var(--l8-stern-offen);
+  mask-image: var(--l8-stern-offen);
+  transform: scale(1.12);
+}
+/* Hover: geschlossen dreht sich der Stern eine Vierteldrehung (sieht in
+   Ruhe identisch aus), offen pulsiert er nur - sonst wandert der Funke. */
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-folder-title:hover .nav-folder-title-content::before {
+  transform: rotate(90deg) scale(1.2);
+  filter: none;
+}
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-folder:not(.is-collapsed) > .nav-folder-title:hover .nav-folder-title-content::before {
+  transform: scale(1.22);
+}
+
+/* Konstellation: gepunktete Linie genau unter der Sternmitte
+   (Zeilenpolster 10px + Rand 1px + halber Stern 8px = 19px). */
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-folder:not(.mod-root) > .nav-folder-children {
+  margin-left: 18px;
+  margin-inline-start: 18px;
+  padding-inline-start: 12px;
+  border-left: 0;
+  border-inline-start: 0;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--folder-color, var(--ag-accent)) 70%, transparent) 0 .9px,
+    transparent 1.2px) 0 0 / 2px 5px repeat-y;
+}
+
+/* Farbe der Knoten = Farbe des geoeffneten Elternordners. Am Kinder-
+   Container ausgerechnet: var() wird dort mit der geerbten Elternfarbe
+   aufgeloest, und der Unterordner, der --folder-color fuer sich selbst neu
+   setzt, erbt den fertigen Wert unveraendert. */
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-folder:not(.mod-root) > .nav-folder-children {
+  --l8-eltern: var(--folder-color, var(--ag-accent));
+  --l8-eltern-end: var(--folder-color-end, var(--l8-eltern));
+}
+
+/* Knoten auf der Linie: runde Punkte im H1-Verlauf (seit 24.09.2026
+   abends statt weisser Kreise), der 2px-Hof in Hintergrundfarbe unterbricht die
+   gepunktete Linie sauber. Dateien ... */
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-folder:not(.mod-root) > .nav-folder-children > :is(.nav-file, .nav-folder) {
+  position: relative;
+}
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-folder:not(.mod-root) > .nav-folder-children > .nav-file::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  left: -15px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 55%),
+    linear-gradient(135deg, var(--l8-eltern), var(--l8-eltern-end));
+  box-shadow:
+    0 0 0 2px var(--background-primary),
+    0 1px 4px color-mix(in srgb, var(--l8-eltern) 40%, transparent);
+  pointer-events: none;
+}
+/* ... und Unterordner (am Umschlag, weil die Ordnerzeile abschneidet). */
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-folder:not(.mod-root) > .nav-folder-children > .nav-folder::before {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  left: -15px;
+  top: 12px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, 0) 55%),
+    linear-gradient(135deg, var(--l8-eltern), var(--l8-eltern-end));
+  box-shadow:
+    0 0 0 2px var(--background-primary),
+    0 1px 4px color-mix(in srgb, var(--l8-eltern) 40%, transparent);
+  pointer-events: none;
+}
+
+/* Offene Notiz: Glaspille mit Rahmen im H1-Verlauf (aus A) ... */
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-file-title {
+  border: 1px solid transparent;
+}
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-file-title.is-active {
+  background:
+    linear-gradient(rgba(255, 255, 255, .92), rgba(255, 255, 255, .92)) padding-box,
+    var(--ag-h1-gradient) border-box !important;
+  box-shadow: 0 3px 12px rgba(94, 92, 230, .12);
+  font-weight: 680;
+}
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-file-title.is-active .nav-file-title-content {
+  background: var(--ag-h1-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+/* ... und ihr Knoten wird zum leuchtenden Stern (aus B). Der Schein steckt
+   im SVG selbst, weil ein filter auf einem maskierten Element mit
+   abgeschnitten wuerde. */
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-folder:not(.mod-root) > .nav-folder-children > .nav-file:has(> .nav-file-title.is-active)::before {
+  left: -19px;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
+  border: 0;
+  border-radius: 0;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><defs><linearGradient id="s" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%230a84ff"/><stop offset=".45" stop-color="%235e5ce6"/><stop offset=".75" stop-color="%23bf5af2"/><stop offset="1" stop-color="%23ff375f"/></linearGradient><radialGradient id="h"><stop offset="0" stop-color="%23bf5af2" stop-opacity=".45"/><stop offset="1" stop-color="%23bf5af2" stop-opacity="0"/></radialGradient></defs><circle cx="8" cy="8" r="8" fill="url(%23h)"/><path d="M8 2.2l1.2 4.6L13.8 8 9.2 9.2 8 13.8 6.8 9.2 2.2 8l4.6-1.2z" fill="url(%23s)"/></svg>') center / contain no-repeat;
+}
+
+/* Sternbild am Ende der Liste. */
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-files-container::after {
+  content: "";
+  display: block;
+  height: 130px;
+  margin-top: 8px;
+  opacity: .55;
+  pointer-events: none;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 230 130"><g stroke="%23a5a3f0" stroke-width=".8" fill="none" stroke-dasharray="2 3"><path d="M30 100 L80 65 L125 80 L160 30 L205 45"/><path d="M125 80 L150 120"/></g><g fill="%23bf5af2"><circle cx="30" cy="100" r="1.8"/><circle cx="80" cy="65" r="2.4"/><circle cx="125" cy="80" r="1.8"/><circle cx="150" cy="120" r="1.6"/><circle cx="205" cy="45" r="1.8"/></g><path fill="%235e5ce6" d="M160 22l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/></svg>') right bottom / 230px 130px no-repeat;
+}

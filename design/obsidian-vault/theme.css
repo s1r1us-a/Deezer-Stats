@@ -1,0 +1,3541 @@
+/* ==========================================================================
+   APPLE GLASS LIGHT 2.12 — Obsidian 1.12+
+   A calm, light-first Apple-inspired theme with local fonts only.
+   2.1 adds code syntax highlighting, plugin surfaces (Tasks, Calendar,
+   Mermaid, Meta Bind), sidebar panels (outline/backlinks/search/tags/graph)
+   and footnote styling.
+   2.4 (gptstats-inspired): 4-stop signature gradient (blue→indigo→purple→
+   pink) on H1/hero, vivid display palette (--ag-display-*), Apple neutral
+   text colors, animated aurora drift, calm round gradient bullets, and new
+   components — [!stat]/[!stat-grid] cards, [!chat-user]/[!chat-ai]/
+   [!gedanken] bubbles, .ag-badge pills.
+   2.5: bold signature caret — the native text caret gets one strong color
+   (--ag-caret, vivid pink) that stays clearly visible on light and dark.
+   Native caret, so no gradient/glow/width is possible; Style Settings toggle
+   "ag-plain-caret" swaps it for the plain accent caret.
+   2.5.1: performance pass — static ambient materials, paint-cheap focus states
+   and reduced full-surface blur while preserving the glass appearance.
+   2.6: optional Style Settings performance mode for a fully static, flat and
+   GPU-light rendering path while retaining the Apple color language.
+   2.7: the file explorer now follows the H1-H6 display spectrum with softer
+   gradient folders, matching branch lines and color-aware interaction states.
+   2.8: larger glass folder pills with glossy icons, material depth and a
+   short specular hover sweep.
+   2.9: rounder liquid-glass menus and dialogs with a restrained vault-color
+   hover wash for clear, readable selection states.
+   2.9.2: kleinere H1-Überschrift in der Leseansicht (clamp 1.5-2.25rem) mit
+   entsprechend kürzerem Farbstrich (215px).
+   2.9.3: Modul-Callout [!modul|farbe] ergänzt (Farbe über data-callout-metadata
+   wie bei den Stat-Karten); eingebettete Notizen rendern wieder Inhalt —
+   overflow: hidden machte den Embed zum Scroll-Container mit Nullhöhe.
+   2.10: ruhigere Oberfläche - Bewegung bleibt Klickbarem vorbehalten: kein
+   Lift und kein Glanzstreifen mehr auf Callouts, Bildern, Code und Embeds,
+   flachere Bildschatten. Zusammenfassung wechselt auf Indigo, Zitat auf
+   Graphit, die Callout-Icons folgen endlich dem Callout-Akzent, und der
+   Farbstrich markiert nur noch die erste H1 einer Notiz. Die Farbfolge der
+   Überschriften H2-H6 bleibt bewusst erhalten.
+   2.11: Farbprofil folgt dem H1-Verlauf — H4-H6 wandern von Orange/Grün/Cyan
+   auf dieselbe Achse wie der Signature-Gradient: H4 Cyan-Ende, H5 Indigo,
+   H6 Magenta, während H2 Violett und H3 Pink bleiben. Jede Ebene behält
+   ihren hellen Auslauf und hebt sich klar von der nächsten ab. Der
+   Fließtext, Fett und Kursiv liegen über Layer8-Akzente.css auf derselben
+   Achse: Pflaumentinte (#4b2f86 / #c3b4ff), Fett in Fuchsia (#d9269b / #ff9ae0) — H3 trägt exakt dieselbe Farbe,
+   Kursiv in Violett.
+   2.11.1/2.11.2: die hellen Ausläufe aller Überschriften waren auf weißem
+   Grund zu blass. Der Verlauf endet jetzt auf der Ebenenfarbe selbst statt
+   auf einer Mischung mit Weiß, und jeder Endpunkt (--ag-heading-c) geht
+   eine Stufe runter: H2 #d873f8, H3 #ff6ac4, H4 #5cccf5, H5 #8987f5,
+   H6 #f778da. H3 rückt zudem samt Fettschrift (--l8-bold in
+   Layer8-Akzente.css) auf das dunklere Fuchsia #d9269b (4,2:1).
+   Farbfamilien bleiben unverändert; Dark behält seine hellen Ausläufe.
+   2.12: der Dateibaum zieht nach. 2.11 hatte H4-H6 auf die Achse des
+   Signature-Gradienten geholt, der Explorer trug aber weiter Orange, Grün
+   und Teal — obwohl der Kommentar dort „repeats the same color progression
+   as H1-H6" behauptete. Die Positionen 4, 5 und 6 der Ordnerfolge nehmen
+   jetzt exakt die --ag-heading-a/-b-Paare von H4 (Cyan), H5 (Indigo) und
+   H6 (Magenta); in den Pfadzuweisungen wird der Orange-Block (Excel,
+   People, Persönlich) zur Indigo-Rampe und der Grün-Block (Projekte,
+   Quick Notes, Rezepte) zur Magenta-Rampe. Positionen 1-3 und alle
+   übrigen zwölf Ordner bleiben Zeichen für Zeichen unverändert. Es wird
+   nichts entfärbt und nichts vereinheitlicht.
+   ========================================================================== */
+
+/* @settings
+
+name: Apple Glass Light
+id: apple-glass-light
+settings:
+  -
+    id: ag-accent
+    title: Akzentfarbe
+    description: Hauptakzent für Navigation, Fokus und wichtige Aktionen.
+    type: variable-color
+    format: hex
+    opacity: false
+    default: '#0a84ff'
+  -
+    id: ag-system-font
+    title: Systemschrift statt lokalem Inter
+    description: Verwendet ausschließlich die Systemschrift. Inter wird sonst nur genutzt, wenn es lokal installiert ist.
+    type: class-toggle
+    default: false
+  -
+    id: ag-performance-mode
+    title: Performance-Modus
+    description: Maximale Geschwindigkeit für lange Notizen und schwächere Geräte. Entfernt Blur, Aurora, komplexe Schatten, dekorative Ebenen und Übergänge; Farben und Apple-Formensprache bleiben erhalten.
+    type: class-toggle
+    default: false
+  -
+    id: ag-aurora
+    title: Aurora-Stärke
+    description: Intensität des ruhigen Hintergrundlichts (0 = unsichtbar).
+    type: variable-number-slider
+    default: 72
+    min: 0
+    max: 100
+    step: 1
+  -
+    id: ag-content-bg
+    title: Inhaltsfläche
+    description: Deckkraft der Notizfläche über der Aurora.
+    type: variable-select
+    default: 'rgba(246,247,249,0.72)'
+    options:
+      -
+        label: Klar
+        value: 'rgba(255,255,255,0.42)'
+      -
+        label: Soft
+        value: 'rgba(246,247,249,0.72)'
+      -
+        label: Neutral
+        value: 'rgba(246,247,249,0.92)'
+  -
+    id: ag-plain-tree
+    title: Ordnerliste schlicht
+    description: Verwendet einfarbige Ordner statt der Überschriften-Farbfolge.
+    type: class-toggle
+    default: false
+  -
+    id: ag-material-opacity
+    title: Glas-Deckkraft
+    description: Deckkraft der zentralen Materialflächen.
+    type: variable-number-slider
+    default: 82
+    min: 60
+    max: 96
+    step: 1
+  -
+    id: ag-motion-scale
+    title: Ambient-Lichtstärke
+    description: Sichtbarkeit der dekorativen Lichtflächen (0 = unsichtbar). Die Flächen bleiben für bessere Performance statisch.
+    type: variable-number-slider
+    default: 55
+    min: 0
+    max: 100
+    step: 5
+  -
+    id: ag-muted-display
+    title: Gedeckte Display-Farben
+    description: Verwendet für große Display-Texte (H1, Stat-Karten, Hero) wieder die gedeckten Farben statt der leuchtenden Apple-Palette.
+    type: class-toggle
+    default: false
+  -
+    id: ag-plain-caret
+    title: Schlichter Schreib-Cursor
+    description: Ersetzt den kräftigen Signature-Caret (Pink) durch einen Caret in der Akzentfarbe.
+    type: class-toggle
+    default: false
+*/
+
+/* --------------------------------------------------------------------------
+   1. DESIGN TOKENS
+   -------------------------------------------------------------------------- */
+
+:root {
+  --ag-blue: #0a84ff;
+  --ag-blue-deep: #0071e3;
+  --ag-indigo: #5e5ce6;
+  --ag-purple: #8d4ec2;
+  --ag-pink: #c52f64;
+  --ag-teal: #087f8c;
+  --ag-green: #187a32;
+  --ag-orange: #ad5200;
+  --ag-yellow: #d99a00;
+  --ag-red: #d92d20;
+  --ag-gray: #667085;
+
+  /* Vivid Apple palette for large display text only (H1, hero, stat values).
+     Body copy and links keep the contrast-safe --ag-* colors above. */
+  --ag-display-blue: #0a84ff;
+  --ag-display-indigo: #5e5ce6;
+  --ag-display-purple: #bf5af2;
+  --ag-display-pink: #ff375f;
+  --ag-display-green: #30d158;
+  --ag-display-teal: #64d2ff;
+  --ag-display-orange: #ff9f0a;
+  --ag-display-yellow: #ffd60a;
+  --ag-grad-hero: linear-gradient(100deg,
+    var(--ag-display-blue) 0%,
+    var(--ag-display-indigo) 30%,
+    var(--ag-display-purple) 60%,
+    var(--ag-display-pink) 100%);
+
+  --ag-accent: #0a84ff;
+  --ag-caret: var(--ag-display-pink); /* bold, high-visibility text caret (both modes) */
+  --ag-aurora: 72;
+  --ag-content-bg: rgba(246, 247, 249, 0.72);
+  --ag-material-opacity: 82;
+  --ag-motion-scale: 55;
+
+  --ag-radius-xs: 7px;
+  --ag-radius-sm: 10px;
+  --ag-radius-control: 12px;
+  --ag-radius-card: 18px;
+  --ag-radius-hero: 26px;
+  --ag-radius-popover: 22px;
+  --ag-radius-window: 28px;
+  --ag-ease: cubic-bezier(.2, .8, .2, 1);
+  --ag-duration-fast: 150ms;
+  --ag-duration: 240ms;
+
+  --ag-line: rgba(32, 38, 49, .09);
+  --ag-line-strong: rgba(32, 38, 49, .15);
+  --ag-highlight: rgba(255, 255, 255, .9);
+  --ag-material: rgba(255, 255, 255, calc(var(--ag-material-opacity) / 100));
+  --ag-material-soft: rgba(255, 255, 255, .64);
+  --ag-material-solid: rgba(255, 255, 255, .94);
+  --ag-blur: saturate(120%) blur(10px);
+  --ag-window-blur: saturate(165%) blur(24px);
+  --ag-hover-vault: linear-gradient(105deg,
+    rgba(10, 132, 255, .16) 0%,
+    rgba(94, 92, 230, .13) 34%,
+    rgba(191, 90, 242, .11) 67%,
+    rgba(255, 55, 95, .1) 100%);
+  --ag-selected-vault: linear-gradient(105deg,
+    rgba(10, 132, 255, .27) 0%,
+    rgba(94, 92, 230, .22) 34%,
+    rgba(191, 90, 242, .19) 67%,
+    rgba(255, 55, 95, .17) 100%);
+  --ag-shadow-1: 0 1px 2px rgba(28, 35, 48, .035), 0 7px 20px rgba(28, 35, 48, .06);
+  --ag-shadow-2: 0 2px 5px rgba(28, 35, 48, .045), 0 16px 38px rgba(28, 35, 48, .09);
+  --ag-shadow-float: 0 4px 10px rgba(28, 35, 48, .06), 0 24px 54px rgba(28, 35, 48, .13);
+  --ag-focus: 0 0 0 3px color-mix(in srgb, var(--ag-accent) 22%, transparent);
+}
+
+body.theme-light {
+  --ag-h1-gradient: linear-gradient(94deg,
+    color-mix(in srgb, var(--ag-display-blue) 88%, #111827) 0%,
+    var(--ag-display-blue) 15%,
+    var(--ag-display-indigo) 46%,
+    var(--ag-display-purple) 76%,
+    var(--ag-display-pink) 100%);
+  --font-interface-theme: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", "Segoe UI Variable", "Segoe UI", sans-serif;
+  --font-text-theme: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI Variable Text", "Segoe UI", sans-serif;
+  --font-monospace-theme: "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, ui-monospace, monospace;
+
+  --background-primary: #f6f7f9;
+  --background-primary-alt: #f0f2f5;
+  --background-secondary: rgba(248, 249, 252, .76);
+  --background-secondary-alt: rgba(255, 255, 255, .7);
+  --background-modifier-border: var(--ag-line);
+  --background-modifier-border-hover: var(--ag-line-strong);
+  --background-modifier-border-focus: var(--ag-accent);
+  --background-modifier-hover: color-mix(in srgb, var(--ag-accent) 11%, transparent);
+  --background-modifier-active-hover: color-mix(in srgb, var(--ag-accent) 18%, transparent);
+
+  --text-normal: #1d1d1f;
+  --text-muted: #6e6e73;
+  --text-faint: #86868b;
+  --text-accent: var(--ag-accent);
+  --text-accent-hover: color-mix(in srgb, var(--ag-accent) 84%, #12304f);
+  --text-on-accent: #fff;
+  --text-selection: color-mix(in srgb, var(--ag-accent) 20%, transparent);
+
+  --interactive-accent: var(--ag-accent);
+  --interactive-accent-hover: color-mix(in srgb, var(--ag-accent) 88%, #111827);
+  --interactive-normal: var(--ag-material);
+  --interactive-hover: var(--ag-material-solid);
+  --link-color: var(--ag-accent);
+  --link-color-hover: color-mix(in srgb, var(--ag-accent) 82%, #172337);
+  --radius-s: var(--ag-radius-sm);
+  --radius-m: var(--ag-radius-control);
+  --radius-l: var(--ag-radius-card);
+  --shadow-s: var(--ag-shadow-1);
+  --shadow-l: var(--ag-shadow-2);
+  --divider-color: var(--ag-line);
+  --scrollbar-thumb-bg: color-mix(in srgb, var(--ag-accent) 55%, rgba(40, 46, 58, .24));
+  --scrollbar-active-thumb-bg: color-mix(in srgb, var(--ag-accent) 72%, rgba(40, 46, 58, .3));
+  --scrollbar-bg: transparent;
+}
+
+body.theme-light.ag-system-font {
+  --font-interface-theme: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable", "Segoe UI", sans-serif;
+  --font-text-theme: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", sans-serif;
+}
+
+/* Style-Settings toggle: fall back to the muted palette for display text. */
+body.theme-light.ag-muted-display {
+  --ag-display-blue: var(--ag-blue-deep);
+  --ag-display-indigo: var(--ag-indigo);
+  --ag-display-purple: var(--ag-purple);
+  --ag-display-pink: var(--ag-pink);
+  --ag-display-green: var(--ag-green);
+  --ag-display-teal: var(--ag-teal);
+  --ag-display-orange: var(--ag-orange);
+  --ag-display-yellow: var(--ag-yellow);
+}
+
+/* --------------------------------------------------------------------------
+   2. APP CANVAS AND CHROME
+   -------------------------------------------------------------------------- */
+
+body.theme-light .app-container {
+  position: relative;
+  background: #f4f5f8;
+}
+
+body.theme-light .app-container::before {
+  content: "";
+  position: fixed;
+  z-index: 0;
+  inset: -4%;
+  pointer-events: none;
+  background:
+    radial-gradient(42% 38% at 8% 4%, rgba(10, 132, 255, .28), transparent 72%),
+    radial-gradient(38% 34% at 92% 5%, rgba(94, 92, 230, .22), transparent 72%),
+    radial-gradient(40% 42% at 88% 96%, rgba(197, 47, 100, .13), transparent 74%),
+    radial-gradient(46% 42% at 8% 94%, rgba(100, 210, 255, .2), transparent 74%);
+  filter: none;
+  opacity: calc(var(--ag-aurora) / 100 * .78);
+  animation: none;
+}
+
+body.theme-light :is(.horizontal-main-container, .titlebar, .status-bar) {
+  position: relative;
+  z-index: 1;
+}
+
+body.theme-light :is(.workspace-ribbon, .status-bar, .workspace-tab-header-container) {
+  border-color: var(--ag-line) !important;
+  background: rgba(250, 251, 253, .9) !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+body.theme-light .workspace-split.mod-left-split,
+body.theme-light .workspace-split.mod-right-split {
+  border-color: var(--ag-line) !important;
+  background: rgba(246, 248, 252, .88) !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+body.theme-light .workspace-split.mod-left-split { box-shadow: inset -1px 0 0 var(--ag-line); }
+body.theme-light .workspace-split.mod-right-split { box-shadow: inset 1px 0 0 var(--ag-line); }
+
+body.theme-light .workspace-leaf-content {
+  position: relative;
+  background: var(--ag-content-bg) !important;
+}
+
+/* A newly opened Markdown note should use the same opaque free-space color
+   as the right sidebar, regardless of the canvas opacity or Aurora behind it. */
+body.theme-light .workspace-leaf-content[data-type="markdown"] {
+  --background-primary: #f8f8fc;
+  background: #f8f8fc !important;
+}
+
+/* The central "New Tab" empty state uses the same solid sidebar white.
+   Keep its own artwork and action links on transparent inner surfaces. */
+body.theme-light .workspace-split.mod-root .workspace-leaf-content[data-type="empty"] {
+  --background-primary: #f8f8fc;
+  background: #f8f8fc !important;
+}
+
+body.theme-light .workspace-split.mod-root .workspace-leaf-content[data-type="empty"] :is(.view-content, .empty-state) {
+  background: transparent !important;
+}
+
+/* The file explorer may carry color into its glass surface. The editor stays
+   neutral so prose always sits on a calm white canvas. */
+body.theme-light .workspace-split.mod-left-split .workspace-leaf.mod-active .workspace-leaf-content {
+  background:
+    linear-gradient(270deg,
+      color-mix(in srgb, var(--ag-accent) 13%, transparent) 0%,
+      color-mix(in srgb, #52d6ff 9%, transparent) 16%,
+      color-mix(in srgb, var(--ag-indigo) 7%, transparent) 34%,
+      color-mix(in srgb, #bf5af2 4%, transparent) 50%,
+      transparent 72%),
+    var(--ag-content-bg) !important;
+}
+
+body.theme-light :is(.workspace-leaf.mod-active .view-content, .markdown-source-view, .markdown-reading-view),
+body.theme-light :is(.nav-files-container, .workspace-leaf-content[data-type="file-explorer"]) {
+  background: transparent !important;
+}
+
+/* Active pane: keep the outline on the leaf edge, outside its scrollbar. */
+body.theme-light .workspace-leaf-content::after {
+  content: "";
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  box-sizing: border-box;
+  padding: 1px;
+  border-radius: var(--ag-radius-control);
+  pointer-events: none;
+  opacity: 0;
+  background: var(--ag-h1-gradient);
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  filter: none;
+}
+
+body.theme-light .workspace-leaf.mod-active .workspace-leaf-content::after {
+  opacity: 1;
+  animation: none;
+}
+
+/* Luminous seam on the edge facing the neighboring pane. */
+body.theme-light .workspace-leaf-content::before {
+  content: "";
+  position: absolute;
+  z-index: 5;
+  top: 18px;
+  bottom: 18px;
+  width: 3px;
+  border-radius: 99px;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(180deg,
+    transparent 0%,
+    var(--ag-accent) 22%,
+    var(--ag-indigo) 55%,
+    #52d6ff 80%,
+    transparent 100%);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--ag-accent) 48%, transparent));
+  transform: scaleY(.84);
+}
+
+body.theme-light .workspace-split.mod-left-split .workspace-leaf-content::before { right: 1px; }
+body.theme-light :is(.workspace-split.mod-root, .workspace-split.mod-right-split) .workspace-leaf-content::before { left: 1px; }
+
+body.theme-light .workspace-leaf.mod-active .workspace-leaf-content::before {
+  opacity: .9;
+  transform: scaleY(1);
+}
+
+body.theme-light .workspace-leaf.mod-active .view-header {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--ag-accent) 9%, rgba(255, 255, 255, .54)),
+    rgba(255, 255, 255, .28) 42%,
+    color-mix(in srgb, var(--ag-indigo) 6%, transparent));
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--ag-accent) 24%, var(--ag-line));
+}
+
+/* Keep compact Windows chrome without forcing macOS/mobile geometry. */
+body.theme-light.mod-windows:not(.is-mobile) .titlebar {
+  min-height: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  -webkit-app-region: drag;
+}
+
+body.theme-light.mod-windows:not(.is-mobile) :is(.titlebar-inner, .titlebar-button-container) {
+  min-height: 0 !important;
+  height: 30px !important;
+}
+
+body.theme-light.mod-windows:not(.is-mobile) :is(.titlebar button, .titlebar .clickable-icon, .titlebar-button, .titlebar-button-container) {
+  -webkit-app-region: no-drag;
+}
+
+/* Tabs */
+body.theme-light .workspace-tab-header-container {
+  padding-block: 3px;
+  box-shadow: inset 0 -1px 0 var(--ag-line);
+}
+
+body.theme-light .workspace-tab-header-container-inner { gap: 2px; }
+
+body.theme-light .workspace-tab-header {
+  position: relative;
+  margin: 2px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: var(--ag-radius-sm);
+  color: var(--text-muted);
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+body.theme-light .workspace-split.mod-root .workspace-tab-header:not(.is-active):hover {
+  color: var(--text-normal);
+  border-color: color-mix(in srgb, var(--ag-display-indigo) 18%, transparent);
+  background: color-mix(in srgb, var(--ag-display-blue) 5%, #fafbfd);
+  box-shadow: none;
+  transform: none;
+}
+
+body.theme-light .workspace-split.mod-root .workspace-tab-header.is-active {
+  color: var(--text-normal);
+  border-color: color-mix(in srgb, var(--ag-display-indigo) 28%, #fff);
+  background: linear-gradient(105deg,
+    color-mix(in srgb, var(--ag-display-blue) 8%, #fff),
+    color-mix(in srgb, var(--ag-display-indigo) 7%, #fff) 58%,
+    color-mix(in srgb, var(--ag-display-pink) 6%, #fff)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 1px 3px rgba(38, 49, 78, .06);
+  transform: none;
+}
+
+body.theme-light .workspace-split.mod-root .workspace-tab-header.is-active::before {
+  content: none;
+}
+
+body.theme-light .workspace-split.mod-root .workspace-tab-header.is-active::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 99px;
+  background: var(--ag-h1-gradient);
+  box-shadow: none;
+  opacity: 1;
+  animation: none;
+}
+
+body.theme-light .workspace-split.mod-root .workspace-tab-header-inner {
+  position: relative;
+  z-index: 1;
+}
+
+body.theme-light .workspace-split.mod-root .workspace-tab-header.is-active .workspace-tab-header-inner-title {
+  color: var(--ag-blue-deep);
+  background: var(--ag-h1-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  text-shadow: none;
+}
+
+body.theme-light .workspace-split.mod-root .workspace-tab-header:not(.is-active) .workspace-tab-header-inner-title {
+  color: var(--text-muted);
+  -webkit-text-fill-color: currentColor;
+  font-weight: 620;
+}
+
+body.theme-light .workspace-split.mod-root .workspace-tab-header:not(.is-active):hover .workspace-tab-header-inner-title {
+  color: var(--text-normal);
+}
+
+body.theme-light .workspace-split.mod-root .workspace-tab-header.is-active .workspace-tab-header-inner-icon {
+  color: var(--ag-accent);
+  filter: none;
+}
+
+body.theme-light .workspace-split.mod-root .workspace-tab-header-inner-close-button {
+  border-radius: 7px;
+  opacity: .52;
+}
+
+body.theme-light .workspace-split.mod-root .workspace-tab-header:hover .workspace-tab-header-inner-close-button { opacity: .82; }
+body.theme-light .workspace-split.mod-root .workspace-tab-header-inner-close-button:hover {
+  color: color-mix(in srgb, var(--ag-indigo) 72%, #263247);
+  background: color-mix(in srgb, var(--ag-indigo) 9%, rgba(255, 255, 255, .72));
+  transform: none;
+}
+
+body.theme-light :is(.mod-left-split, .mod-right-split) .workspace-tab-header-container {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+body.theme-light :is(.mod-left-split, .mod-right-split) .workspace-tab-header {
+  margin: 0;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body.theme-light :is(.mod-left-split, .mod-right-split) .workspace-tab-header.is-active {
+  background: var(--ag-selected-vault), rgba(255, 255, 255, .42) !important;
+}
+
+body.theme-light :is(.mod-left-split, .mod-right-split) .workspace-tab-header.is-active::after { display: none; }
+
+/* File explorer */
+body.theme-light .nav-files-container { padding: 9px 9px 14px; }
+
+body.theme-light :is(.nav-file-title, .nav-folder-title, .tree-item-self) {
+  margin-bottom: 1px;
+  border-radius: var(--ag-radius-sm);
+  color: var(--text-muted);
+  transition: color var(--ag-duration-fast) ease, background var(--ag-duration-fast) ease, box-shadow var(--ag-duration-fast) ease, transform var(--ag-duration-fast) var(--ag-ease);
+}
+
+body.theme-light .nav-folder-title {
+  position: relative;
+  min-height: 32px;
+  margin-bottom: 3px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  overflow: hidden;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--folder-color, var(--ag-accent)) 9%, rgba(255, 255, 255, .72));
+  border-radius: 12px;
+  color: var(--text-normal);
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, .46),
+    color-mix(in srgb, var(--folder-color, var(--ag-accent)) 4%, rgba(255, 255, 255, .18)));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .72),
+    inset 0 -1px 0 rgba(42, 51, 68, .025),
+    0 2px 8px rgba(38, 48, 66, .035);
+  -webkit-backdrop-filter: saturate(130%) blur(8px);
+  backdrop-filter: saturate(130%) blur(8px);
+  font-size: calc(var(--font-ui-small) + .5px);
+  font-weight: 600;
+}
+
+body.theme-light .nav-folder-title > :is(.nav-folder-collapse-indicator, .nav-folder-title-content) {
+  position: relative;
+  z-index: 1;
+}
+
+/* A short specular sweep makes the row read as glass without constant motion. */
+body.theme-light .nav-folder-title::after {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: -25%;
+  bottom: -25%;
+  left: -52%;
+  width: 38%;
+  pointer-events: none;
+  opacity: 0;
+  transform: skewX(-18deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .76), transparent);
+  transition: left 420ms var(--ag-ease), opacity 160ms ease;
+}
+
+body.theme-light :is(.nav-file-title, .nav-folder-title, .tree-item-self):hover {
+  color: var(--text-normal) !important;
+  background: var(--ag-hover-vault) !important;
+}
+
+body.theme-light :is(.nav-file-title.is-active, .tree-item-self.is-active) {
+  color: color-mix(in srgb, var(--ag-indigo) 62%, #152238) !important;
+  background: var(--ag-selected-vault), rgba(255, 255, 255, .58) !important;
+  box-shadow:
+    inset 3px 0 0 color-mix(in srgb, var(--ag-accent) 82%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, .8),
+    0 3px 10px rgba(60, 74, 138, .08);
+  font-weight: 680;
+}
+
+body.theme-light .nav-folder:not(.mod-root) > .nav-folder-children {
+  margin-left: 8px;
+  border-left: 1px solid color-mix(in srgb, var(--folder-color-end, var(--folder-color, var(--ag-accent))) 28%, transparent);
+}
+
+/* The explorer repeats the same color progression as H1-H6 — and since 2.12
+   that claim is true again. H4-H6 moved onto the signature axis in 2.11, but
+   the explorer kept orange, green and teal. Positions 4, 5 and 6 now take the
+   exact --ag-heading-a/-b pairs of H4 (cyan), H5 (indigo) and H6 (magenta).
+   Positions 1-3 are untouched. Nothing is desaturated and nothing is unified:
+   neighbours stay far apart, the tree stays as colorful as it was. */
+/* `of .nav-folder` keeps the sequence visually descending even when files
+   occur between folders in Obsidian's tree. */
+body.theme-light .nav-folder:nth-child(6n+1 of .nav-folder) { --folder-color: var(--ag-display-blue); --folder-color-end: var(--ag-display-indigo); }
+body.theme-light .nav-folder:nth-child(6n+2 of .nav-folder) { --folder-color: #7a2fd4; --folder-color-end: var(--ag-display-purple); }
+body.theme-light .nav-folder:nth-child(6n+3 of .nav-folder) { --folder-color: #d42a55; --folder-color-end: var(--ag-display-pink); }
+body.theme-light .nav-folder:nth-child(6n+4 of .nav-folder) { --folder-color: #0c7fa8; --folder-color-end: #17a8d8; }
+body.theme-light .nav-folder:nth-child(6n+5 of .nav-folder) { --folder-color: #4a45c9; --folder-color-end: var(--ag-display-indigo); }
+body.theme-light .nav-folder:nth-child(6n+6 of .nav-folder) { --folder-color: #a81f93; --folder-color-end: #d94bc4; }
+
+/* At vault level the spectrum spans the complete visible explorer. The path
+   mapping keeps the gradient stable when Obsidian mixes utility nodes into
+   the tree; nested folders continue to use the compact sequence above. */
+body.theme-light :is(.nav-folder:has(> .nav-folder-title[data-path="_00Home"]), .nav-folder-title[data-path="_00Home"]) { --folder-color: #0a84ff; --folder-color-end: #3478f6; }
+body.theme-light :is(.nav-folder:has(> .nav-folder-title[data-path="_Anhaenge"]), .nav-folder-title[data-path="_Anhaenge"]) { --folder-color: #3478f6; --folder-color-end: #4f66ec; }
+body.theme-light :is(.nav-folder:has(> .nav-folder-title[data-path="_PDF"]), .nav-folder-title[data-path="_PDF"]) { --folder-color: #4f66ec; --folder-color-end: #5e5ce6; }
+body.theme-light :is(.nav-folder:has(> .nav-folder-title[data-path="$Temp"]), .nav-folder-title[data-path="$Temp"]) { --folder-color: #7a2fd4; --folder-color-end: #963de0; }
+body.theme-light :is(.nav-folder:has(> .nav-folder-title[data-path="Berechnungen Bilder"]), .nav-folder-title[data-path="Berechnungen Bilder"]) { --folder-color: #963de0; --folder-color-end: #ad4be9; }
+body.theme-light :is(.nav-folder:has(> .nav-folder-title[data-path="Clippings"]), .nav-folder-title[data-path="Clippings"]) { --folder-color: #ad4be9; --folder-color-end: #bf5af2; }
+body.theme-light :is(.nav-folder:has(> .nav-folder-title[data-path="Code"]), .nav-folder-title[data-path="Code"]) { --folder-color: #d42a55; --folder-color-end: #e42f5a; }
+body.theme-light :is(.nav-folder:has(> .nav-folder-title[data-path="Daily"]), .nav-folder-title[data-path="Daily"]) { --folder-color: #e42f5a; --folder-color-end: #f3335d; }
+body.theme-light :is(.nav-folder:has(> .nav-folder-title[data-path="Excalidraw"]), .nav-folder-title[data-path="Excalidraw"]) { --folder-color: #f3335d; --folder-color-end: #ff7a95; }
+body.theme-light :is(.nav-folder:has(> .nav-folder-title[data-path="Excel"]), .nav-folder-title[data-path="Excel"]) { --folder-color: #4a45c9; --folder-color-end: #5250d6; }
+body.theme-light :is(.nav-folder:has(> .nav-folder-title[data-path="People"]), .nav-folder-title[data-path="People"]) { --folder-color: #5250d6; --folder-color-end: #5e5ce6; }
+body.theme-light :is(.nav-folder:has(> .nav-folder-title[data-path="Persönlich"]), .nav-folder-title[data-path="Persönlich"]) { --folder-color: #5e5ce6; --folder-color-end: #7370ee; }
+body.theme-light :is(.nav-folder:has(> .nav-folder-title[data-path="Projekte"]), .nav-folder-title[data-path="Projekte"]) { --folder-color: #a81f93; --folder-color-end: #bc2fa8; }
+body.theme-light :is(.nav-folder:has(> .nav-folder-title[data-path="Quick Notes"]), .nav-folder-title[data-path="Quick Notes"]) { --folder-color: #bc2fa8; --folder-color-end: #d94bc4; }
+body.theme-light :is(.nav-folder:has(> .nav-folder-title[data-path="Rezepte"]), .nav-folder-title[data-path="Rezepte"]) { --folder-color: #d94bc4; --folder-color-end: #e86fd0; }
+body.theme-light :is(.nav-folder:has(> .nav-folder-title[data-path="Schule"]), .nav-folder-title[data-path="Schule"]) { --folder-color: #087f9c; --folder-color-end: #159fbe; }
+body.theme-light :is(.nav-folder:has(> .nav-folder-title[data-path="Tools"]), .nav-folder-title[data-path="Tools"]) { --folder-color: #159fbe; --folder-color-end: #32b9dd; }
+body.theme-light :is(.nav-folder:has(> .nav-folder-title[data-path="zz_Stuff =)"]), .nav-folder-title[data-path="zz_Stuff =)"]) { --folder-color: #32b9dd; --folder-color-end: #64d2ff; }
+
+body.theme-light:not(.ag-plain-tree) .nav-folder-title {
+  color: color-mix(in srgb, var(--folder-color, var(--ag-accent)) 68%, var(--text-normal));
+}
+
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-folder-title:hover {
+  color: color-mix(in srgb, var(--folder-color, var(--ag-accent)) 84%, #182033) !important;
+  border-color: color-mix(in srgb, var(--folder-color, var(--ag-accent)) 24%, rgba(255, 255, 255, .82));
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, .68),
+    color-mix(in srgb, var(--folder-color, var(--ag-accent)) 19%, rgba(255, 255, 255, .32)),
+    color-mix(in srgb, var(--folder-color-end, var(--ag-accent)) 13%, rgba(255, 255, 255, .2))) !important;
+  box-shadow:
+    inset 2px 0 0 color-mix(in srgb, var(--folder-color, var(--ag-accent)) 72%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, .96),
+    0 7px 18px color-mix(in srgb, var(--folder-color, var(--ag-accent)) 11%, transparent),
+    0 2px 5px rgba(38, 48, 66, .07);
+  transform: translateX(3px) translateY(-1px);
+}
+
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-folder-title:hover::after {
+  left: 112%;
+  opacity: .72;
+}
+
+body.theme-light:not(.ag-plain-tree) .workspace-leaf-content[data-type="file-explorer"] .nav-folder-title:active {
+  transform: translateX(3px) scale(.985);
+}
+
+body.theme-light:not(.ag-plain-tree) .nav-folder:not(.is-collapsed) > .nav-folder-title {
+  border-color: color-mix(in srgb, var(--folder-color, var(--ag-accent)) 18%, rgba(255, 255, 255, .78));
+  background: linear-gradient(135deg,
+    rgba(255, 255, 255, .56),
+    color-mix(in srgb, var(--folder-color, var(--ag-accent)) 8%, rgba(255, 255, 255, .24)));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .86), 0 4px 12px rgba(38, 48, 66, .055);
+}
+
+body.theme-light .nav-folder-title .nav-folder-title-content::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  vertical-align: -4px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .82) 0%, rgba(255, 255, 255, 0) 42%),
+    linear-gradient(135deg,
+      var(--folder-color, var(--ag-accent)) 12%,
+      var(--folder-color-end, var(--folder-color, var(--ag-accent))) 88%);
+  filter: drop-shadow(0 2px 3px color-mix(in srgb, var(--folder-color, var(--ag-accent)) 27%, transparent));
+  transition: transform var(--ag-duration-fast) var(--ag-ease), filter var(--ag-duration-fast) ease;
+  -webkit-mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>') center / contain no-repeat;
+  mask: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>') center / contain no-repeat;
+}
+
+body.theme-light:not(.ag-plain-tree) .nav-folder-title:hover .nav-folder-title-content::before {
+  transform: translateY(-1px) rotate(-2deg) scale(1.12);
+  filter: drop-shadow(0 3px 6px color-mix(in srgb, var(--folder-color, var(--ag-accent)) 42%, transparent));
+}
+
+body.theme-light:not(.ag-plain-tree) .nav-folder-title:hover .nav-folder-collapse-indicator {
+  color: var(--folder-color, var(--ag-accent));
+}
+
+body.theme-light.ag-plain-tree .nav-folder-title { color: var(--text-normal); }
+body.theme-light.ag-plain-tree .nav-folder-title .nav-folder-title-content::before { background: var(--text-muted); filter: none; }
+body.theme-light.ag-plain-tree .nav-folder:not(.mod-root) > .nav-folder-children { border-left-color: var(--ag-line); }
+
+body.theme-light .nav-buttons-container .clickable-icon { border-radius: var(--ag-radius-sm); }
+body.theme-light .nav-buttons-container .clickable-icon:hover {
+  color: var(--ag-accent);
+  background: var(--ag-hover-vault);
+}
+
+/* Sidebar panels — outline, backlinks, search, tag pane. These mirror the file
+   explorer's calm hover/active language so the right dock feels of a piece. */
+body.theme-light :is(.outline, .tag-container, .backlink-pane, .search-result-container) .tree-item-self {
+  border-radius: var(--ag-radius-sm);
+  color: var(--text-muted);
+  transition: color var(--ag-duration-fast) ease, background var(--ag-duration-fast) ease;
+}
+body.theme-light :is(.outline, .tag-container, .backlink-pane, .search-result-container) .tree-item-self:hover {
+  color: var(--text-normal);
+  background: var(--ag-hover-vault);
+}
+body.theme-light :is(.outline, .tag-container) .tree-item-children {
+  border-left: 1px solid var(--ag-line);
+  margin-left: 8px;
+}
+
+/* Search / backlink result files: a compact glass header per file, accent
+   hover on each match, and matched text highlighted like inline <mark>. */
+body.theme-light .search-result-file-title {
+  border-radius: var(--ag-radius-sm);
+  color: var(--text-normal);
+  font-weight: 620;
+}
+body.theme-light .search-result-file-title:hover {
+  color: var(--ag-accent);
+  background: var(--ag-hover-vault);
+}
+body.theme-light .search-result-file-match {
+  border-left: 2px solid var(--ag-line);
+  border-radius: 0 var(--ag-radius-xs) var(--ag-radius-xs) 0;
+  transition: background var(--ag-duration-fast) ease, border-color var(--ag-duration-fast) ease;
+}
+body.theme-light .search-result-file-match:hover {
+  border-left-color: color-mix(in srgb, var(--ag-accent) 60%, transparent);
+  background: var(--ag-hover-vault);
+}
+body.theme-light .search-result-file-matched-text {
+  padding: .02em .16em .06em;
+  border-radius: .25em;
+  color: color-mix(in srgb, var(--text-normal) 94%, #5b4300);
+  background: linear-gradient(90deg, rgba(255, 214, 10, .34), rgba(255, 159, 10, .25));
+}
+
+/* Tag pane count as a small pill. */
+body.theme-light .tag-pane-tag-count {
+  padding: .02em .5em .06em;
+  border-radius: 99px;
+  color: color-mix(in srgb, var(--ag-accent) 82%, #26334a);
+  background: color-mix(in srgb, var(--ag-accent) 10%, rgba(255, 255, 255, .68));
+  font-size: .74em;
+  font-weight: 680;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Graph view — drive Obsidian's official graph vars with the Apple palette. */
+body.theme-light .graph-view.color-fill { --graph-node: var(--ag-accent); }
+body.theme-light {
+  --graph-line: var(--ag-line-strong);
+  --graph-node: var(--ag-accent);
+  --graph-node-focused: var(--ag-indigo);
+  --graph-node-tag: var(--ag-teal);
+  --graph-node-attachment: var(--ag-purple);
+  --graph-node-unresolved: var(--ag-orange);
+}
+
+/* Scrollbars — a slim glass track with an accent-tinted thumb that warms into
+   the theme's signature blue→indigo→purple gradient on hover. */
+body.theme-light ::-webkit-scrollbar { width: 15px; height: 15px; }
+body.theme-light ::-webkit-scrollbar-corner { background: transparent; }
+body.theme-light ::-webkit-scrollbar-track { background: transparent; }
+body.theme-light ::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 99px;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--ag-accent) 62%, rgba(64, 72, 88, .32)),
+      color-mix(in srgb, var(--ag-indigo) 56%, rgba(64, 72, 88, .28)));
+  background-clip: content-box;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .32);
+  transition: background var(--ag-duration-fast) ease;
+}
+body.theme-light ::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(180deg,
+      var(--ag-accent) 0%,
+      #52d6ff 26%,
+      var(--ag-indigo) 62%,
+      #bf5af2 100%);
+  background-clip: content-box;
+}
+body.theme-light ::-webkit-scrollbar-thumb:active {
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--ag-accent) 88%, #111827),
+      var(--ag-indigo) 60%,
+      #bf5af2);
+  background-clip: content-box;
+}
+
+/* --------------------------------------------------------------------------
+   3. OVERLAYS AND NATIVE CONTROLS
+   -------------------------------------------------------------------------- */
+
+body.theme-light :is(.modal, .prompt, .suggestion-container, .menu, .popover.hover-popover) {
+  border: 1px solid rgba(255, 255, 255, .82) !important;
+  background:
+    linear-gradient(145deg,
+      rgba(255, 255, 255, .9) 0%,
+      rgba(247, 250, 255, .78) 42%,
+      rgba(251, 247, 255, .76) 72%,
+      rgba(255, 248, 251, .82) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .96),
+    inset 1px 0 0 rgba(10, 132, 255, .1),
+    inset -1px 0 0 rgba(255, 55, 95, .07),
+    inset 0 -1px 0 rgba(94, 92, 230, .08),
+    0 2px 7px rgba(28, 35, 48, .055),
+    0 22px 54px rgba(28, 35, 48, .14) !important;
+  -webkit-backdrop-filter: var(--ag-window-blur);
+  backdrop-filter: var(--ag-window-blur);
+}
+
+body.theme-light :is(.modal, .prompt) {
+  border-radius: var(--ag-radius-window) !important;
+}
+
+body.theme-light :is(.suggestion-container, .menu, .popover.hover-popover) {
+  overflow: hidden;
+  border-radius: var(--ag-radius-popover) !important;
+}
+
+body.theme-light :is(.modal-bg, .prompt-bg) {
+  background: rgba(26, 31, 40, .16) !important;
+  -webkit-backdrop-filter: saturate(110%) blur(2px);
+  backdrop-filter: saturate(110%) blur(2px);
+}
+
+body.theme-light :is(.menu, .suggestion-container) {
+  padding: 7px;
+}
+
+body.theme-light :is(.menu-item, .suggestion-item) {
+  border-radius: 14px;
+  transition:
+    color var(--ag-duration-fast) ease,
+    background var(--ag-duration-fast) ease,
+    box-shadow var(--ag-duration-fast) ease;
+}
+
+body.theme-light :is(.menu-item:hover, .suggestion-item:hover) {
+  color: var(--text-normal) !important;
+  background: var(--ag-hover-vault) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(94, 92, 230, .11),
+    inset 0 1px 0 rgba(255, 255, 255, .78);
+}
+
+body.theme-light :is(.menu-item.is-selected, .suggestion-item.is-selected) {
+  color: color-mix(in srgb, var(--ag-indigo) 60%, #142136) !important;
+  background: var(--ag-selected-vault), rgba(255, 255, 255, .5) !important;
+  box-shadow:
+    inset 3px 0 0 color-mix(in srgb, var(--ag-accent) 78%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, .86),
+    0 3px 11px rgba(62, 72, 142, .1);
+  font-weight: 650;
+}
+
+body.theme-light .vertical-tab-nav-item {
+  border-radius: 14px;
+  transition:
+    color var(--ag-duration-fast) ease,
+    background var(--ag-duration-fast) ease,
+    box-shadow var(--ag-duration-fast) ease,
+    transform var(--ag-duration-fast) var(--ag-ease);
+}
+
+body.theme-light .vertical-tab-nav-item:hover {
+  color: var(--text-normal);
+  background: var(--ag-hover-vault);
+  transform: translateX(2px);
+}
+
+body.theme-light .vertical-tab-nav-item.is-active {
+  color: color-mix(in srgb, var(--ag-indigo) 64%, #142136) !important;
+  background: var(--ag-selected-vault), rgba(255, 255, 255, .52) !important;
+  box-shadow:
+    inset 3px 0 0 color-mix(in srgb, var(--ag-accent) 84%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, .86),
+    0 4px 12px rgba(62, 72, 142, .1);
+  font-weight: 680;
+}
+
+/* Settings keep the material visible instead of covering the dialog with two
+   opaque slabs. Scrollbar tracks are inset from the rounded top and bottom. */
+body.theme-light .modal.mod-settings .vertical-tab-header {
+  border-right: 1px solid color-mix(in srgb, var(--ag-indigo) 10%, var(--ag-line));
+  background:
+    linear-gradient(160deg,
+      rgba(255, 255, 255, .48),
+      rgba(238, 245, 255, .3) 52%,
+      rgba(248, 239, 255, .25)) !important;
+}
+
+body.theme-light .modal.mod-settings :is(.vertical-tab-content-container, .vertical-tab-content) {
+  background: rgba(255, 255, 255, .16) !important;
+}
+
+body.theme-light .modal.mod-settings::-webkit-scrollbar-track,
+body.theme-light .modal.mod-settings .vertical-tab-header::-webkit-scrollbar-track,
+body.theme-light .modal.mod-settings .vertical-tab-content-container::-webkit-scrollbar-track,
+body.theme-light .modal.mod-settings .vertical-tab-content::-webkit-scrollbar-track {
+  margin-block: 16px;
+}
+
+body.theme-light .modal.mod-settings::-webkit-scrollbar,
+body.theme-light .modal.mod-settings .vertical-tab-header::-webkit-scrollbar,
+body.theme-light .modal.mod-settings .vertical-tab-content-container::-webkit-scrollbar,
+body.theme-light .modal.mod-settings .vertical-tab-content::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+body.theme-light .notice {
+  border: 1px solid rgba(255, 255, 255, .82);
+  border-radius: 18px;
+  color: var(--text-normal);
+  background:
+    var(--ag-hover-vault),
+    rgba(255, 255, 255, .86);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .94),
+    0 16px 42px rgba(28, 35, 48, .14);
+  -webkit-backdrop-filter: var(--ag-window-blur);
+  backdrop-filter: var(--ag-window-blur);
+}
+
+/* Scope control styling to Obsidian settings/overlays and our own components. */
+body.theme-light :is(.modal, .prompt, .vertical-tab-content, .setting-item-control) :is(input[type="text"], input[type="search"], input[type="number"], textarea, select, .dropdown) {
+  border: 1px solid var(--ag-line-strong) !important;
+  border-radius: var(--ag-radius-control) !important;
+  background: var(--ag-material-solid) !important;
+  box-shadow: inset 0 1px 0 var(--ag-highlight), 0 1px 3px rgba(25, 31, 42, .045);
+}
+
+body.theme-light :is(.modal, .prompt, .vertical-tab-content, .setting-item-control) :is(input, textarea, select):focus {
+  border-color: color-mix(in srgb, var(--ag-accent) 70%, white) !important;
+  box-shadow: var(--ag-focus) !important;
+}
+
+body.theme-light :is(.modal, .prompt, .vertical-tab-content, .setting-item-control) button:not(.clickable-icon) {
+  border: 1px solid var(--ag-line);
+  border-radius: 99px;
+  background: var(--ag-material-solid);
+  box-shadow: var(--ag-shadow-1);
+  transition: transform var(--ag-duration-fast) var(--ag-ease), box-shadow var(--ag-duration-fast) ease;
+}
+
+body.theme-light :is(.modal, .prompt, .vertical-tab-content, .setting-item-control) button.mod-cta {
+  border-color: transparent;
+  color: white;
+  background: var(--ag-accent) !important;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--ag-accent) 28%, transparent);
+}
+
+body.theme-light .checkbox-container.is-enabled { background: var(--ag-green) !important; }
+
+body.theme-light :is(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ag-accent) 72%, white);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   4. CONTENT TYPOGRAPHY
+   -------------------------------------------------------------------------- */
+
+body.theme-light :is(.markdown-rendered h1, .markdown-rendered h2, .markdown-rendered h3, .markdown-rendered h4, .markdown-rendered h5, .markdown-rendered h6, .HyperMD-header) {
+  position: relative;
+  line-height: 1.2;
+  letter-spacing: -.022em;
+}
+
+/* Each level keeps its own Apple color family. Reading View uses gradient
+   lettering; Live Preview mirrors it with matching ink and a gradient light. */
+/* H1 carries the gptstats signature gradient: blue → indigo → purple → pink. */
+body.theme-light :is(.markdown-rendered h1, .HyperMD-header-1, .cm-header-1) {
+  --ag-heading-a: var(--ag-display-blue);
+  --ag-heading-b: var(--ag-display-indigo);
+  --ag-heading-c: var(--ag-display-purple);
+  --ag-heading-d: var(--ag-display-pink);
+  --ag-heading-glow: rgba(94, 92, 230, .25);
+  --ag-heading-line: 215px;
+}
+
+/* H2–H6 share the vivid display palette so every level reads as a sibling
+   of the H1 signature gradient: dark anchor → vivid core → luminous end. */
+body.theme-light :is(.markdown-rendered h2, .HyperMD-header-2, .cm-header-2) {
+  --ag-heading-a: #7a2fd4;
+  --ag-heading-b: var(--ag-display-purple);
+  --ag-heading-c: #d873f8;
+  --ag-heading-glow: rgba(191, 90, 242, .24);
+  --ag-heading-line: 250px;
+}
+
+body.theme-light :is(.markdown-rendered h3, .HyperMD-header-3, .cm-header-3) {
+  --ag-heading-a: #d9269b;
+  --ag-heading-b: #ef49b4;
+  --ag-heading-c: #ff6ac4;
+  --ag-heading-glow: rgba(217, 38, 155, .22);
+  --ag-heading-line: 215px;
+}
+
+body.theme-light :is(.markdown-rendered h4, .HyperMD-header-4, .cm-header-4) {
+  --ag-heading-a: #0c7fa8;
+  --ag-heading-b: #17a8d8;
+  --ag-heading-c: #5cccf5;
+  --ag-heading-glow: rgba(23, 168, 216, .22);
+  --ag-heading-line: 185px;
+}
+
+body.theme-light :is(.markdown-rendered h5, .HyperMD-header-5, .cm-header-5) {
+  --ag-heading-a: #4a45c9;
+  --ag-heading-b: var(--ag-display-indigo);
+  --ag-heading-c: #8987f5;
+  --ag-heading-glow: rgba(94, 92, 230, .22);
+  --ag-heading-line: 155px;
+}
+
+body.theme-light :is(.markdown-rendered h6, .HyperMD-header-6, .cm-header-6) {
+  --ag-heading-a: #a81f93;
+  --ag-heading-b: #d94bc4;
+  --ag-heading-c: #f778da;
+  --ag-heading-glow: rgba(217, 75, 196, .22);
+  --ag-heading-line: 130px;
+}
+
+body.theme-light .markdown-rendered :is(h1, h2, h3, h4, h5, h6):not(.ag-hero-title) {
+  width: fit-content;
+  box-sizing: content-box;
+  max-width: calc(100% - .08em);
+  padding-right: .08em;
+  border: 0;
+  color: var(--ag-heading-a);
+  background-image:
+    linear-gradient(
+      94deg,
+      color-mix(in srgb, var(--ag-heading-a) 88%, #111827) 0%,
+      var(--ag-heading-a) 15%,
+      var(--ag-heading-b) 46%,
+      var(--ag-heading-c) 76%,
+      var(--ag-heading-d, var(--ag-heading-c)) 100%
+    );
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: none;
+}
+
+body.theme-light .markdown-rendered h1 {
+  margin-top: .35em;
+  padding-bottom: .2em;
+  font-size: clamp(1.5rem, 3.6vw, 2.25rem);
+  font-weight: 790;
+  letter-spacing: -.045em;
+}
+
+/* Keep the display gradient static so long notes do not repaint every H1. */
+body.theme-light .markdown-rendered h1:not(.ag-hero-title) {
+  animation: none;
+  background-image: var(--ag-h1-gradient);
+}
+
+body.theme-light .markdown-rendered h2 { margin-top: 1.9em; padding-bottom: .28em; font-size: 1.62em; font-weight: 790; }
+body.theme-light .markdown-rendered h3 { margin-top: 1.65em; padding-bottom: .24em; font-size: 1.35em; font-weight: 750; }
+body.theme-light .markdown-rendered h4 { margin-top: 1.5em; padding-bottom: .22em; font-size: 1.16em; font-weight: 730; }
+body.theme-light .markdown-rendered h5 { margin-top: 1.4em; padding-bottom: .2em; font-weight: 720; }
+body.theme-light .markdown-rendered h6 { margin-top: 1.35em; padding-bottom: .18em; font-size: .9em; font-weight: 760; letter-spacing: .065em; text-transform: uppercase; }
+
+body.theme-light .markdown-rendered h1:not(.ag-hero-title)::after {
+  content: "";
+  display: block;
+  width: min(var(--ag-heading-line), calc(100vw - 72px));
+  height: 3px;
+  margin-top: .32em;
+  border-radius: 99px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .48), transparent 52%),
+    linear-gradient(90deg,
+      var(--ag-heading-a) 0%,
+      var(--ag-heading-b) 18%,
+      var(--ag-heading-c) 38%,
+      var(--ag-heading-d, var(--ag-heading-c)) 52%,
+      color-mix(in srgb, var(--ag-heading-d, var(--ag-heading-c)) 62%, transparent) 66%,
+      color-mix(in srgb, var(--ag-heading-d, var(--ag-heading-c)) 24%, transparent) 84%,
+      transparent 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .58), 0 3px 10px var(--ag-heading-glow);
+}
+
+body.theme-light .markdown-rendered h1:not(.ag-hero-title)::after { height: 4px; }
+
+/* The rule marks the note title, so only the first H1 of a note carries it. */
+body.theme-light .markdown-preview-sizer > div:has(h1) ~ div h1:not(.ag-hero-title)::after { content: none; }
+
+body.theme-light :is(.HyperMD-header-1, .cm-header-1) { color: var(--ag-heading-a); font-weight: 790; }
+body.theme-light :is(.HyperMD-header-2, .cm-header-2) { color: var(--ag-heading-a); font-weight: 790; }
+body.theme-light :is(.HyperMD-header-3, .cm-header-3) { color: var(--ag-heading-a); font-weight: 750; }
+body.theme-light :is(.HyperMD-header-4, .cm-header-4) { color: var(--ag-heading-a); font-weight: 730; }
+body.theme-light :is(.HyperMD-header-5, .cm-header-5) { color: var(--ag-heading-a); font-weight: 720; }
+body.theme-light :is(.HyperMD-header-6, .cm-header-6) { color: var(--ag-heading-a); font-weight: 760; }
+body.theme-light .cm-formatting-header { color: inherit !important; opacity: .5; }
+
+body.theme-light .markdown-source-view .HyperMD-header-1 {
+  border-bottom: 2px solid transparent;
+  border-image: linear-gradient(90deg, var(--ag-heading-a), var(--ag-heading-b), var(--ag-heading-c), var(--ag-heading-d, var(--ag-heading-c)) 36%, transparent 42%) 1;
+  text-shadow: 0 5px 14px var(--ag-heading-glow);
+}
+
+/* Double-line divider: a full-width gradient hairline with a shorter, centered
+   accent line beneath it. */
+body.theme-light :is(.markdown-rendered hr, .cm-hr, .markdown-source-view .cm-line hr) {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 2px;
+  margin: 2.6em 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 99px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--ag-accent) 80%, transparent) 22%,
+    color-mix(in srgb, var(--ag-indigo) 82%, transparent) 50%,
+    color-mix(in srgb, #bf5af2 70%, transparent) 78%,
+    transparent 100%);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .8);
+}
+
+body.theme-light :is(.markdown-rendered hr, .cm-hr)::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 5px);
+  width: 58%;
+  height: 2px;
+  transform: translateX(-50%);
+  border-radius: 99px;
+  background: linear-gradient(90deg,
+    transparent,
+    color-mix(in srgb, var(--ag-purple) 74%, transparent) 50%,
+    transparent);
+}
+
+/* Lists */
+body.theme-light .markdown-rendered :is(ul, ol) { padding-inline-start: 1.55em; }
+body.theme-light .markdown-rendered li { margin-block: .28em; padding-inline-start: .14em; }
+body.theme-light .markdown-rendered ul { list-style: none; }
+body.theme-light .markdown-rendered ul > li:not(.task-list-item) { position: relative; }
+
+/* Calm, uniform bullet series (gptstats-inspired): level 1 = signature-gradient
+   dot, level 2 = smaller muted dot, level 3+ = fine ring. No glow, no shadows. */
+
+/* Obsidian inserts its own .list-bullet span into Reading-View list items
+   (also inside rendered callouts). Its native dot used to hide behind the
+   wider capsule bullets — with the slimmer dots it shows as a second point,
+   so it is disabled here; the theme draws bullets via li::before instead. */
+body.theme-light .markdown-rendered .list-bullet::after { content: none; }
+
+body.theme-light .markdown-rendered ul > li:not(.task-list-item)::before {
+  content: "";
+  position: absolute;
+  left: -1.27em;
+  top: .58em;
+  width: 9px;
+  height: 9px;
+  border: 1px solid rgba(255, 255, 255, .9);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, .95) 0 16%, transparent 42%),
+    var(--ag-grad-hero);
+  box-shadow:
+    inset 0 -1px 1px rgba(40, 55, 140, .22),
+    0 1px 3px rgba(31, 48, 105, .2),
+    0 0 8px color-mix(in srgb, var(--ag-display-indigo) 34%, transparent);
+  transition: transform var(--ag-duration-fast) var(--ag-ease), box-shadow var(--ag-duration-fast) ease;
+}
+
+body.theme-light .markdown-rendered ul > li:not(.task-list-item):hover::before {
+  transform: scale(1.22);
+  box-shadow:
+    inset 0 -1px 1px rgba(40, 55, 140, .18),
+    0 2px 4px rgba(31, 48, 105, .18),
+    0 0 12px color-mix(in srgb, var(--ag-display-purple) 44%, transparent);
+}
+
+body.theme-light .markdown-rendered ul ul > li:not(.task-list-item)::before {
+  left: -1.24em;
+  top: .62em;
+  width: 7px;
+  height: 7px;
+  border-color: rgba(255, 255, 255, .85);
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, .9) 0 14%, transparent 40%),
+    linear-gradient(135deg, var(--ag-display-teal), var(--ag-display-indigo));
+  box-shadow:
+    inset 0 -1px 1px rgba(40, 55, 140, .18),
+    0 1px 2px rgba(31, 48, 105, .16),
+    0 0 6px color-mix(in srgb, var(--ag-display-teal) 30%, transparent);
+}
+
+body.theme-light .markdown-rendered ul ul ul > li:not(.task-list-item)::before {
+  left: -1.24em;
+  top: .62em;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(rgba(255, 255, 255, .88), rgba(255, 255, 255, .88)) padding-box,
+    conic-gradient(from 30deg, var(--ag-display-teal), var(--ag-display-indigo) 45%, var(--ag-display-purple) 72%, var(--ag-display-teal)) border-box;
+  box-shadow:
+    0 1px 2px rgba(31, 48, 105, .14),
+    0 0 5px rgba(94, 92, 230, .16);
+}
+
+body.theme-light .markdown-rendered ol > li::marker { color: var(--ag-accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+body.theme-light .markdown-rendered ol ol > li::marker { color: var(--ag-purple); }
+body.theme-light .markdown-rendered ol ol ol > li::marker { color: var(--ag-teal); }
+body.theme-light .markdown-source-view .HyperMD-list-line-1 .list-bullet::after,
+body.theme-light .markdown-source-view .cm-line:not(.HyperMD-list-line-2):not(.HyperMD-list-line-3) .list-bullet::after {
+  width: 9px !important;
+  height: 9px !important;
+  border: 1px solid rgba(255, 255, 255, .9);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, .95) 0 16%, transparent 42%),
+    var(--ag-grad-hero) !important;
+  box-shadow:
+    inset 0 -1px 1px rgba(40, 55, 140, .22),
+    0 1px 3px rgba(31, 48, 105, .2),
+    0 0 8px color-mix(in srgb, var(--ag-display-indigo) 34%, transparent);
+}
+
+body.theme-light .markdown-source-view .HyperMD-list-line-2 .list-bullet::after {
+  width: 7px !important;
+  height: 7px !important;
+  border: 1px solid rgba(255, 255, 255, .85);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, .9) 0 14%, transparent 40%),
+    linear-gradient(135deg, var(--ag-display-teal), var(--ag-display-indigo)) !important;
+  box-shadow:
+    inset 0 -1px 1px rgba(40, 55, 140, .18),
+    0 1px 2px rgba(31, 48, 105, .16),
+    0 0 6px color-mix(in srgb, var(--ag-display-teal) 30%, transparent);
+}
+
+body.theme-light .markdown-source-view .HyperMD-list-line-3 .list-bullet::after {
+  width: 7px !important;
+  height: 7px !important;
+  border: 1.5px solid transparent;
+  border-radius: 50%;
+  background:
+    linear-gradient(rgba(255, 255, 255, .88), rgba(255, 255, 255, .88)) padding-box,
+    conic-gradient(from 30deg, var(--ag-display-teal), var(--ag-display-indigo) 45%, var(--ag-display-purple) 72%, var(--ag-display-teal)) border-box !important;
+  box-shadow:
+    0 1px 2px rgba(31, 48, 105, .14),
+    0 0 5px rgba(94, 92, 230, .16);
+}
+body.theme-light .markdown-source-view .cm-formatting-list-ol { color: var(--ag-accent); font-weight: 700; }
+
+body.theme-light {
+  --checkbox-radius: 50%;
+  --checkbox-size: 1.16em;
+  --checkbox-color: var(--ag-accent);
+  --checkbox-color-hover: var(--ag-accent);
+  --checkbox-marker-color: #fff;
+}
+
+body.theme-light input[type="checkbox"] {
+  border: 1.5px solid color-mix(in srgb, var(--ag-accent) 48%, #aeb4bf);
+  background: rgba(255, 255, 255, .76);
+  box-shadow: inset 0 1px 0 #fff, 0 1px 3px rgba(30, 38, 58, .1);
+}
+
+body.theme-light input[type="checkbox"]:checked {
+  border-color: var(--ag-accent);
+  background: var(--ag-accent);
+  animation: agCheckPop 320ms var(--ag-ease);
+}
+
+/* A small spring when a task is ticked. */
+@keyframes agCheckPop {
+  0% { transform: scale(.7); }
+  45% { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+body.theme-light .markdown-rendered li.task-list-item.is-checked { color: var(--text-muted); }
+
+/* Internal links use liquid gradient ink without turning every sentence into
+   a heavy button. The low glass band remains readable across wrapped lines. */
+body.theme-light .markdown-rendered a.internal-link:not(.ag-link-row):not(.dash-card) {
+  padding: .04em .18em .08em;
+  border-radius: .34em;
+  color: var(--ag-accent);
+  background-image: linear-gradient(96deg,
+    #0057b8 0%,
+    var(--ag-accent) 28%,
+    #20b8d2 48%,
+    var(--ag-indigo) 72%,
+    #bf5af2 100%);
+  background-size: 175% 100%;
+  background-position: 0 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  box-shadow:
+    inset 0 -.48em 0 color-mix(in srgb, var(--ag-accent) 7%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--ag-indigo) 38%, transparent);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  font-weight: 650;
+  text-decoration: none;
+  filter: drop-shadow(0 2px 5px color-mix(in srgb, var(--ag-accent) 10%, transparent));
+  transition:
+    background-position 260ms var(--ag-ease),
+    box-shadow 220ms ease,
+    filter 220ms ease;
+}
+
+body.theme-light .markdown-rendered a.internal-link:not(.ag-link-row):not(.dash-card):hover {
+  background-position: 100% 50%;
+  box-shadow:
+    inset 0 -.78em 0 color-mix(in srgb, var(--ag-indigo) 10%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, #bf5af2 58%, transparent),
+    0 4px 11px color-mix(in srgb, var(--ag-indigo) 10%, transparent);
+  filter: saturate(1.16) brightness(1.03) drop-shadow(0 3px 7px color-mix(in srgb, var(--ag-indigo) 16%, transparent));
+  text-decoration: none;
+}
+
+body.theme-light .markdown-rendered a.internal-link.is-unresolved:not(.ag-link-row) {
+  color: var(--ag-orange);
+  background-image: linear-gradient(96deg,
+    #8f3b00,
+    var(--ag-orange) 38%,
+    #ff9f0a 66%,
+    #d92d20 100%);
+  box-shadow:
+    inset 0 -.48em 0 color-mix(in srgb, var(--ag-orange) 8%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--ag-orange) 52%, transparent);
+}
+
+/* External links: a clean Apple/Safari-style treatment — teal ink (distinct
+   from the blue internal links), a soft underline that firms up on hover, a
+   subtle glass wash, and a small outward arrow that nudges on hover. */
+body.theme-light .markdown-rendered a.external-link:not(.ag-link-row) {
+  padding: .02em .12em .06em;
+  border-radius: .32em;
+  color: var(--ag-teal);
+  text-decoration: none;
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--ag-teal) 40%, transparent);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  font-weight: 560;
+  transition:
+    color var(--ag-duration-fast) ease,
+    background var(--ag-duration-fast) ease,
+    box-shadow var(--ag-duration-fast) ease;
+}
+
+body.theme-light .markdown-rendered a.external-link:not(.ag-link-row)::after {
+  content: "\2197";
+  margin-left: .12em;
+  color: color-mix(in srgb, var(--ag-teal) 78%, transparent);
+  font-size: .82em;
+  font-weight: 700;
+  vertical-align: .04em;
+  transition: transform var(--ag-duration-fast) var(--ag-ease), color var(--ag-duration-fast) ease;
+}
+
+body.theme-light .markdown-rendered a.external-link:not(.ag-link-row):hover {
+  color: color-mix(in srgb, var(--ag-teal) 84%, #0a2a30);
+  background: color-mix(in srgb, var(--ag-teal) 8%, rgba(255, 255, 255, .6));
+  box-shadow:
+    inset 0 -1px 0 color-mix(in srgb, var(--ag-teal) 72%, transparent),
+    0 3px 10px color-mix(in srgb, var(--ag-teal) 13%, transparent);
+}
+
+body.theme-light .markdown-rendered a.external-link:not(.ag-link-row):hover::after {
+  color: var(--ag-teal);
+  transform: translate(1px, -1px);
+}
+
+/* Live Preview / source view: keep external URLs and their text teal too. */
+body.theme-light .markdown-source-view :is(.cm-link, .cm-url) { color: var(--ag-teal); }
+body.theme-light .markdown-source-view .cm-url { text-decoration-color: color-mix(in srgb, var(--ag-teal) 38%, transparent); }
+
+body.theme-light .markdown-source-view .cm-hmd-internal-link {
+  color: var(--ag-accent);
+  background-image: linear-gradient(96deg,
+    #0057b8,
+    var(--ag-accent) 32%,
+    #20b8d2 50%,
+    var(--ag-indigo) 74%,
+    #bf5af2);
+  background-size: 175% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  box-shadow:
+    inset 0 -.44em 0 color-mix(in srgb, var(--ag-accent) 6%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--ag-indigo) 32%, transparent);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  font-weight: 640;
+  text-decoration: none;
+}
+
+body.theme-light .markdown-source-view :is(.cm-hmd-internal-link, .cm-underline).is-unresolved {
+  color: var(--ag-orange) !important;
+  background-image: linear-gradient(96deg, #8f3b00, var(--ag-orange), #ff9f0a 68%, #d92d20);
+  -webkit-text-fill-color: transparent;
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--ag-orange) 48%, transparent);
+}
+
+/* While a line is actively edited, gradient-clipped link text can render too
+   faint or invisible as you type — fall back to solid, high-contrast ink there. */
+body.theme-light .markdown-source-view .cm-active :is(.cm-hmd-internal-link, .cm-link, .cm-link-alias) {
+  color: var(--ag-blue-deep);
+  -webkit-text-fill-color: var(--ag-blue-deep);
+}
+body.theme-light .markdown-source-view .cm-active :is(.cm-hmd-internal-link, .cm-underline).is-unresolved {
+  -webkit-text-fill-color: var(--ag-orange) !important;
+}
+
+/* Editor polish: a faint tint on the active line and a warm accent selection. */
+body.theme-light .markdown-source-view.mod-cm6 .cm-line.cm-active {
+  background: color-mix(in srgb, var(--ag-accent) 4%, transparent);
+  border-radius: var(--ag-radius-xs);
+}
+body.theme-light .markdown-source-view .cm-selectionBackground,
+body.theme-light .markdown-source-view .cm-line ::selection {
+  background: color-mix(in srgb, var(--ag-accent) 20%, transparent) !important;
+}
+body.theme-light ::selection { background: color-mix(in srgb, var(--ag-accent) 20%, transparent); }
+
+/* Footnotes — the reference marker becomes a small accent pill; the notes block
+   gets a quiet divider and accent back-references. */
+body.theme-light .markdown-rendered sup.footnote-ref a {
+  padding: 0 .38em;
+  border-radius: 99px;
+  color: var(--ag-accent);
+  background: color-mix(in srgb, var(--ag-accent) 10%, rgba(255, 255, 255, .7));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ag-accent) 22%, transparent);
+  font-weight: 660;
+  text-decoration: none;
+}
+body.theme-light .markdown-rendered sup.footnote-ref a:hover {
+  color: var(--text-on-accent);
+  background: var(--ag-accent);
+}
+body.theme-light .markdown-rendered .footnotes {
+  margin-top: 2.2em;
+  padding-top: 1em;
+  border-top: 1px solid var(--ag-line);
+  color: var(--text-muted);
+  font-size: .92em;
+}
+body.theme-light .markdown-rendered .footnote-backref { color: var(--ag-accent); text-decoration: none; }
+body.theme-light .markdown-source-view .cm-footref { color: var(--ag-accent); font-weight: 620; }
+
+/* --------------------------------------------------------------------------
+   5. CONTENT MATERIALS
+   -------------------------------------------------------------------------- */
+
+body.theme-light :is(.markdown-rendered mark, .cm-highlight) {
+  padding: .02em .16em .06em;
+  border-radius: .25em;
+  color: color-mix(in srgb, var(--text-normal) 94%, #5b4300);
+  background: linear-gradient(90deg, rgba(255, 214, 10, .34), rgba(255, 159, 10, .25));
+  box-shadow: inset 0 -1px 0 rgba(205, 137, 0, .2);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+body.theme-light :is(a.tag, .cm-hashtag) {
+  --ag-tag-color: var(--ag-accent);
+  display: inline-block;
+  padding: .07em .58em .11em;
+  border: 1px solid color-mix(in srgb, var(--ag-tag-color) 18%, rgba(255, 255, 255, .8));
+  border-radius: 99px;
+  color: color-mix(in srgb, var(--ag-tag-color) 82%, #26334a) !important;
+  background: color-mix(in srgb, var(--ag-tag-color) 9%, rgba(255, 255, 255, .68));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9);
+  font-size: .82em;
+  font-weight: 680;
+  line-height: 1.45;
+  text-decoration: none;
+}
+
+body.theme-light a.tag:is([href*="prüfung" i], [href*="pruefung" i], [href*="exam" i]) { --ag-tag-color: var(--ag-red); }
+body.theme-light a.tag:is([href*="wichtig" i], [href*="important" i], [href*="achtung" i]) { --ag-tag-color: var(--ag-orange); }
+body.theme-light a.tag:is([href*="fertig" i], [href*="done" i], [href*="erledigt" i]) { --ag-tag-color: var(--ag-green); }
+body.theme-light a.tag:is([href*="lernen" i], [href*="wissen" i], [href*="schule" i]) { --ag-tag-color: var(--ag-blue-deep); }
+body.theme-light a.tag:is([href*="idee" i], [href*="design" i], [href*="projekt" i]) { --ag-tag-color: var(--ag-purple); }
+body.theme-light .cm-hashtag-begin { border-radius: 99px 0 0 99px; padding-right: 0; border-right: 0; }
+body.theme-light .cm-hashtag-end { border-radius: 0 99px 99px 0; padding-left: 0; border-left: 0; }
+
+body.theme-light .callout {
+  --cc: var(--ag-accent);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--cc) 17%, var(--ag-line));
+  border-left: 4px solid var(--cc);
+  border-radius: var(--ag-radius-control);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .68), transparent 48%),
+    linear-gradient(118deg,
+      color-mix(in srgb, var(--cc) 14%, rgba(255, 255, 255, .78)),
+      color-mix(in srgb, var(--cc) 7%, rgba(255, 255, 255, .7)) 48%,
+      color-mix(in srgb, var(--cc) 11%, rgba(255, 255, 255, .72)) 100%);
+  box-shadow: inset 0 1px 0 var(--ag-highlight), var(--ag-shadow-1);
+  transition: transform var(--ag-duration) var(--ag-ease), box-shadow var(--ag-duration) ease, border-color var(--ag-duration) ease;
+}
+
+/* No shine sweep on callouts or code blocks: passive content stays still. */
+
+body.theme-light .callout:hover {
+  border-color: color-mix(in srgb, var(--cc) 28%, var(--ag-line));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .76), transparent 46%),
+    linear-gradient(118deg,
+      color-mix(in srgb, var(--cc) 18%, rgba(255, 255, 255, .78)),
+      color-mix(in srgb, var(--cc) 9%, rgba(255, 255, 255, .72)) 48%,
+      color-mix(in srgb, var(--cc) 14%, rgba(255, 255, 255, .74)) 100%);
+  box-shadow: inset 0 1px 0 #fff, var(--ag-shadow-2), 0 18px 38px -28px color-mix(in srgb, var(--cc) 46%, transparent);
+}
+
+body.theme-light .callout .callout-title {
+  min-height: 32px;
+  padding: 8px 9px;
+  border-bottom: 1px solid color-mix(in srgb, var(--cc) 18%, transparent);
+  border-radius: calc(var(--ag-radius-control) - 3px) calc(var(--ag-radius-control) - 3px) 7px 7px;
+  color: var(--cc);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .76), transparent 50%),
+    linear-gradient(110deg,
+      color-mix(in srgb, var(--cc) 22%, rgba(255, 255, 255, .76)) 0%,
+      color-mix(in srgb, var(--cc) 13%, rgba(255, 255, 255, .7)) 42%,
+      color-mix(in srgb, var(--cc) 8%, rgba(255, 255, 255, .7)) 68%,
+      color-mix(in srgb, var(--cc) 17%, rgba(255, 255, 255, .74)) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .94),
+    inset 0 -1px 0 color-mix(in srgb, var(--cc) 16%, transparent);
+  font-weight: 740;
+}
+
+body.theme-light .callout .callout-title-inner { color: var(--cc); }
+
+/* Smooth the collapsible-callout fold arrow and hint interactivity. */
+body.theme-light .callout.is-collapsible .callout-title { cursor: pointer; }
+body.theme-light .callout .callout-fold {
+  color: var(--cc);
+  transition: transform var(--ag-duration) var(--ag-ease), opacity var(--ag-duration-fast) ease;
+}
+body.theme-light .callout.is-collapsible:not(.is-collapsed) .callout-title:hover .callout-fold { opacity: .7; }
+
+body.theme-light .callout .callout-icon {
+  display: inline-flex;
+  width: 26px;
+  height: 26px;
+  margin-right: 5px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--cc);
+  background: color-mix(in srgb, var(--cc) 14%, white);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .78), 0 5px 12px -8px var(--cc);
+}
+/* Obsidian colours the callout glyph from its own --callout-color; pull it
+   back onto the theme accent so icon, title and edge always agree. */
+body.theme-light .callout .callout-icon .svg-icon { color: var(--cc); }
+body.theme-light .callout .callout-content { padding-top: 6px; line-height: 1.55; }
+body.theme-light .callout[data-callout="note"],
+body.theme-light .callout[data-callout="info"],
+body.theme-light .callout[data-callout="todo"] { --cc: var(--ag-blue-deep); }
+body.theme-light .callout[data-callout="tip"],
+body.theme-light .callout[data-callout="hint"],
+body.theme-light .callout[data-callout="important"] { --cc: var(--ag-teal); }
+/* Summary sits on indigo so it no longer reads as a sibling of the green
+   success callout; quote goes graphite to separate it from the blue note. */
+body.theme-light .callout[data-callout="abstract"],
+body.theme-light .callout[data-callout="summary"] { --cc: var(--ag-indigo); }
+body.theme-light .callout[data-callout="success"],
+body.theme-light .callout[data-callout="check"],
+body.theme-light .callout[data-callout="done"] { --cc: var(--ag-green); }
+body.theme-light .callout[data-callout="question"],
+body.theme-light .callout[data-callout="help"],
+body.theme-light .callout[data-callout="faq"],
+body.theme-light .callout[data-callout="example"] { --cc: var(--ag-purple); }
+body.theme-light .callout[data-callout="warning"],
+body.theme-light .callout[data-callout="caution"],
+body.theme-light .callout[data-callout="attention"] { --cc: var(--ag-orange); }
+body.theme-light .callout[data-callout="danger"],
+body.theme-light .callout[data-callout="error"],
+body.theme-light .callout[data-callout="bug"],
+body.theme-light .callout[data-callout="failure"] { --cc: var(--ag-red); }
+body.theme-light .callout[data-callout="quote"],
+body.theme-light .callout[data-callout="cite"] { --cc: var(--ag-gray); }
+
+body.theme-light .markdown-rendered blockquote {
+  position: relative;
+  margin: 1.35em 0;
+  padding: .85em 2.8em .85em 1.05em;
+  border: 1px solid color-mix(in srgb, var(--ag-indigo) 16%, var(--ag-line));
+  border-left: 4px solid color-mix(in srgb, var(--ag-indigo) 76%, white);
+  border-radius: var(--ag-radius-card);
+  color: color-mix(in srgb, var(--text-normal) 90%, var(--ag-indigo));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .76), transparent 48%),
+    linear-gradient(112deg,
+      color-mix(in srgb, var(--ag-indigo) 18%, rgba(255, 255, 255, .74)) 0%,
+      color-mix(in srgb, #52d6ff 10%, rgba(255, 255, 255, .68)) 42%,
+      color-mix(in srgb, #bf5af2 15%, rgba(255, 255, 255, .72)) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .94),
+    inset 0 -1px 0 color-mix(in srgb, var(--ag-indigo) 15%, transparent),
+    var(--ag-shadow-1);
+  transition:
+    transform var(--ag-duration) var(--ag-ease),
+    border-color var(--ag-duration) ease,
+    background var(--ag-duration) ease,
+    box-shadow var(--ag-duration) ease;
+}
+
+body.theme-light .markdown-rendered blockquote:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--ag-indigo) 27%, var(--ag-line));
+  border-left-color: color-mix(in srgb, var(--ag-indigo) 88%, white);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .82), transparent 46%),
+    linear-gradient(112deg,
+      color-mix(in srgb, var(--ag-indigo) 23%, rgba(255, 255, 255, .74)) 0%,
+      color-mix(in srgb, #52d6ff 13%, rgba(255, 255, 255, .7)) 42%,
+      color-mix(in srgb, #bf5af2 19%, rgba(255, 255, 255, .74)) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .82),
+    0 8px 22px rgba(28, 38, 55, .09),
+    0 18px 36px -28px color-mix(in srgb, var(--ag-indigo) 42%, transparent);
+}
+
+body.theme-light .markdown-rendered blockquote::before {
+  content: "“";
+  position: absolute;
+  top: .02em;
+  right: .18em;
+  color: color-mix(in srgb, var(--ag-indigo) 18%, transparent);
+  font: 4em/1 Georgia, serif;
+}
+
+body.theme-light .markdown-rendered :is(pre, code) { border-radius: var(--ag-radius-xs); }
+body.theme-light .markdown-rendered pre {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .88);
+  border-radius: var(--ag-radius-card);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .86), rgba(247, 250, 255, .72)) !important;
+  box-shadow:
+    inset 0 1px 0 #fff,
+    var(--ag-shadow-1);
+}
+
+/* The header bar now lives in the pre's own background so both pseudo-elements
+   stay free (traffic lights + language pill), and the pill can anchor to the
+   pre — not the content-width code element. */
+body.theme-light .markdown-rendered pre:has(code) {
+  position: relative;
+  padding-top: 2.55em;
+  background:
+    linear-gradient(110deg,
+      color-mix(in srgb, var(--ag-accent) 18%, rgba(255, 255, 255, .76)),
+      color-mix(in srgb, #52d6ff 14%, rgba(255, 255, 255, .7)) 40%,
+      color-mix(in srgb, var(--ag-indigo) 17%, rgba(255, 255, 255, .68)) 72%,
+      color-mix(in srgb, #bf5af2 15%, rgba(255, 255, 255, .72))) 0 0 / 100% 34px no-repeat,
+    var(--ag-material-solid) !important;
+}
+
+body.theme-light .markdown-rendered pre:has(code) .copy-code-button { z-index: 3; }
+
+body.theme-light .markdown-rendered pre:has(code)::before {
+  content: "";
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  width: 10px;
+  height: 10px;
+  z-index: 2;
+  border-radius: 50%;
+  background: #ff5f57;
+  box-shadow: 17px 0 0 #febc2e, 34px 0 0 #28c840;
+}
+
+/* Language badge in the code-block header (Reading View). CSS can't read a class
+   name into content, so the common languages are mapped explicitly; anything
+   else falls back to "code". */
+body.theme-light .markdown-rendered pre:is(pre) > code[class*="language-"]::before {
+  content: "code";
+  position: absolute;
+  top: 17px;
+  right: 14px;
+  z-index: 2;
+  transform: translateY(-50%);
+  padding: .2em .62em .24em;
+  border: 1px solid rgba(255, 255, 255, .92);
+  border-radius: 99px;
+  color: color-mix(in srgb, var(--ag-indigo) 54%, #33405a);
+  background: rgba(255, 255, 255, .94);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .96),
+    0 1px 2px rgba(28, 38, 55, .1);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  font-family: var(--font-interface-theme);
+  font-size: .64em;
+  font-weight: 770;
+  letter-spacing: .06em;
+  line-height: 1;
+  text-transform: uppercase;
+  pointer-events: none;
+  transition: opacity var(--ag-duration-fast) ease;
+}
+
+/* On hover the copy button takes the top-right slot, so the badge steps aside. */
+body.theme-light .markdown-rendered pre:is(pre):hover > code[class*="language-"]::before { opacity: 0; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-css::before { content: "CSS"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-scss::before { content: "SCSS"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-sass::before { content: "Sass"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-less::before { content: "Less"; }
+body.theme-light .markdown-rendered pre:is(pre) > code:is(.language-js, .language-javascript)::before { content: "JS"; }
+body.theme-light .markdown-rendered pre:is(pre) > code:is(.language-ts, .language-typescript)::before { content: "TS"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-jsx::before { content: "JSX"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-tsx::before { content: "TSX"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-html::before { content: "HTML"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-xml::before { content: "XML"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-json::before { content: "JSON"; }
+body.theme-light .markdown-rendered pre:is(pre) > code:is(.language-yaml, .language-yml)::before { content: "YAML"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-toml::before { content: "TOML"; }
+body.theme-light .markdown-rendered pre:is(pre) > code:is(.language-md, .language-markdown)::before { content: "Markdown"; }
+body.theme-light .markdown-rendered pre:is(pre) > code:is(.language-python, .language-py)::before { content: "Python"; }
+body.theme-light .markdown-rendered pre:is(pre) > code:is(.language-bash, .language-sh, .language-shell, .language-zsh)::before { content: "Shell"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-c::before { content: "C"; }
+body.theme-light .markdown-rendered pre:is(pre) > code:is(.language-cpp, .language-c\+\+)::before { content: "C++"; }
+body.theme-light .markdown-rendered pre:is(pre) > code:is(.language-cs, .language-csharp)::before { content: "C#"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-java::before { content: "Java"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-go::before { content: "Go"; }
+body.theme-light .markdown-rendered pre:is(pre) > code:is(.language-rust, .language-rs)::before { content: "Rust"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-php::before { content: "PHP"; }
+body.theme-light .markdown-rendered pre:is(pre) > code:is(.language-ruby, .language-rb)::before { content: "Ruby"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-sql::before { content: "SQL"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-swift::before { content: "Swift"; }
+body.theme-light .markdown-rendered pre:is(pre) > code:is(.language-kotlin, .language-kt)::before { content: "Kotlin"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-dart::before { content: "Dart"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-lua::before { content: "Lua"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-r::before { content: "R"; }
+body.theme-light .markdown-rendered pre:is(pre) > code.language-diff::before { content: "Diff"; }
+body.theme-light .markdown-rendered pre:is(pre) > code:is(.language-dataview, .language-dataviewjs)::before { content: "Dataview"; }
+
+body.theme-light :is(.markdown-rendered :not(pre) > code, .cm-inline-code) {
+  padding: .12em .42em .16em;
+  border: 1px solid color-mix(in srgb, var(--ag-pink) 12%, var(--ag-line));
+  border-radius: 7px;
+  color: color-mix(in srgb, var(--ag-pink) 78%, #3c2940);
+  background: color-mix(in srgb, var(--ag-pink) 6%, rgba(255, 255, 255, .74));
+}
+
+/* Syntax highlighting — the code chrome above is purely decorative; these rules
+   give the actual tokens Apple-palette ink in both Reading View (Prism .token.*)
+   and Live Preview (CodeMirror .cm-*). Colors are tuned for contrast on the
+   light glass surface. */
+body.theme-light .markdown-rendered pre code {
+  color: var(--text-normal);
+  -webkit-text-fill-color: currentColor;
+}
+
+body.theme-light :is(
+  .markdown-rendered .token.comment,
+  .markdown-rendered .token.prolog,
+  .markdown-rendered .token.doctype,
+  .markdown-rendered .token.cdata,
+  .cm-s-obsidian span.cm-comment) {
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+body.theme-light :is(
+  .markdown-rendered .token.keyword,
+  .markdown-rendered .token.rule,
+  .markdown-rendered .token.important,
+  .markdown-rendered .token.atrule,
+  .cm-s-obsidian span.cm-keyword) {
+  color: var(--ag-purple);
+  font-weight: 640;
+}
+
+body.theme-light :is(
+  .markdown-rendered .token.string,
+  .markdown-rendered .token.char,
+  .markdown-rendered .token.attr-value,
+  .markdown-rendered .token.inserted,
+  .markdown-rendered .token.regex,
+  .cm-s-obsidian span.cm-string,
+  .cm-s-obsidian span.cm-string-2) {
+  color: var(--ag-green);
+}
+
+body.theme-light :is(
+  .markdown-rendered .token.number,
+  .markdown-rendered .token.boolean,
+  .markdown-rendered .token.constant,
+  .markdown-rendered .token.unit,
+  .markdown-rendered .token.symbol,
+  .cm-s-obsidian span.cm-number,
+  .cm-s-obsidian span.cm-atom) {
+  color: var(--ag-orange);
+}
+
+body.theme-light :is(
+  .markdown-rendered .token.function,
+  .markdown-rendered .token.function-name,
+  .markdown-rendered .token.class-name,
+  .cm-s-obsidian span.cm-def,
+  .cm-s-obsidian span.cm-variable-2) {
+  color: var(--ag-blue-deep);
+}
+
+body.theme-light :is(
+  .markdown-rendered .token.property,
+  .markdown-rendered .token.attr-name,
+  .markdown-rendered .token.builtin,
+  .markdown-rendered .token.namespace,
+  .cm-s-obsidian span.cm-property,
+  .cm-s-obsidian span.cm-attribute,
+  .cm-s-obsidian span.cm-builtin) {
+  color: var(--ag-teal);
+}
+
+body.theme-light :is(
+  .markdown-rendered .token.tag,
+  .markdown-rendered .token.selector,
+  .markdown-rendered .token.deleted,
+  .cm-s-obsidian span.cm-tag,
+  .cm-s-obsidian span.cm-header,
+  .cm-s-obsidian span.cm-type) {
+  color: var(--ag-pink);
+}
+
+body.theme-light :is(
+  .markdown-rendered .token.operator,
+  .markdown-rendered .token.punctuation,
+  .markdown-rendered .token.entity,
+  .cm-s-obsidian span.cm-operator,
+  .cm-s-obsidian span.cm-punctuation,
+  .cm-s-obsidian span.cm-bracket,
+  .cm-s-obsidian span.cm-meta) {
+  color: var(--text-muted);
+}
+
+body.theme-light :is(
+  .markdown-rendered .token.variable,
+  .cm-s-obsidian span.cm-variable) {
+  color: var(--text-normal);
+}
+
+body.theme-light .markdown-rendered kbd {
+  display: inline-block;
+  min-width: 1.65em;
+  margin: 0 .08em;
+  padding: .14em .46em .2em;
+  border: 1px solid rgba(85, 94, 111, .2);
+  border-bottom-color: rgba(69, 77, 92, .32);
+  border-radius: 7px;
+  color: #3c4350;
+  background: linear-gradient(180deg, #fff, rgba(238, 241, 246, .92));
+  box-shadow: inset 0 1px 0 #fff, 0 2px 0 rgba(76, 84, 99, .16);
+  font-family: var(--font-interface-theme);
+  font-size: .78em;
+  font-weight: 680;
+  text-align: center;
+}
+
+body.theme-light .markdown-rendered table {
+  width: max-content;
+  min-width: min(100%, 42rem);
+  max-width: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .9);
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: var(--ag-radius-card);
+  background:
+    linear-gradient(145deg,
+      rgba(255, 255, 255, .82),
+      rgba(248, 251, 255, .64) 56%,
+      color-mix(in srgb, var(--ag-indigo) 4%, rgba(255, 255, 255, .66)));
+  box-shadow:
+    inset 0 1px 0 #fff,
+    var(--ag-shadow-1);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  transition:
+    border-color var(--ag-duration) ease,
+    box-shadow var(--ag-duration) ease;
+}
+
+body.theme-light .markdown-rendered table:hover {
+  border-color: color-mix(in srgb, var(--ag-accent) 22%, rgba(255, 255, 255, .9));
+  box-shadow:
+    inset 0 1px 0 #fff,
+    inset 0 -1px 0 rgba(44, 51, 65, .04),
+    0 4px 10px rgba(28, 36, 52, .065),
+    0 19px 40px rgba(28, 36, 52, .11),
+    0 30px 58px -36px color-mix(in srgb, var(--ag-accent) 38%, transparent);
+}
+
+body.theme-light .markdown-rendered th {
+  position: relative;
+  padding: .76em .94em;
+  border-color: color-mix(in srgb, var(--ag-accent) 12%, rgba(74, 84, 103, .1));
+  color: color-mix(in srgb, var(--ag-accent) 42%, #253044);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .78), transparent 48%),
+    linear-gradient(110deg,
+      color-mix(in srgb, var(--ag-accent) 19%, rgba(255, 255, 255, .78)) 0%,
+      color-mix(in srgb, #52d6ff 16%, rgba(255, 255, 255, .7)) 38%,
+      color-mix(in srgb, var(--ag-indigo) 18%, rgba(255, 255, 255, .68)) 72%,
+      color-mix(in srgb, #bf5af2 16%, rgba(255, 255, 255, .72)) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .94),
+    inset 0 -1px 0 color-mix(in srgb, var(--ag-indigo) 22%, transparent),
+    inset 0 7px 15px rgba(255, 255, 255, .16);
+  font-weight: 760;
+  letter-spacing: -.008em;
+}
+
+body.theme-light .markdown-rendered td {
+  padding: .72em .94em;
+  border-color: rgba(83, 94, 113, .09);
+  background: rgba(255, 255, 255, .28);
+  transition: color var(--ag-duration-fast) ease, background var(--ag-duration-fast) ease, box-shadow var(--ag-duration-fast) ease;
+}
+
+body.theme-light .markdown-rendered tbody tr:nth-child(even) td {
+  background: color-mix(in srgb, var(--ag-indigo) 3%, rgba(255, 255, 255, .34));
+}
+
+body.theme-light .markdown-rendered tbody tr:hover td {
+  color: color-mix(in srgb, var(--ag-accent) 24%, var(--text-normal));
+  background:
+    linear-gradient(90deg,
+      color-mix(in srgb, var(--ag-accent) 8%, rgba(255, 255, 255, .7)),
+      color-mix(in srgb, #52d6ff 5%, rgba(255, 255, 255, .62)) 48%,
+      color-mix(in srgb, var(--ag-indigo) 7%, rgba(255, 255, 255, .64)));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .72), inset 0 -1px 0 color-mix(in srgb, var(--ag-accent) 8%, transparent);
+}
+
+body.theme-light .markdown-rendered tbody td:first-child { font-weight: 650; }
+body.theme-light .markdown-rendered thead th:first-child { border-top-left-radius: calc(var(--ag-radius-card) - 1px); }
+body.theme-light .markdown-rendered thead th:last-child { border-top-right-radius: calc(var(--ag-radius-card) - 1px); }
+body.theme-light .markdown-rendered tbody tr:last-child td:first-child { border-bottom-left-radius: calc(var(--ag-radius-card) - 1px); }
+body.theme-light .markdown-rendered tbody tr:last-child td:last-child { border-bottom-right-radius: calc(var(--ag-radius-card) - 1px); }
+
+/* Images sit on a subtle layered "3D" card — a bright top edge, a soft contact
+   shadow and a wider ambient shadow — and gently lift on hover. */
+body.theme-light .markdown-rendered :is(img:not(.emoji), .image-embed img) {
+  max-width: 100%;
+  border: 1px solid rgba(255, 255, 255, .84);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .38);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .9),
+    0 2px 4px rgba(28, 38, 55, .07),
+    0 10px 22px rgba(28, 38, 55, .1);
+  transition: box-shadow var(--ag-duration) ease, border-color var(--ag-duration) ease;
+}
+
+body.theme-light .markdown-rendered :is(img:not(.emoji), .image-embed img):hover {
+  border-color: color-mix(in srgb, var(--ag-accent) 26%, rgba(255, 255, 255, .84));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .94),
+    0 3px 6px rgba(28, 38, 55, .09),
+    0 14px 28px rgba(28, 38, 55, .12);
+}
+
+body.theme-light .markdown-rendered :is(.internal-embed:not(.image-embed), .markdown-embed, .file-embed:not(.image-embed), .pdf-embed) {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, .88);
+  border-radius: var(--ag-radius-card);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .82), rgba(247, 250, 255, .68));
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 4px 10px rgba(28, 36, 52, .05),
+    0 16px 34px rgba(28, 36, 52, .08);
+  transition: border-color var(--ag-duration) ease, box-shadow var(--ag-duration) ease;
+}
+
+body.theme-light .markdown-rendered :is(.internal-embed:not(.image-embed), .markdown-embed, .file-embed:not(.image-embed), .pdf-embed):hover {
+  border-color: color-mix(in srgb, var(--ag-accent) 22%, rgba(255, 255, 255, .88));
+}
+
+body.theme-light .markdown-rendered .markdown-embed { padding: 12px 15px 14px; }
+
+/* A note embed must not become a scroll container. With `overflow: hidden` the
+   embedded preview measures a zero-height scrollport and Obsidian renders no
+   content at all — the card stays empty. `clip` keeps the rounded card edge
+   without creating that scrollport. */
+body.theme-light .markdown-rendered .internal-embed.markdown-embed {
+  display: block;
+  height: auto;
+  max-height: none;
+  overflow: clip;
+}
+
+body.theme-light :is(.markdown-embed-title, .file-embed-title) {
+  margin: -12px -15px 12px;
+  padding: 9px 13px;
+  border-bottom: 1px solid color-mix(in srgb, var(--ag-indigo) 17%, var(--ag-line));
+  color: color-mix(in srgb, var(--ag-accent) 58%, #263247);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .78), transparent 50%),
+    linear-gradient(110deg,
+      color-mix(in srgb, var(--ag-accent) 18%, rgba(255, 255, 255, .76)),
+      color-mix(in srgb, #52d6ff 12%, rgba(255, 255, 255, .7)) 42%,
+      color-mix(in srgb, var(--ag-indigo) 16%, rgba(255, 255, 255, .68)) 74%,
+      color-mix(in srgb, #bf5af2 14%, rgba(255, 255, 255, .72)));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .95), inset 0 -1px 0 color-mix(in srgb, var(--ag-indigo) 12%, transparent);
+  font-weight: 740;
+}
+
+body.theme-light :is(.markdown-embed-link, .file-embed-link) {
+  top: 6px;
+  right: 8px;
+  padding: 5px;
+  border-radius: 8px;
+  color: var(--ag-accent);
+  background: color-mix(in srgb, var(--ag-accent) 10%, rgba(255, 255, 255, .76));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+
+body.theme-light .metadata-container {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 1.25em;
+  padding: 9px 12px 10px;
+  border: 1px solid rgba(255, 255, 255, .9);
+  border-radius: var(--ag-radius-card);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .84), rgba(247, 250, 255, .7));
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 4px 10px rgba(28, 36, 52, .05),
+    0 16px 34px rgba(28, 36, 52, .08);
+}
+
+body.theme-light .metadata-container::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--ag-accent), #52d6ff 22%, var(--ag-indigo) 45%, #bf5af2 68%, var(--ag-accent) 90%, #52d6ff);
+  background-size: 200% 100%;
+  opacity: .82;
+  animation: none;
+}
+
+body.theme-light .metadata-properties-heading {
+  margin: -9px -12px 9px;
+  padding: 10px 13px 9px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--ag-indigo) 18%, var(--ag-line));
+  color: color-mix(in srgb, var(--ag-accent) 48%, #263247);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .8), transparent 50%),
+    linear-gradient(110deg,
+      color-mix(in srgb, var(--ag-accent) 19%, rgba(255, 255, 255, .76)),
+      color-mix(in srgb, #52d6ff 15%, rgba(255, 255, 255, .7)) 40%,
+      color-mix(in srgb, var(--ag-indigo) 18%, rgba(255, 255, 255, .68)) 72%,
+      color-mix(in srgb, #bf5af2 16%, rgba(255, 255, 255, .72)));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .96), inset 0 -1px 0 color-mix(in srgb, var(--ag-indigo) 13%, transparent);
+  font-weight: 760;
+}
+
+body.theme-light .metadata-property { min-height: 34px; padding-inline: 5px; border-radius: var(--ag-radius-sm); }
+body.theme-light .metadata-property:hover { background: color-mix(in srgb, var(--ag-accent) 6%, transparent); }
+body.theme-light :is(.metadata-property-key, .metadata-property-key-input) { color: var(--text-muted); font-weight: 650; }
+body.theme-light :is(.home-dash, .bfw-hub) .metadata-container { display: none !important; }
+
+/* Suppress the core page-preview popover while the Home or BFW dashboard is the
+   active view, so hovering its link cards does not pop a page preview. */
+body.theme-light:has(.workspace-leaf.mod-active :is(.home-dash, .bfw-hub)) .popover.hover-popover {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   5b. PLUGIN SURFACES
+   Community plugins in this vault: Tasks, Calendar, Mermaid, Meta Bind.
+   Each reuses the shared tokens so it feels native to the theme.
+   -------------------------------------------------------------------------- */
+
+/* --- Tasks (obsidian-tasks-plugin) --- */
+/* Custom status markers (in-progress, cancelled, forwarded …) keep the accent
+   ring so non-standard checkboxes still read as interactive. */
+body.theme-light .task-list-item[data-task]:not([data-task=" "]):not([data-task="x"]) > input[type="checkbox"] {
+  border-color: color-mix(in srgb, var(--ag-accent) 55%, #aeb4bf);
+  background:
+    color-mix(in srgb, var(--ag-accent) 14%, rgba(255, 255, 255, .82));
+}
+body.theme-light .task-list-item[data-task="/"] > input[type="checkbox"] { border-color: var(--ag-blue); background: color-mix(in srgb, var(--ag-blue) 20%, white); }
+body.theme-light .task-list-item[data-task="-"] > input[type="checkbox"] { border-color: var(--ag-red); background: color-mix(in srgb, var(--ag-red) 16%, white); }
+body.theme-light .task-list-item[data-task=">"] > input[type="checkbox"] { border-color: var(--ag-orange); background: color-mix(in srgb, var(--ag-orange) 16%, white); }
+
+/* Inline metadata rendered by Tasks query results as pill badges, echoing the
+   tag styling above. */
+body.theme-light :is(.task-due, .task-scheduled, .task-start, .task-priority, .task-recurring, .task-created) {
+  display: inline-flex;
+  align-items: center;
+  gap: .22em;
+  padding: .04em .5em .08em;
+  border: 1px solid color-mix(in srgb, var(--tk-color, var(--ag-accent)) 18%, rgba(255, 255, 255, .8));
+  border-radius: 99px;
+  color: color-mix(in srgb, var(--tk-color, var(--ag-accent)) 80%, #26334a);
+  background: color-mix(in srgb, var(--tk-color, var(--ag-accent)) 9%, rgba(255, 255, 255, .68));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9);
+  font-size: .8em;
+  font-weight: 640;
+}
+body.theme-light .task-priority { --tk-color: var(--ag-red); }
+body.theme-light .task-due { --tk-color: var(--ag-orange); }
+body.theme-light :is(.task-scheduled, .task-start) { --tk-color: var(--ag-blue); }
+body.theme-light .task-recurring { --tk-color: var(--ag-teal); }
+body.theme-light .task-created { --tk-color: var(--ag-gray); }
+body.theme-light .plugin-tasks-query-explanation { color: var(--text-faint); }
+
+/* --- Calendar (calendar) ---
+   A native, full-surface sidebar panel. It shares the same ambient color field,
+   header rhythm and controls as the Layer8 Quick Capture panel below it. */
+body.theme-light .workspace-split.mod-right-split:has(.workspace-leaf-content[data-type="calendar"]):has(.workspace-leaf-content[data-type="layer8-quick-capture"]) {
+  background:
+    radial-gradient(115% 48% at -10% 0%, color-mix(in srgb, #52d6ff 12%, transparent), transparent 70%),
+    radial-gradient(105% 52% at 112% 100%, color-mix(in srgb, var(--ag-display-pink) 7%, transparent), transparent 72%),
+    linear-gradient(165deg, rgba(250, 252, 255, .92), rgba(244, 247, 252, .78)) !important;
+}
+
+body.theme-light .workspace-split.mod-right-split .workspace-leaf-content:is(
+  [data-type="calendar"],
+  [data-type="layer8-quick-capture"]
+),
+body.theme-light .workspace-split.mod-right-split .workspace-leaf-content:is(
+  [data-type="calendar"],
+  [data-type="layer8-quick-capture"]
+) .view-content {
+  padding: 0;
+  background: transparent !important;
+}
+
+body.theme-light .workspace-split.mod-right-split .workspace-tabs:has(.workspace-leaf-content[data-type="layer8-quick-capture"]) {
+  border-top: 1px solid color-mix(in srgb, var(--ag-indigo) 12%, var(--ag-line));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .72);
+}
+
+body.theme-light .workspace-split.mod-right-split .workspace-tabs:has(.workspace-leaf-content[data-type="layer8-quick-capture"]) > .workspace-tab-header-container {
+  min-height: 34px;
+  padding: 3px 10px;
+  /* Die Kurzform oben setzt padding-right auf 10px zurueck. Liegt diese
+     Tab-Gruppe oben rechts, loescht das Obsidians reservierten Platz fuer
+     die Fensterknoepfe (--frame-right-space, 126px). Die Tabs rutschen
+     dann unter das no-drag-Schild .workspace-tab-header-container::after
+     und die rechten beiden lassen sich nicht mehr anklicken.
+     Deshalb wird der Wert hier wieder hergestellt; ohne Fensterrahmen ist
+     --frame-right-space nicht gesetzt und es bleibt bei 10px. */
+  padding-right: max(10px, calc(var(--size-4-2, 8px) + var(--frame-right-space, 0px)));
+  background: linear-gradient(180deg, rgba(255, 255, 255, .38), rgba(248, 250, 254, .16)) !important;
+}
+
+/* Calendar and Quick Capture are a paired right-sidebar system. Their own
+   content provides the surface, so the outer active pane frame disappears. */
+body.theme-light .workspace-split.mod-right-split .workspace-leaf.mod-active > .workspace-leaf-content:is(
+  [data-type="calendar"],
+  [data-type="layer8-quick-capture"]
+)::after {
+  border-color: transparent;
+  box-shadow: none;
+  opacity: 0;
+}
+
+body.theme-light #calendar-container {
+  --calendar-cell-radius: 9px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: 100%;
+  padding: 16px 14px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+body.theme-light #calendar-container::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  right: 14px;
+  left: 14px;
+  height: 3px;
+  border-radius: 0 0 99px 99px;
+  pointer-events: none;
+  opacity: .88;
+  background: var(--ag-grad-hero);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--ag-indigo) 20%, transparent);
+}
+
+body.theme-light #calendar-container > * {
+  position: relative;
+  z-index: 1;
+}
+
+body.theme-light #calendar-container .nav {
+  min-height: 42px;
+  margin: 0 0 12px;
+  padding: 4px 4px 11px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--ag-indigo) 18%, var(--ag-line));
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body.theme-light #calendar-container .title {
+  min-width: 0;
+  font-size: clamp(1.04rem, 6.4vw, 1.26rem);
+  font-weight: 740;
+  letter-spacing: -.035em;
+  line-height: 1.1;
+}
+
+body.theme-light #calendar-container .month,
+body.theme-light #calendar-container .year {
+  color: transparent;
+  background: linear-gradient(100deg, var(--ag-accent), var(--ag-indigo) 62%, var(--ag-display-pink));
+  -webkit-background-clip: text;
+  background-clip: text;
+  font-weight: 760;
+}
+
+body.theme-light #calendar-container .right-nav { align-items: center; gap: 3px; }
+
+body.theme-light #calendar-container .reset-button,
+body.theme-light #calendar-container .arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--ag-indigo) 10%, rgba(255, 255, 255, .88));
+  color: var(--text-muted);
+  background: linear-gradient(145deg, rgba(255, 255, 255, .88), rgba(246, 248, 253, .58));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .94), 0 2px 6px rgba(31, 39, 54, .055);
+  transition:
+    color var(--ag-duration-fast) ease,
+    border-color var(--ag-duration-fast) ease,
+    background var(--ag-duration-fast) ease,
+    box-shadow var(--ag-duration-fast) ease,
+    translate var(--ag-duration-fast) var(--ag-ease),
+    scale var(--ag-duration-fast) var(--ag-ease);
+}
+
+body.theme-light #calendar-container .reset-button {
+  min-height: 28px;
+  margin: 0 1px;
+  padding: 0 9px;
+  border-radius: 99px;
+  font-size: .65rem;
+  font-weight: 720;
+  letter-spacing: .075em;
+}
+
+body.theme-light #calendar-container .arrow {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+}
+
+/* The plugin rotates its single left-chevron by 180deg for "next month".
+   Keep that transform independent from our hover lift. */
+body.theme-light #calendar-container .arrow.right { transform: rotate(180deg); }
+
+body.theme-light #calendar-container .arrow svg {
+  width: 15px;
+  height: 15px;
+  color: currentColor;
+  stroke-width: 2.35px;
+}
+
+body.theme-light #calendar-container :is(.reset-button, .arrow):hover {
+  border-color: color-mix(in srgb, var(--ag-accent) 25%, white);
+  color: var(--ag-accent);
+  background: color-mix(in srgb, var(--ag-accent) 9%, rgba(255, 255, 255, .9));
+  box-shadow: inset 0 1px 0 #fff, 0 4px 10px color-mix(in srgb, var(--ag-accent) 13%, transparent);
+  translate: 0 -1px;
+}
+
+body.theme-light #calendar-container :is(.reset-button, .arrow):active { translate: 0; scale: .94; }
+body.theme-light #calendar-container :is(.reset-button, .arrow):focus-visible {
+  outline: none;
+  box-shadow: inset 0 1px 0 #fff, var(--ag-focus);
+}
+
+body.theme-light #calendar-container .calendar {
+  width: 100%;
+  margin-inline: 0;
+  border-collapse: separate;
+  padding: 6px 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--ag-indigo) 10%, rgba(255, 255, 255, .76));
+  border-radius: 15px;
+  border-spacing: 2px 3px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, .70), rgba(246, 249, 255, .38));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .82), 0 8px 22px rgba(45, 54, 82, .05);
+  table-layout: fixed;
+}
+
+body.theme-light #calendar-container .calendar th {
+  height: 22px;
+  padding: 2px 0 5px;
+  color: color-mix(in srgb, var(--text-faint) 88%, var(--ag-indigo));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--ag-indigo) 4%, rgba(255, 255, 255, .34));
+  font-size: .61rem;
+  font-weight: 720;
+  letter-spacing: .075em;
+}
+
+body.theme-light #calendar-container .calendar th:first-child {
+  color: color-mix(in srgb, var(--ag-indigo) 42%, var(--text-faint));
+  font-size: .56rem;
+}
+
+body.theme-light #calendar-container td { border: 0; }
+
+body.theme-light #calendar-container .day,
+body.theme-light #calendar-container .week-num {
+  box-sizing: border-box;
+  height: 32px;
+  padding: 4px 1px 3px;
+  border: 1px solid transparent;
+  border-radius: var(--calendar-cell-radius);
+  background: transparent;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
+  transition:
+    color var(--ag-duration-fast) ease,
+    border-color var(--ag-duration-fast) ease,
+    background var(--ag-duration-fast) ease,
+    box-shadow var(--ag-duration-fast) ease,
+    transform var(--ag-duration-fast) var(--ag-ease);
+}
+
+body.theme-light #calendar-container .day { color: color-mix(in srgb, var(--text-normal) 94%, var(--ag-indigo)); }
+body.theme-light #calendar-container col.weekend {
+  background: color-mix(in srgb, var(--ag-display-pink) 4.5%, transparent);
+}
+
+body.theme-light #calendar-container .day:hover {
+  z-index: 2;
+  border-color: color-mix(in srgb, var(--ag-accent) 18%, rgba(255, 255, 255, .86));
+  color: color-mix(in srgb, var(--ag-accent) 76%, #1d2737);
+  background: var(--ag-hover-vault);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .88), 0 5px 12px color-mix(in srgb, var(--ag-accent) 12%, transparent);
+  transform: translateY(-1px);
+}
+
+body.theme-light #calendar-container .day:active { transform: translateY(0) scale(.94); }
+body.theme-light #calendar-container .day:focus-visible,
+body.theme-light #calendar-container .week-num:focus-visible {
+  outline: none;
+  box-shadow: var(--ag-focus);
+}
+
+body.theme-light #calendar-container .day.today:not(.active, .selected) {
+  border-color: color-mix(in srgb, var(--ag-accent) 52%, rgba(255, 255, 255, .9));
+  color: var(--ag-accent);
+  background: color-mix(in srgb, var(--ag-accent) 8%, rgba(255, 255, 255, .66));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .94), 0 3px 9px color-mix(in srgb, var(--ag-accent) 12%, transparent);
+  font-weight: 760;
+}
+
+body.theme-light #calendar-container .day.active,
+body.theme-light #calendar-container .day.selected,
+body.theme-light #calendar-container .week-num.active {
+  border-color: color-mix(in srgb, var(--ag-accent) 66%, white);
+  color: var(--text-on-accent);
+  background: linear-gradient(145deg, #2997ff 0%, var(--ag-accent) 45%, var(--ag-indigo) 115%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .42),
+    0 5px 12px color-mix(in srgb, var(--ag-accent) 28%, transparent),
+    0 10px 20px -12px color-mix(in srgb, var(--ag-indigo) 58%, transparent);
+  font-weight: 730;
+}
+
+body.theme-light #calendar-container .day.active:hover,
+body.theme-light #calendar-container .day.selected:hover,
+body.theme-light #calendar-container .week-num.active:hover {
+  color: var(--text-on-accent);
+  background: linear-gradient(145deg, #46a6ff, #0878ec 52%, #5553d8 120%) !important;
+}
+
+body.theme-light #calendar-container .day.adjacent-month { opacity: .27; }
+body.theme-light #calendar-container .day.adjacent-month:hover { opacity: .62; }
+
+body.theme-light #calendar-container .week-num {
+  width: 26px;
+  color: color-mix(in srgb, var(--ag-indigo) 36%, var(--text-faint));
+  border-color: color-mix(in srgb, var(--ag-indigo) 8%, transparent);
+  background: color-mix(in srgb, var(--ag-indigo) 8%, rgba(255, 255, 255, .42));
+  font-size: .61rem;
+  font-weight: 650;
+}
+
+body.theme-light #calendar-container .week-num:hover {
+  color: var(--ag-indigo);
+  background: color-mix(in srgb, var(--ag-indigo) 10%, rgba(255, 255, 255, .64));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9);
+}
+
+body.theme-light #calendar-container .dot-container { min-height: 5px; line-height: 5px; }
+body.theme-light #calendar-container .dot {
+  width: 4px;
+  height: 4px;
+  margin-inline: 1px;
+  color: var(--ag-accent);
+  fill: var(--ag-accent);
+  filter: drop-shadow(0 1px 2px color-mix(in srgb, var(--ag-accent) 28%, transparent));
+}
+
+body.theme-light #calendar-container .dot.hollow {
+  fill: none;
+  stroke: var(--ag-accent);
+}
+
+body.theme-light #calendar-container :is(.day.active, .day.selected, .week-num.active) .dot {
+  color: rgba(255, 255, 255, .94);
+  fill: rgba(255, 255, 255, .94);
+  stroke: rgba(255, 255, 255, .94);
+  filter: none;
+}
+
+body.theme-light #calendar-container :is(.day.active, .day.selected, .week-num.active) .dot.hollow { fill: none; }
+
+@media (max-width: 320px) {
+  body.theme-light .workspace-leaf-content[data-type="calendar"] .view-content { padding-inline: 0; }
+  body.theme-light #calendar-container { padding-inline: 8px; }
+  body.theme-light #calendar-container .calendar { border-spacing: 1px 4px; }
+  body.theme-light #calendar-container .day,
+  body.theme-light #calendar-container .week-num { height: 32px; border-radius: 9px; }
+  body.theme-light #calendar-container .reset-button { padding-inline: 7px; }
+}
+
+/* --- Mermaid (mermaid-tools) --- */
+/* Recolored into the Apple-glass language: tinted glass nodes with accent
+   outlines and rounded corners, soft depth, accent edges, glass edge-label
+   pills and gläserne subgraphs. !important overrides Mermaid's injected theme. */
+body.theme-light .markdown-rendered .mermaid {
+  position: relative;
+  overflow: hidden;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, .9);
+  border-radius: var(--ag-radius-card);
+  background: linear-gradient(145deg, rgba(255, 255, 255, .94), rgba(247, 250, 255, .88));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .96),
+    inset 0 -1px 0 rgba(28, 38, 55, .05),
+    var(--ag-shadow-2);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+body.theme-light .markdown-rendered .mermaid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, .55), transparent 42%),
+    radial-gradient(60% 40% at 84% 6%, color-mix(in srgb, var(--ag-indigo) 8%, transparent), transparent 70%);
+}
+body.theme-light .markdown-rendered .mermaid > svg { position: relative; }
+
+body.theme-light .mermaid text,
+body.theme-light .mermaid .nodeLabel,
+body.theme-light .mermaid .edgeLabel,
+body.theme-light .mermaid span { font-family: var(--font-interface-theme) !important; }
+
+/* Nodes: glass fill, accent outline, rounded, with a soft lift. */
+body.theme-light .mermaid :is(.node rect, .node polygon, .node circle, .node ellipse, .node path) {
+  fill: color-mix(in srgb, var(--ag-accent) 12%, rgba(255, 255, 255, .68)) !important;
+  stroke: color-mix(in srgb, var(--ag-accent) 40%, rgba(255, 255, 255, .55)) !important;
+  stroke-width: 1.4px !important;
+}
+body.theme-light .mermaid .node rect,
+body.theme-light .mermaid .node polygon { rx: 9px; ry: 9px; }
+body.theme-light .mermaid .node {
+  filter:
+    drop-shadow(0 1px 1px rgba(28, 38, 55, .12))
+    drop-shadow(0 6px 13px color-mix(in srgb, var(--ag-indigo) 22%, transparent));
+}
+body.theme-light .mermaid :is(.nodeLabel, .node .label, .node text) {
+  fill: color-mix(in srgb, var(--ag-accent) 34%, #243044) !important;
+  color: color-mix(in srgb, var(--ag-accent) 34%, #243044) !important;
+  font-weight: 620 !important;
+}
+
+/* Edges and arrowheads in a soft accent-muted tone. */
+body.theme-light .mermaid :is(.edgePath .path, .flowchart-link, .relation, .transition) {
+  stroke: color-mix(in srgb, var(--ag-accent) 32%, var(--text-muted)) !important;
+  stroke-width: 1.6px !important;
+}
+body.theme-light .mermaid :is(.arrowheadPath, marker path, .marker) {
+  fill: color-mix(in srgb, var(--ag-accent) 40%, var(--text-muted)) !important;
+  stroke: none !important;
+}
+
+/* Edge labels as small glass pills. */
+body.theme-light .mermaid .edgeLabel :is(.label, span, p),
+body.theme-light .mermaid .edgeLabel {
+  color: var(--text-normal) !important;
+  background: var(--ag-material-solid) !important;
+}
+body.theme-light .mermaid .edgeLabel foreignObject > div {
+  padding: 1px 8px;
+  border: 1px solid rgba(255, 255, 255, .85);
+  border-radius: 99px;
+  background: var(--ag-material-soft) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .95), 0 1px 3px rgba(28, 38, 55, .08);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+body.theme-light .mermaid .edgeLabel rect { fill: var(--ag-material-solid) !important; opacity: 1 !important; }
+
+/* Subgraphs / clusters as gläserne panels. */
+body.theme-light .mermaid .cluster rect {
+  fill: color-mix(in srgb, var(--ag-accent) 4%, rgba(255, 255, 255, .55)) !important;
+  stroke: color-mix(in srgb, var(--ag-accent) 30%, var(--ag-line)) !important;
+  stroke-dasharray: 4 4 !important;
+  rx: 14px; ry: 14px;
+}
+body.theme-light .mermaid .cluster :is(.nodeLabel, text, span) {
+  fill: color-mix(in srgb, var(--ag-accent) 50%, #253044) !important;
+  color: color-mix(in srgb, var(--ag-accent) 50%, #253044) !important;
+  font-weight: 700 !important;
+}
+
+/* Sequence diagrams: glass actors, accent activations, callout-like notes. */
+body.theme-light .mermaid :is(.actor, .actor-box) {
+  fill: color-mix(in srgb, var(--ag-accent) 8%, rgba(255, 255, 255, .95)) !important;
+  stroke: color-mix(in srgb, var(--ag-accent) 44%, var(--ag-line-strong)) !important;
+}
+body.theme-light .mermaid .actor-line { stroke: var(--ag-line-strong) !important; }
+body.theme-light .mermaid :is(.messageLine0, .messageLine1, line) { stroke: color-mix(in srgb, var(--ag-accent) 28%, var(--text-muted)) !important; }
+body.theme-light .mermaid :is(.messageText, .titleText, .loopText, .labelText, .sequenceNumber) { fill: var(--text-normal) !important; }
+body.theme-light .mermaid :is(.activation0, .activation1, .activation2) {
+  fill: color-mix(in srgb, var(--ag-accent) 16%, white) !important;
+  stroke: color-mix(in srgb, var(--ag-accent) 40%, transparent) !important;
+}
+body.theme-light .mermaid .note {
+  fill: color-mix(in srgb, var(--ag-yellow) 14%, rgba(255, 255, 255, .92)) !important;
+  stroke: color-mix(in srgb, var(--ag-orange) 34%, transparent) !important;
+  rx: 8px; ry: 8px;
+}
+body.theme-light .mermaid :is(.noteText, .noteText tspan) { fill: color-mix(in srgb, var(--text-normal) 92%, var(--ag-orange)) !important; }
+body.theme-light .mermaid :is(.labelBox) { fill: var(--ag-material-solid) !important; stroke: var(--ag-line) !important; }
+body.theme-light .mermaid .loopLine { stroke: color-mix(in srgb, var(--ag-indigo) 30%, var(--ag-line)) !important; }
+
+/* --- Meta Bind (obsidian-meta-bind-plugin) --- */
+/* Extend the modal/settings control styling (§3) to inline fields inside notes. */
+body.theme-light .markdown-rendered :is(.mb-input, .mb-select, .mb-input-wrapper input, .mb-input-wrapper textarea, .mb-input-wrapper select) {
+  border: 1px solid var(--ag-line-strong);
+  border-radius: var(--ag-radius-control);
+  background: var(--ag-material-solid);
+  box-shadow: inset 0 1px 0 var(--ag-highlight), 0 1px 3px rgba(25, 31, 42, .045);
+}
+body.theme-light .markdown-rendered :is(.mb-input, .mb-select, .mb-input-wrapper input, .mb-input-wrapper textarea, .mb-input-wrapper select):focus {
+  border-color: color-mix(in srgb, var(--ag-accent) 70%, white);
+  box-shadow: var(--ag-focus);
+}
+body.theme-light .markdown-rendered .mb-button {
+  border: 1px solid var(--ag-line);
+  border-radius: 99px;
+  background: var(--ag-material-solid);
+  box-shadow: var(--ag-shadow-1);
+  transition: transform var(--ag-duration-fast) var(--ag-ease), box-shadow var(--ag-duration-fast) ease;
+}
+body.theme-light .markdown-rendered .mb-button:hover { transform: translateY(-1px); box-shadow: var(--ag-shadow-2); }
+body.theme-light .markdown-rendered .mb-button.mb-button-primary {
+  border-color: transparent;
+  color: var(--text-on-accent);
+  background: var(--ag-accent);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--ag-accent) 28%, transparent);
+}
+body.theme-light .markdown-rendered .mb-progress-bar { accent-color: var(--ag-accent); }
+
+/* --------------------------------------------------------------------------
+   6. SHARED DASHBOARD SYSTEM
+   -------------------------------------------------------------------------- */
+
+body.theme-light :is(.home-dash, .bfw-hub) :is(.markdown-preview-sizer, .cm-sizer) {
+  width: 100%;
+  max-width: 1080px !important;
+  margin-inline: auto;
+}
+
+body.theme-light :is(.ag-panel, .ag-widget, .ag-action, .home-dash .dash-card) {
+  border: 1px solid var(--ag-highlight);
+  background: linear-gradient(145deg, rgba(255, 255, 255, .96), color-mix(in srgb, var(--ag-panel-accent, var(--ag-accent)) 4%, rgba(249, 251, 255, .84)));
+  box-shadow:
+    inset 0 1px 0 #fff,
+    inset 0 -1px 0 rgba(34, 39, 52, .05),
+    0 2px 4px rgba(27, 32, 44, .05),
+    0 10px 24px rgba(27, 32, 44, .08),
+    0 28px 48px -32px color-mix(in srgb, var(--ag-panel-accent, var(--ag-accent)) 36%, rgba(20, 24, 34, .28));
+}
+
+body.theme-light :is(.ag-action, .home-dash .dash-card) {
+  transition: transform var(--ag-duration) var(--ag-ease), border-color var(--ag-duration) ease, box-shadow var(--ag-duration) ease, background var(--ag-duration) ease;
+}
+
+body.theme-light :is(.ag-action, .home-dash .dash-card):hover {
+  transform: translateY(-4px) scale(1.008);
+  border-color: color-mix(in srgb, var(--ag-panel-accent, var(--ag-accent)) 28%, white);
+  background: var(--ag-material-solid);
+  box-shadow:
+    inset 0 1px 0 #fff,
+    0 4px 8px rgba(27, 32, 44, .07),
+    0 18px 38px rgba(27, 32, 44, .12),
+    0 30px 58px -30px color-mix(in srgb, var(--ag-panel-accent, var(--ag-accent)) 48%, rgba(20, 24, 34, .34));
+}
+
+body.theme-light :is(.ag-action, .home-dash .dash-card):active { transform: translateY(0) scale(.985); }
+body.theme-light :is(.ag-action, .home-dash .dash-card):focus-visible { outline: none; box-shadow: inset 0 1px 0 #fff, var(--ag-focus), var(--ag-shadow-1); }
+
+body.theme-light .ag-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  min-height: 180px;
+  margin: 8px 0 24px;
+  padding: 32px clamp(22px, 5vw, 50px);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, .86);
+  border-radius: var(--ag-radius-hero);
+  background: linear-gradient(145deg, rgba(255, 255, 255, .88), rgba(250, 251, 255, .66));
+  box-shadow: inset 0 1px 0 #fff, var(--ag-shadow-2);
+  text-align: center;
+}
+
+body.theme-light .ag-hero::before,
+body.theme-light .ag-hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 46%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  filter: none;
+  opacity: calc(var(--ag-motion-scale) / 100 * .24);
+  animation: none;
+}
+
+body.theme-light .ag-hero::before { left: -12%; top: -58%; background: radial-gradient(circle, #64d2ff 0%, transparent 70%); }
+body.theme-light .ag-hero::after { right: -12%; bottom: -64%; background: radial-gradient(circle, #9d71df 0%, transparent 70%); }
+body.theme-light :is(.ag-hero-eyebrow, .dash-eyebrow) { color: color-mix(in srgb, var(--ag-accent) 76%, #465366); font-size: .7rem; font-weight: 760; letter-spacing: .13em; text-transform: uppercase; }
+
+body.theme-light .ag-hero-title {
+  max-width: 100%;
+  margin: 0;
+  color: transparent;
+  background: var(--ag-grad-hero);
+  -webkit-background-clip: text;
+  background-clip: text;
+  font-size: clamp(2.15rem, 6vw, 4rem);
+  font-weight: 790;
+  line-height: 1.05;
+  letter-spacing: -.052em;
+  overflow-wrap: anywhere;
+}
+
+body.theme-light .ag-hero-subtitle { max-width: 620px; margin: 2px 0 0; color: var(--text-muted); }
+body.theme-light .ag-hero-meta { margin-top: 8px; color: var(--text-faint); font-size: .84rem; font-weight: 620; font-variant-numeric: tabular-nums; }
+
+body.theme-light .ag-icon,
+body.theme-light .home-dash .dash-ico,
+body.theme-light .home-dash .icon-bubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  border-radius: 13px;
+  color: var(--ag-panel-accent, var(--ag-accent));
+  background: color-mix(in srgb, var(--ag-panel-accent, var(--glow-color, var(--ag-accent))) 11%, white);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .94);
+}
+
+body.theme-light .ag-empty {
+  padding: 22px;
+  border: 1px dashed var(--ag-line-strong);
+  border-radius: var(--ag-radius-control);
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, .4);
+  text-align: center;
+}
+
+body.theme-light .ag-empty.is-error { border-color: color-mix(in srgb, var(--ag-red) 38%, var(--ag-line)); color: var(--ag-red); }
+
+/* --------------------------------------------------------------------------
+   GPTSTATS-INSPIRED COMPONENTS — stat cards, chat bubbles, badges
+   Usage:
+     > [!stat-grid]
+     > > [!stat|purple] 1.284
+     > > Notizen in der Vault
+     > [!chat-user] Du · 14:02   /   > [!chat-ai] ChatGPT   /   > [!gedanken]
+     <span class="ag-badge is-green">Fertig</span>
+   -------------------------------------------------------------------------- */
+
+/* Stat card: title line = big tabular value, content = dim label. */
+body.theme-light .callout[data-callout="stat"] {
+  --cc: var(--ag-display-blue);
+  padding: 16px 20px;
+  border: 1px solid var(--ag-highlight);
+  border-left: 1px solid var(--ag-highlight);
+  border-radius: var(--ag-radius-card);
+  background: linear-gradient(145deg, rgba(255, 255, 255, .96), rgba(249, 251, 255, .84));
+  box-shadow: inset 0 1px 0 #fff, var(--ag-shadow-1);
+}
+
+body.theme-light .callout[data-callout="stat"]:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--cc) 28%, white);
+  background: var(--ag-material-solid);
+  box-shadow: inset 0 1px 0 #fff, var(--ag-shadow-2), 0 22px 44px -30px color-mix(in srgb, var(--cc) 48%, transparent);
+}
+
+body.theme-light .callout[data-callout="stat"] .callout-icon { display: none; }
+
+body.theme-light .callout[data-callout="stat"] .callout-title {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+body.theme-light .callout[data-callout="stat"] .callout-title-inner {
+  color: var(--cc);
+  font-size: clamp(26px, 3vw, 34px);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+body.theme-light .callout[data-callout="stat"] .callout-content {
+  padding: 0;
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+body.theme-light .callout[data-callout="stat"] .callout-content p { margin: 0; }
+
+body.theme-light .callout[data-callout="stat"][data-callout-metadata="blue"]   { --cc: var(--ag-display-blue); }
+body.theme-light .callout[data-callout="stat"][data-callout-metadata="indigo"] { --cc: var(--ag-display-indigo); }
+body.theme-light .callout[data-callout="stat"][data-callout-metadata="purple"] { --cc: var(--ag-display-purple); }
+body.theme-light .callout[data-callout="stat"][data-callout-metadata="pink"]   { --cc: var(--ag-display-pink); }
+body.theme-light .callout[data-callout="stat"][data-callout-metadata="orange"] { --cc: var(--ag-display-orange); }
+body.theme-light .callout[data-callout="stat"][data-callout-metadata="green"]  { --cc: var(--ag-display-green); }
+body.theme-light .callout[data-callout="stat"][data-callout-metadata="teal"]   { --cc: var(--ag-display-teal); }
+body.theme-light .callout[data-callout="stat"][data-callout-metadata="yellow"] { --cc: var(--ag-display-yellow); }
+
+/* Invisible wrapper that lays nested stat cards out as a responsive grid. */
+body.theme-light .callout[data-callout="stat-grid"] {
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  overflow: visible;
+}
+body.theme-light .callout[data-callout="stat-grid"]:hover { transform: none; box-shadow: none; }
+body.theme-light .callout[data-callout="stat-grid"]::after { content: none; }
+body.theme-light .callout[data-callout="stat-grid"] > .callout-title { display: none; }
+body.theme-light .callout[data-callout="stat-grid"] > .callout-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  padding: 0;
+}
+body.theme-light .callout[data-callout="stat-grid"] > .callout-content > .callout { margin: 0; }
+
+
+/* Module cards for overview pages: [!modul|purple]. The colour after the pipe
+   runs through data-callout-metadata into --cc — the same mechanism the stat
+   cards use — so every module keeps its own accent. Without a colour the card
+   stays blue. */
+body.theme-light .callout[data-callout="modul"] {
+  --cc: var(--ag-display-blue);
+  border-left-width: 5px;
+  border-radius: var(--ag-radius-card);
+}
+
+body.theme-light .callout[data-callout="modul"] .callout-icon { display: none; }
+
+body.theme-light .callout[data-callout="modul"] .callout-title {
+  border-radius: calc(var(--ag-radius-card) - 3px) calc(var(--ag-radius-card) - 3px) 7px 7px;
+}
+
+body.theme-light .callout[data-callout="modul"] .callout-title-inner {
+  font-size: 1.02rem;
+  font-weight: 770;
+  letter-spacing: -.02em;
+}
+
+body.theme-light .callout[data-callout="modul"] .callout-content :is(ul, ol) { margin: 4px 0; }
+
+body.theme-light .callout[data-callout="modul"] .callout-content :is(a.internal-link, a.external-link) {
+  color: color-mix(in srgb, var(--cc) 82%, #223046);
+  font-weight: 640;
+}
+
+body.theme-light .callout[data-callout="modul"][data-callout-metadata="blue"]   { --cc: var(--ag-display-blue); }
+body.theme-light .callout[data-callout="modul"][data-callout-metadata="indigo"] { --cc: var(--ag-display-indigo); }
+body.theme-light .callout[data-callout="modul"][data-callout-metadata="purple"] { --cc: var(--ag-display-purple); }
+body.theme-light .callout[data-callout="modul"][data-callout-metadata="pink"]   { --cc: var(--ag-display-pink); }
+body.theme-light .callout[data-callout="modul"][data-callout-metadata="orange"] { --cc: var(--ag-display-orange); }
+body.theme-light .callout[data-callout="modul"][data-callout-metadata="green"]  { --cc: var(--ag-display-green); }
+body.theme-light .callout[data-callout="modul"][data-callout-metadata="teal"]   { --cc: var(--ag-display-teal); }
+body.theme-light .callout[data-callout="modul"][data-callout-metadata="yellow"] { --cc: var(--ag-display-yellow); }
+/* Chat bubbles for saved AI conversations. */
+body.theme-light .callout:is([data-callout="chat-user"], [data-callout="chat-ai"], [data-callout="gedanken"]) {
+  width: fit-content;
+  min-width: min(220px, 100%);
+  max-width: 86%;
+  padding: 13px 17px;
+  border-radius: 18px;
+}
+
+body.theme-light .callout:is([data-callout="chat-user"], [data-callout="chat-ai"], [data-callout="gedanken"]):hover {
+  transform: none;
+}
+
+body.theme-light .callout:is([data-callout="chat-user"], [data-callout="chat-ai"], [data-callout="gedanken"])::after { content: none; }
+
+body.theme-light .callout:is([data-callout="chat-user"], [data-callout="chat-ai"], [data-callout="gedanken"]) .callout-icon { display: none; }
+
+body.theme-light .callout:is([data-callout="chat-user"], [data-callout="chat-ai"], [data-callout="gedanken"]) .callout-title {
+  min-height: 0;
+  padding: 0;
+  margin-bottom: 5px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+body.theme-light .callout:is([data-callout="chat-user"], [data-callout="chat-ai"], [data-callout="gedanken"]) .callout-title-inner {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+body.theme-light .callout:is([data-callout="chat-user"], [data-callout="chat-ai"], [data-callout="gedanken"]) .callout-content {
+  padding: 0;
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+
+body.theme-light .callout[data-callout="chat-user"] {
+  --cc: #eaf3ff;
+  margin-left: auto;
+  border: 0;
+  border-bottom-right-radius: 6px;
+  background: var(--ag-accent);
+  box-shadow: var(--ag-shadow-1);
+}
+body.theme-light .callout[data-callout="chat-user"]:hover {
+  border: 0;
+  background: var(--ag-accent);
+  box-shadow: var(--ag-shadow-1);
+}
+body.theme-light .callout[data-callout="chat-user"] .callout-title { justify-content: flex-end; }
+body.theme-light .callout[data-callout="chat-user"] .callout-title-inner { color: rgba(255, 255, 255, .85); }
+body.theme-light .callout[data-callout="chat-user"] .callout-content { color: #fff; }
+body.theme-light .callout[data-callout="chat-user"] .callout-content a { color: #fff; }
+body.theme-light .callout[data-callout="chat-user"] .callout-content :not(pre) > code {
+  background: rgba(255, 255, 255, .22);
+  color: #fff;
+}
+
+body.theme-light .callout[data-callout="chat-ai"] {
+  --cc: var(--ag-purple);
+  margin-right: auto;
+  border: 1px solid var(--ag-line);
+  border-bottom-left-radius: 6px;
+  background: var(--ag-material);
+  box-shadow: inset 0 1px 0 var(--ag-highlight), var(--ag-shadow-1);
+}
+body.theme-light .callout[data-callout="chat-ai"]:hover {
+  border-color: var(--ag-line-strong);
+  background: var(--ag-material);
+  box-shadow: inset 0 1px 0 var(--ag-highlight), var(--ag-shadow-1);
+}
+body.theme-light .callout[data-callout="chat-ai"] .callout-content { color: var(--text-normal); }
+
+body.theme-light .callout[data-callout="gedanken"] {
+  --cc: var(--ag-orange);
+  margin-right: auto;
+  border: 1.5px dashed var(--ag-line-strong);
+  border-bottom-left-radius: 6px;
+  background: none;
+  box-shadow: none;
+}
+body.theme-light .callout[data-callout="gedanken"]:hover {
+  border-color: color-mix(in srgb, var(--ag-orange) 34%, var(--ag-line-strong));
+  background: none;
+  box-shadow: none;
+}
+body.theme-light .callout[data-callout="gedanken"] .callout-content {
+  color: var(--text-muted);
+  font-size: 13.5px;
+}
+
+/* Status badges: uppercase pills on a translucent tint (gptstats demo badge). */
+body.theme-light .ag-badge {
+  --ag-badge-color: var(--ag-blue-deep);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 99px;
+  color: var(--ag-badge-color);
+  background: color-mix(in srgb, var(--ag-badge-color) 15%, transparent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+body.theme-light .ag-badge.is-blue   { --ag-badge-color: var(--ag-blue-deep); }
+body.theme-light .ag-badge.is-indigo { --ag-badge-color: var(--ag-indigo); }
+body.theme-light .ag-badge.is-purple { --ag-badge-color: var(--ag-purple); }
+body.theme-light .ag-badge.is-pink   { --ag-badge-color: var(--ag-pink); }
+body.theme-light .ag-badge.is-orange { --ag-badge-color: var(--ag-orange); }
+body.theme-light .ag-badge.is-green  { --ag-badge-color: var(--ag-green); }
+body.theme-light .ag-badge.is-teal   { --ag-badge-color: var(--ag-teal); }
+body.theme-light .ag-badge.is-yellow { --ag-badge-color: var(--ag-yellow); }
+body.theme-light .ag-badge.is-red    { --ag-badge-color: var(--ag-red); }
+body.theme-light .ag-badge.is-gray   { --ag-badge-color: var(--ag-gray); }
+
+/* Home layout */
+body.theme-light .home-dash .markdown-preview-sizer {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+body.theme-light .home-dash .markdown-preview-sizer > * { min-width: 0; }
+body.theme-light .home-dash .markdown-preview-sizer > :is(.markdown-preview-pusher, .mod-header, .metadata-container),
+body.theme-light .home-dash .markdown-preview-sizer > *:has(.ag-home-hero),
+body.theme-light .home-dash .markdown-preview-sizer > *:has(.ag-tracker-root),
+body.theme-light .home-dash .markdown-preview-sizer > *:has(.ag-links-root),
+body.theme-light .home-dash .markdown-preview-sizer > *:has(.ag-random-root),
+body.theme-light .home-dash .markdown-preview-sizer > *:has(.ag-areas-root),
+body.theme-light .home-dash .markdown-preview-sizer > *:has(.dash-header),
+body.theme-light .home-dash .markdown-preview-sizer > *:has(> hr) { grid-column: 1 / -1; }
+body.theme-light .home-dash .markdown-preview-sizer > *:has(.ag-agenda-root) { grid-column: 1; grid-row: span 2; align-self: stretch; }
+body.theme-light .home-dash .markdown-preview-sizer > *:has(.ag-birthday-root),
+body.theme-light .home-dash .markdown-preview-sizer > *:has(.ag-quote-root) { grid-column: 2; }
+body.theme-light .home-dash .markdown-preview-sizer > *:has(> hr) { display: none; }
+
+body.theme-light .ag-widget {
+  --ag-panel-accent: var(--ag-accent);
+  padding: 15px;
+  border-radius: var(--ag-radius-card);
+}
+
+body.theme-light .ag-agenda-root { --ag-panel-accent: var(--ag-blue-deep); min-height: 330px; }
+body.theme-light .ag-birthday-root { --ag-panel-accent: var(--ag-pink); }
+body.theme-light .ag-quote-root {
+  --ag-panel-accent: var(--ag-indigo);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .78), transparent 48%),
+    linear-gradient(118deg,
+      color-mix(in srgb, var(--ag-indigo) 17%, rgba(255, 255, 255, .78)),
+      color-mix(in srgb, #52d6ff 8%, rgba(255, 255, 255, .7)) 48%,
+      color-mix(in srgb, #bf5af2 14%, rgba(255, 255, 255, .74)));
+}
+
+body.theme-light :is(.agenda-nav-cute, .bday-nav, .ag-widget-head) {
+  display: flex;
+  min-height: 40px;
+  margin: 0 0 11px;
+  padding: 0 2px 9px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 0;
+  border-bottom: 1px solid var(--ag-line);
+  border-radius: 0;
+  color: var(--text-normal);
+  background: transparent;
+  box-shadow: none;
+}
+
+body.theme-light .nav-btn-cute {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ag-line) !important;
+  border-radius: 50%;
+  color: var(--ag-accent) !important;
+  background: rgba(255, 255, 255, .7) !important;
+  box-shadow: none;
+}
+
+body.theme-light button.nav-title-cute { min-height: 34px; padding: 0 8px; border: 0; border-radius: 9px; background: transparent; box-shadow: none; color: var(--text-normal); font-weight: 700; }
+body.theme-light button.nav-title-cute:hover { color: var(--ag-accent); background: color-mix(in srgb, var(--ag-accent) 7%, transparent); }
+
+body.theme-light .day-card {
+  overflow: hidden;
+  margin-top: 8px;
+  border: 1px solid var(--ag-line);
+  border-radius: var(--ag-radius-control);
+  background: rgba(255, 255, 255, .62);
+}
+body.theme-light .day-card.is-today { border-color: color-mix(in srgb, var(--ag-accent) 24%, var(--ag-line)); background: color-mix(in srgb, var(--ag-accent) 7%, white); }
+body.theme-light button.day-header { width: 100%; padding: 10px 12px; border: 0; border-bottom: 1px solid var(--ag-line); border-radius: 0; color: inherit; background: transparent; box-shadow: none; text-align: left; }
+body.theme-light .day-name { color: color-mix(in srgb, var(--day-color) 82%, #263247); font-size: .88rem; font-weight: 720; }
+body.theme-light .day-date { color: var(--text-muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+body.theme-light .event-list { padding: 4px 12px 7px; }
+body.theme-light .event-row { display: grid; grid-template-columns: minmax(44px, 54px) minmax(0, 1fr); gap: 10px; padding: 7px 0; border-color: var(--ag-line); }
+body.theme-light .time-badge { color: var(--text-muted); font-size: .78rem; font-variant-numeric: tabular-nums; }
+body.theme-light .event-text { min-width: 0; font-size: .9rem; overflow-wrap: anywhere; }
+
+body.theme-light .bday-list { display: flex; flex-direction: column; gap: 7px; }
+body.theme-light button.bday-card { display: grid; width: 100%; min-height: 46px; margin: 0; padding: 9px 10px; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; border: 1px solid var(--ag-line); border-radius: var(--ag-radius-control); color: inherit; background: rgba(255, 255, 255, .62); box-shadow: none; text-align: left; }
+body.theme-light .bday-left { display: flex; min-width: 0; align-items: center; gap: 8px; }
+body.theme-light .bday-name { overflow: hidden; color: var(--text-normal); font-size: .86rem; font-weight: 680; text-overflow: ellipsis; white-space: nowrap; }
+body.theme-light .bday-right { display: flex; align-items: center; gap: 7px; }
+body.theme-light .bday-info-col { text-align: right; }
+body.theme-light .bday-date { color: var(--text-normal); font-size: .74rem; font-weight: 680; }
+body.theme-light .bday-rel { color: var(--text-muted); font-size: .7rem; }
+body.theme-light .bday-badge { display: inline-flex; min-width: 28px; height: 28px; align-items: center; justify-content: center; border-radius: 9px; color: color-mix(in srgb, var(--bday-color) 82%, #263247); background: color-mix(in srgb, var(--bday-color) 9%, white); font-size: .72rem; font-weight: 720; }
+
+body.theme-light .quote-card { position: relative; overflow: hidden; min-height: 150px; padding: 3px 2px; }
+body.theme-light .qt-header {
+  display: inline-flex;
+  padding: 5px 9px;
+  border: 1px solid color-mix(in srgb, var(--accent-color) 16%, rgba(255, 255, 255, .78));
+  border-radius: 9px;
+  color: color-mix(in srgb, var(--accent-color) 62%, #263247);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .76), transparent 50%),
+    linear-gradient(110deg,
+      color-mix(in srgb, var(--accent-color) 20%, rgba(255, 255, 255, .76)),
+      color-mix(in srgb, var(--accent-color) 9%, rgba(255, 255, 255, .7)) 54%,
+      color-mix(in srgb, #bf5af2 12%, rgba(255, 255, 255, .72)));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .94), inset 0 -1px 0 color-mix(in srgb, var(--accent-color) 14%, transparent);
+  font-size: .88rem;
+  font-weight: 740;
+}
+body.theme-light .qt-text { position: relative; z-index: 1; color: var(--text-normal); font-size: 1rem; line-height: 1.58; }
+body.theme-light .qt-author { position: relative; z-index: 1; margin-top: 13px; color: color-mix(in srgb, var(--accent-color) 78%, #263247); font-size: .82rem; font-weight: 680; text-align: right; }
+body.theme-light .qt-bg-icon { position: absolute; right: 4px; top: 16px; color: var(--accent-color); opacity: .06; font: 5.2rem/1 Georgia, serif; }
+body.theme-light .qt-bg-glow { display: none; }
+
+body.theme-light .home-dash .dash-header { margin: 28px 0 13px; padding-bottom: 10px; text-align: left; }
+body.theme-light .home-dash .dash-header::after { content: ""; display: block; width: 46px; height: 2px; margin-top: 8px; border-radius: 99px; background: var(--ag-accent); }
+body.theme-light .home-dash .dash-header .dash-title { display: block; margin-top: 4px; color: var(--text-normal); font-size: 1.58rem; font-weight: 770; letter-spacing: -.035em; }
+body.theme-light .home-dash .dash-grid { display: grid; width: 100%; gap: 16px; }
+body.theme-light .home-dash .dash-grid-tools { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+body.theme-light .home-dash .dash-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+body.theme-light .home-dash .dash-card {
+  --ag-panel-accent: var(--card-color, var(--ag-accent));
+  position: relative;
+  display: flex;
+  min-width: 0;
+  min-height: 100px;
+  padding: 14px 12px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border-radius: var(--ag-radius-card);
+  color: var(--text-normal);
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+}
+body.theme-light .home-dash .dash-card.is-row { min-height: 72px; padding: 13px 15px; flex-direction: row; justify-content: flex-start; gap: 12px; text-align: left; }
+body.theme-light .home-dash .dash-card .dash-card-title { min-width: 0; color: #292c32; font-size: .88rem; font-weight: 710; line-height: 1.25; overflow-wrap: anywhere; }
+body.theme-light .home-dash .dash-card.is-row .dash-card-title { font-size: .98rem; }
+body.theme-light .home-dash .dash-cta { width: min(100%, 430px) !important; margin: 8px auto 0; }
+
+body.theme-light .brew-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+body.theme-light .brew-card-mobile,
+body.theme-light .brew-card {
+  --ag-panel-accent: var(--glow-color, var(--ag-accent));
+  display: grid;
+  min-width: 0;
+  min-height: 78px;
+  padding: 11px;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--ag-highlight);
+  border-radius: var(--ag-radius-card);
+  color: var(--text-normal);
+  background: var(--ag-material);
+  box-shadow: inset 0 1px 0 var(--ag-highlight), var(--ag-shadow-1);
+}
+body.theme-light .brew-info { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; }
+body.theme-light .brew-label { color: var(--text-muted); font-size: .7rem; font-weight: 760; letter-spacing: .07em; text-transform: uppercase; }
+body.theme-light .brew-count { color: var(--text-normal); font-size: 1.45rem; font-weight: 790; line-height: 1.1; font-variant-numeric: tabular-nums; }
+body.theme-light .brew-stepper { display: grid; grid-template-columns: repeat(2, 38px); gap: 5px; }
+body.theme-light button.brew-step { display: inline-flex; width: 38px; height: 38px; min-height: 38px; padding: 0; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, var(--glow-color) 20%, var(--ag-line)); border-radius: 11px; color: color-mix(in srgb, var(--glow-color) 70%, #25272d); background: color-mix(in srgb, var(--glow-color) 7%, white); box-shadow: none; font-size: 1.15rem; font-weight: 760; }
+body.theme-light button.brew-step:disabled { opacity: .42; cursor: not-allowed; }
+body.theme-light button.history-link { display: block; min-height: 40px; margin: 9px auto 0; padding: 7px 12px; border: 0; border-radius: 9px; color: var(--text-muted); background: transparent; box-shadow: none; font-size: .8rem; }
+
+/* BFW hub */
+body.theme-light .bfw-hub .ag-hero { align-items: flex-start; margin-bottom: 20px; text-align: left; }
+body.theme-light .bfw-hub .ag-hero-title { font-size: clamp(2.25rem, 6vw, 3.8rem); }
+body.theme-light button.ag-primary-action { display: inline-flex; min-height: 44px; margin-top: 13px; padding: 0 17px; align-items: center; gap: 9px; border: 1px solid color-mix(in srgb, var(--ag-accent) 42%, transparent); border-radius: 99px; color: white; background: var(--ag-accent) !important; box-shadow: 0 8px 22px color-mix(in srgb, var(--ag-accent) 22%, transparent); font-weight: 700; }
+
+body.theme-light .bfw-hub .bfw-modules-grid { display: grid; width: 100%; margin: 0; padding: 8px 8px 36px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; box-sizing: border-box; }
+body.theme-light .bfw-hub .bfw-module-card { --ag-panel-accent: var(--module-color, var(--ag-accent)); position: relative; overflow: hidden; min-width: 0; padding: 17px; border-radius: var(--ag-radius-card); text-align: left; }
+body.theme-light .bfw-hub .bfw-module-card.is-wide { grid-column: 1 / -1; }
+body.theme-light .bfw-hub .bfw-module-title { display: flex; margin-bottom: 13px; align-items: center; gap: 11px; color: color-mix(in srgb, var(--module-color) 24%, #242832); font-size: 1.1rem; font-weight: 770; letter-spacing: -.02em; }
+body.theme-light .bfw-hub .bfw-module-links { display: flex; flex-direction: column; gap: 7px; }
+
+body.theme-light .bfw-hub :is(.ag-link-row, .bfw-info-row) { display: flex; min-width: 0; min-height: 42px; padding: 6px 7px; align-items: center; gap: 9px; border-radius: var(--ag-radius-control); color: color-mix(in srgb, var(--module-color) 24%, #242832); font-size: .88rem; line-height: 1.35; text-decoration: none; }
+body.theme-light .bfw-hub .ag-link-row { border: 1px solid color-mix(in srgb, var(--module-color) 12%, var(--ag-line)); background: color-mix(in srgb, var(--module-color) 5%, rgba(255, 255, 255, .56)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .86); transition: transform var(--ag-duration-fast) var(--ag-ease), color var(--ag-duration-fast) ease, background var(--ag-duration-fast) ease; }
+body.theme-light .bfw-hub .ag-link-row:hover { transform: translateX(2px); color: color-mix(in srgb, var(--module-color) 70%, #20242d); background: color-mix(in srgb, var(--module-color) 10%, white); }
+body.theme-light .bfw-hub .ag-link-badge { display: inline-flex; width: 30px; height: 30px; flex: 0 0 30px; align-items: center; justify-content: center; border: 1px solid color-mix(in srgb, var(--module-color) 17%, white); border-radius: 10px; color: color-mix(in srgb, var(--module-color) 84%, #344054); background: color-mix(in srgb, var(--module-color) 10%, white); }
+body.theme-light .bfw-hub .ag-link-badge svg { width: 15px; height: 15px; stroke-width: 2.1; }
+body.theme-light .bfw-hub .ag-link-badge.is-number { font-size: .78rem; font-weight: 800; }
+body.theme-light .bfw-hub .ag-link-text { min-width: 0; overflow-wrap: anywhere; }
+body.theme-light .bfw-hub .ag-link-row::after { content: "›"; display: inline-flex; width: 23px; height: 23px; margin-left: auto; flex: 0 0 23px; align-items: center; justify-content: center; border-radius: 50%; color: color-mix(in srgb, var(--module-color) 54%, #727b89); background: color-mix(in srgb, var(--module-color) 7%, white); font-size: 1rem; }
+body.theme-light .bfw-hub .bfw-link-missing { color: var(--text-muted); background: rgba(80, 87, 99, .035); }
+body.theme-light .bfw-hub .bfw-status { display: inline-flex; margin: 2px 0 8px 8px; padding: 5px 9px; border-radius: 99px; color: var(--text-muted); background: rgba(0, 0, 0, .035); font-size: .76rem; }
+
+/* Dataview must remain in the main page flow. */
+body.theme-light :is(.home-dash, .bfw-hub) :is(.block-language-dataviewjs, .dataviewjs-container, .el-pre:has(.block-language-dataviewjs)) {
+  overflow: visible !important;
+  max-width: 100%;
+  max-height: none !important;
+  height: auto;
+  min-width: 0;
+}
+
+/* --------------------------------------------------------------------------
+   7. RESPONSIVE / MOBILE
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  body.theme-light .home-dash .markdown-preview-sizer { display: block; }
+  body.theme-light .home-dash .markdown-preview-sizer > *:has(.ag-widget),
+  body.theme-light .home-dash .markdown-preview-sizer > *:has(.ag-tracker-root),
+  body.theme-light .home-dash .markdown-preview-sizer > *:has(.ag-links-root),
+  body.theme-light .home-dash .markdown-preview-sizer > *:has(.ag-random-root),
+  body.theme-light .home-dash .markdown-preview-sizer > *:has(.ag-areas-root) { margin-bottom: 17px; }
+  body.theme-light .home-dash .dash-grid-tools { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  body.theme-light .bfw-hub .bfw-modules-grid { grid-template-columns: 1fr; }
+  body.theme-light .bfw-hub .bfw-module-card.is-wide { grid-column: auto; }
+}
+
+@media (max-width: 560px) {
+  body.theme-light .ag-hero { min-height: 148px; padding: 24px 17px; border-radius: 21px; }
+  body.theme-light .ag-hero-title { font-size: 2.15rem; }
+  body.theme-light .ag-widget { padding: 12px; border-radius: 16px; }
+  body.theme-light .home-dash .dash-grid-tools,
+  body.theme-light .home-dash .dash-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  body.theme-light .brew-grid { grid-template-columns: 1fr; }
+  body.theme-light .bfw-hub .bfw-module-card { padding: 13px; border-radius: 16px; }
+  body.theme-light .markdown-rendered table { min-width: 100%; font-size: .9em; }
+  body.theme-light .markdown-rendered th,
+  body.theme-light .markdown-rendered td { padding: .56em .64em; }
+}
+
+body.theme-light.is-mobile :is(.home-dash, .bfw-hub) :is(.markdown-preview-sizer, .cm-sizer) {
+  width: 100%;
+  max-width: 100% !important;
+  padding-left: max(4px, env(safe-area-inset-left));
+  padding-right: max(4px, env(safe-area-inset-right));
+  box-sizing: border-box;
+}
+
+body.theme-light.is-mobile .home-dash,
+body.theme-light.is-mobile .home-dash .markdown-preview-sizer { overflow-anchor: none !important; scroll-behavior: auto !important; }
+
+body.theme-light.is-mobile :is(.home-dash, .bfw-hub) :is(.block-language-dataviewjs, .dataviewjs-container, .el-pre:has(.block-language-dataviewjs)) {
+  contain: none !important;
+  content-visibility: visible !important;
+  transform: none !important;
+}
+
+body.theme-light.is-mobile :is(.home-dash, .bfw-hub) :is(.ag-hero, .ag-widget, .dash-card, .brew-card, .brew-card-mobile, .bfw-module-card) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  filter: none !important;
+  will-change: auto !important;
+}
+
+body.theme-light.is-mobile .ag-hero::before,
+body.theme-light.is-mobile .ag-hero::after { display: none; animation: none !important; }
+
+body.theme-light.is-mobile :is(.home-dash, .bfw-hub) :is(button, a.ag-link-row, a.dash-card) {
+  min-height: 44px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body.theme-light.is-mobile .home-dash .ag-areas-mobile-static {
+  display: grid !important;
+  width: 100%;
+  margin: 0;
+  padding: 4px 0 18px;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  box-sizing: border-box;
+}
+
+body.theme-light.is-mobile .home-dash .ag-areas-mobile-static a.dash-card { min-height: 64px; flex-direction: row; justify-content: flex-start; text-align: left; }
+body.theme-light.is-mobile .home-dash .markdown-preview-sizer > *:has(.ag-areas-desktop-dataview-marker),
+body.theme-light.is-mobile .home-dash .markdown-preview-sizer > *:has(.ag-areas-desktop-dataview-marker) + * { display: none !important; width: 0 !important; height: 0 !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; }
+
+@media (max-width: 520px) {
+  body.theme-light.is-mobile .home-dash .dash-grid-tools { grid-template-columns: 1fr; }
+  body.theme-light.is-mobile .home-dash .dash-grid-tools .dash-card { min-height: 64px; flex-direction: row; justify-content: flex-start; text-align: left; }
+}
+
+/* --------------------------------------------------------------------------
+   8. PERFORMANCE MODE
+   Style Settings adds .ag-performance-mode to body. This path avoids costly
+   transparent compositing while keeping the theme's spacing, radii and colors.
+   -------------------------------------------------------------------------- */
+
+body.theme-light.ag-performance-mode {
+  --ag-aurora: 0;
+  --ag-motion-scale: 0;
+  --ag-material-opacity: 100;
+  --ag-content-bg: #f6f7f9;
+  --ag-blur: none;
+  --ag-shadow-1: none;
+  --ag-shadow-2: none;
+  --ag-shadow-float: 0 4px 12px rgba(28, 35, 48, .08);
+  --ag-focus: 0 0 0 2px color-mix(in srgb, var(--ag-accent) 36%, transparent);
+  --ag-duration-fast: 0ms;
+  --ag-duration: 0ms;
+  --background-primary: #f6f7f9;
+  --background-primary-alt: #f0f2f5;
+  --background-secondary: #f8f9fc;
+  --background-secondary-alt: #fff;
+  --interactive-normal: #fff;
+  --interactive-hover: #f5f8fc;
+}
+
+body.theme-light.ag-performance-mode *,
+body.theme-light.ag-performance-mode *::before,
+body.theme-light.ag-performance-mode *::after {
+  scroll-behavior: auto !important;
+  animation: none !important;
+  transition: none !important;
+}
+
+body.theme-light.ag-performance-mode .app-container::before,
+body.theme-light.ag-performance-mode .workspace-leaf-content::before,
+body.theme-light.ag-performance-mode .workspace-leaf-content::after,
+body.theme-light.ag-performance-mode .ag-hero::before,
+body.theme-light.ag-performance-mode .ag-hero::after,
+body.theme-light.ag-performance-mode :is(.callout, .markdown-rendered pre)::after,
+body.theme-light.ag-performance-mode :is(.qt-bg-glow, .qt-bg-icon) {
+  display: none !important;
+}
+
+body.theme-light.ag-performance-mode :is(.workspace-ribbon, .status-bar, .workspace-tab-header-container) {
+  background: #fafbfd !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+body.theme-light.ag-performance-mode :is(.workspace-split.mod-left-split, .workspace-split.mod-right-split) {
+  background: #f6f8fc !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+body.theme-light.ag-performance-mode .nav-folder-title {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .72) !important;
+}
+
+body.theme-light.ag-performance-mode .nav-folder-title::after {
+  display: none !important;
+}
+
+body.theme-light.ag-performance-mode .workspace-leaf.mod-active > .workspace-leaf-content {
+  outline: 1px solid color-mix(in srgb, var(--ag-accent) 48%, transparent);
+  outline-offset: -2px;
+}
+
+body.theme-light.ag-performance-mode :is(.modal, .prompt, .suggestion-container, .menu, .popover.hover-popover) {
+  background: #fff !important;
+  box-shadow: var(--ag-shadow-float) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+body.theme-light.ag-performance-mode .markdown-rendered :is(h1, h2, h3, h4, h5, h6):not(.ag-hero-title),
+body.theme-light.ag-performance-mode .ag-hero-title {
+  color: var(--ag-heading-a, var(--ag-accent)) !important;
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+  filter: none !important;
+  text-shadow: none !important;
+}
+
+body.theme-light.ag-performance-mode .markdown-rendered h1:not(.ag-hero-title)::after {
+  background: var(--ag-accent) !important;
+  box-shadow: none !important;
+}
+
+body.theme-light.ag-performance-mode :is(
+  .callout,
+  .metadata-container,
+  .markdown-rendered pre,
+  .markdown-rendered table,
+  .markdown-rendered blockquote,
+  .markdown-rendered .mermaid,
+  .ag-panel,
+  .ag-widget,
+  .ag-action,
+  .dash-card,
+  .brew-card,
+  .brew-card-mobile,
+  .bfw-module-card,
+  .quote-card
+) {
+  background: #fff !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  filter: none !important;
+}
+
+body.theme-light.ag-performance-mode :is(
+  .callout,
+  .ag-action,
+  .dash-card,
+  .brew-card,
+  .brew-card-mobile,
+  .bfw-module-card,
+  .markdown-rendered table
+):hover {
+  transform: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+body.theme-light.ag-performance-mode .markdown-rendered pre:has(code) {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--ag-accent) 10%, #fff), #fff) 0 0 / 100% 34px no-repeat,
+    #fff !important;
+}
+
+body.theme-light.ag-performance-mode .markdown-rendered pre:is(pre) > code[class*="language-"]::before,
+body.theme-light.ag-performance-mode .mermaid .edgeLabel foreignObject > div {
+  background: #fff !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+body.theme-light.ag-performance-mode .workspace-leaf-content[data-type*="graph"] :is(.view-content, .graph-view) {
+  background-color: #f5f7fb !important;
+  background-image: none !important;
+}
+
+body.theme-light.ag-performance-mode .workspace-leaf-content[data-type*="graph"] .graph-controls {
+  background: #fff !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   SIGNATURE CARET  (Live Preview + Source, CM6)
+   Obsidian renders the primary caret as the NATIVE text caret, so only
+   caret-color is stylable — no gradient, glow, or custom width is possible.
+   We give it one bold signature color (--ag-caret, vivid pink) that stays
+   clearly visible on both the light and dark canvas. Static by request.
+   Style Settings toggle "ag-plain-caret" swaps it for the plain accent color.
+   -------------------------------------------------------------------------- */
+
+body.theme-light .cm-editor .cm-content {
+  caret-color: var(--ag-caret);
+}
+
+body.theme-light.ag-plain-caret .cm-editor .cm-content {
+  caret-color: var(--ag-accent);
+}
+
+/* --------------------------------------------------------------------------
+   8. ACCESSIBILITY AND EXPORT
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  body.theme-light *,
+  body.theme-light *::before,
+  body.theme-light *::after {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+@media (forced-colors: active) {
+  body.theme-light .app-container::before,
+  body.theme-light .ag-hero::before,
+  body.theme-light .ag-hero::after { display: none !important; }
+  body.theme-light .markdown-rendered h1,
+  body.theme-light .ag-hero-title { color: CanvasText; background: none; -webkit-text-fill-color: currentColor; }
+  body.theme-light :is(.ag-panel, .ag-widget, .ag-action, .callout, .dash-card) { border: 1px solid CanvasText; box-shadow: none; }
+  body.theme-light :is(button, a, input, textarea, select):focus-visible { outline: 2px solid Highlight; }
+}
+
+@media print {
+  body.theme-light .app-container::before,
+  body.theme-light .workspace-leaf-content::after,
+  body.theme-light .ag-hero::before,
+  body.theme-light .ag-hero::after { display: none !important; }
+  body.theme-light .markdown-reading-view,
+  body.theme-light .workspace-leaf-content { background: white !important; }
+  body.theme-light .markdown-rendered h1,
+  body.theme-light .ag-hero-title { color: #111 !important; background: none !important; -webkit-text-fill-color: currentColor !important; }
+  body.theme-light :is(.callout, .metadata-container, .markdown-rendered pre, .markdown-rendered table, .markdown-rendered blockquote) { box-shadow: none !important; background: white !important; }
+}

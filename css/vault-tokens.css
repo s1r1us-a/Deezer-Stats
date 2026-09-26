@@ -1,0 +1,176 @@
+/* ═══════════════════════════════════════════════════════════
+   VAULT-TOKENS — Design-Sprache des Obsidian-Vaults
+   ───────────────────────────────────────────────────────────
+   Quelle: design/obsidian-vault/ — Theme „Apple Glass Light 2.12“
+   plus Snippets Layer8-Akzente, -Luna, -Schau, -Boot, OS-Spotlight.
+   Werte 1:1 übernommen; der Dunkelmodus nutzt die Dark-Werte, die in
+   den Snippets bereits stehen (Boot, Akzente, Luna, Spotlight).
+   Gemeinsam genutzt von index.html (styles.css) und wrapped.html.
+   ═══════════════════════════════════════════════════════════ */
+
+@property --l8s-glanz {
+  syntax: '<percentage>';
+  initial-value: -60%;
+  inherits: false;
+}
+
+:root {
+  /* ── Kontrastsichere Palette (Fließtext, Links, Status) ── */
+  --ag-blue: #0a84ff;
+  --ag-blue-deep: #0071e3;
+  --ag-indigo: #5e5ce6;
+  --ag-purple: #8d4ec2;
+  --ag-pink: #c52f64;
+  --ag-teal: #087f8c;
+  --ag-green: #187a32;
+  --ag-orange: #ad5200;
+  --ag-yellow: #d99a00;
+  --ag-red: #d92d20;
+  --ag-gray: #667085;
+
+  /* ── Leuchtende Display-Palette (Überschriften, Werte, Daten) ── */
+  --ag-display-blue: #0a84ff;
+  --ag-display-indigo: #5e5ce6;
+  --ag-display-purple: #bf5af2;
+  --ag-display-pink: #ff375f;
+  --ag-display-green: #30d158;
+  --ag-display-teal: #64d2ff;
+  --ag-display-orange: #ff9f0a;
+  --ag-display-yellow: #ffd60a;
+
+  /* Signature-Gradient und H1-Verlauf (94°, abgedunkelter Start) */
+  --ag-grad-hero: linear-gradient(100deg, var(--ag-display-blue) 0%, var(--ag-display-indigo) 30%, var(--ag-display-purple) 60%, var(--ag-display-pink) 100%);
+  --ag-h1-gradient: linear-gradient(94deg, color-mix(in srgb, var(--ag-display-blue) 88%, #111827) 0%, var(--ag-display-blue) 15%, var(--ag-display-indigo) 46%, var(--ag-display-purple) 76%, var(--ag-display-pink) 100%);
+  --l8-verlauf-diagonal: linear-gradient(135deg, var(--ag-display-blue), var(--ag-display-indigo) 40%, var(--ag-display-purple) 70%, var(--ag-display-pink));
+  --l8-verlauf-senkrecht: linear-gradient(0deg, var(--ag-display-blue), var(--ag-display-indigo) 35%, var(--ag-display-purple) 70%, var(--ag-display-pink));
+  --l8-verlauf-waagerecht: linear-gradient(90deg, var(--ag-display-blue), var(--ag-display-indigo) 40%, var(--ag-display-purple) 72%, var(--ag-display-pink));
+
+  --ag-accent: #0a84ff;
+  --ag-caret: var(--ag-display-pink);
+
+  /* ── Form ── */
+  --ag-radius-xs: 7px;
+  --ag-radius-sm: 10px;
+  --ag-radius-control: 12px;
+  --ag-radius-card: 18px;
+  --ag-radius-popover: 22px;
+  --ag-radius-hero: 26px;
+  --ag-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ag-rise: cubic-bezier(0.16, 1, 0.3, 1);
+  --ag-duration-fast: 150ms;
+  --ag-duration: 240ms;
+
+  /* ── Schrift (lokal/System — wie im Theme, keine Web-Fonts) ── */
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', 'Segoe UI Variable', 'Segoe UI', Roboto, sans-serif;
+  --font-text: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI Variable Text', 'Segoe UI', Roboto, sans-serif;
+  --mono: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', Consolas, ui-monospace, monospace;
+
+  /* ── Luna-Pastell (Layer8-Luna) ── */
+  --l8-luna-flieder: #e7ddf7;
+  --l8-luna-pflaume: #b9a0d9;
+  --l8-luna-butter: #fdf3df;
+  --l8-luna-butter-tief: #e8c89a;
+  --l8-luna-minze: #d6efe4;
+  --l8-luna-minze-tief: #7fc4a8;
+  --l8-luna-rettich: #f6dde5;
+  --l8-luna-rettich-tief: #e3a8bd;
+  --l8-luna-silber: #d6d8e8;
+  --l8-luna-puder: #a9bcd9;
+  --l8-luna-schrift: #5b4a7a;
+  --l8-luna-schrift-kraeftig: #473660;
+  --l8-luna-spektrum: linear-gradient(180deg, var(--l8-luna-puder) 0%, var(--l8-luna-pflaume) 34%, var(--l8-luna-rettich-tief) 68%, var(--l8-luna-butter-tief) 100%);
+
+  /* ── Motive (Data-URIs lösen keine Variablen auf → feste Farben) ── */
+  --l8-stern: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M10 0C10.9 6.3 13.7 9.1 20 10 13.7 10.9 10.9 13.7 10 20 9.1 13.7 6.3 10.9 0 10 6.3 9.1 9.1 6.3 10 0z"/></svg>');
+  --l8-funke: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path fill="%23b9a0d9" d="M10 0c0 5.5 4.5 10 10 10c-5.5 0-10 4.5-10 10c0-5.5-4.5-10-10-10c5.5 0 10-4.5 10-10z"/></svg>');
+  --l8-sterne: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 76 26"><path transform="translate(4 7) scale(.6)" d="M10 0C10.9 6.3 13.7 9.1 20 10 13.7 10.9 10.9 13.7 10 20 9.1 13.7 6.3 10.9 0 10 6.3 9.1 9.1 6.3 10 0z"/><path transform="translate(27 2) scale(1.1)" d="M10 0C10.9 6.3 13.7 9.1 20 10 13.7 10.9 10.9 13.7 10 20 9.1 13.7 6.3 10.9 0 10 6.3 9.1 9.1 6.3 10 0z"/><path transform="translate(60 7) scale(.6)" d="M10 0C10.9 6.3 13.7 9.1 20 10 13.7 10.9 10.9 13.7 10 20 9.1 13.7 6.3 10.9 0 10 6.3 9.1 9.1 6.3 10 0z"/></svg>');
+  --l8-sichel: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 54 40"><path fill="%23c9b3e8" fill-rule="evenodd" d="M27 8a12 12 0 1 0 0 24a12 12 0 1 0 0-24zM32 6a10 10 0 1 1 0 20a10 10 0 1 1 0-20z"/><path fill="%23e8c89a" d="M10 12c0 1.7 1.4 3 3 3c-1.7 0-3 1.4-3 3c0-1.7-1.4-3-3-3c1.7 0 3-1.4 3-3z"/><path fill="%23a9bcd9" d="M45 24c0 1.2 1 2.2 2.2 2.2c-1.2 0-2.2 1-2.2 2.2c0-1.2-1-2.2-2.2-2.2c1.2 0 2.2-1 2.2-2.2z"/></svg>');
+  --l8-sternbild: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 150"><g stroke="%23b9a0d9" stroke-width="1.1" stroke-linecap="round" fill="none" opacity=".55"><path d="M28 104 L74 116 L120 100 L150 112 L186 88 L214 60 L178 44 L150 112"/></g><g fill="%23a9bcd9"><circle cx="28" cy="104" r="2.6"/><circle cx="74" cy="116" r="3.4"/><circle cx="120" cy="100" r="2.4"/><circle cx="150" cy="112" r="3.9"/><circle cx="186" cy="88" r="2.7"/><circle cx="214" cy="60" r="3.2"/><circle cx="178" cy="44" r="2.5"/></g><g fill="%23d6d8e8" opacity=".5"><circle cx="96" cy="58" r="1"/><circle cx="238" cy="118" r="1.2"/><circle cx="14" cy="66" r="1"/><circle cx="132" cy="28" r="1.1"/><circle cx="206" cy="130" r="1"/></g></svg>');
+}
+
+/* ═══ HELL — Apple Glass Light ═══ */
+html[data-theme='light'],
+html:not([data-theme]) {
+  color-scheme: light;
+  --ag-paper: #f7f8fb;
+  --ag-line: rgba(32, 38, 49, 0.09);
+  --ag-line-strong: rgba(32, 38, 49, 0.15);
+  --ag-highlight: rgba(255, 255, 255, 0.9);
+  --ag-material: rgba(255, 255, 255, 0.82);
+  --ag-material-soft: rgba(255, 255, 255, 0.64);
+  --ag-material-solid: rgba(255, 255, 255, 0.94);
+  --ag-surface: #ffffff;
+  --ag-panel: linear-gradient(145deg, rgba(255, 255, 255, 0.96), color-mix(in srgb, var(--cc, var(--ag-accent)) 4%, rgba(249, 251, 255, 0.84)));
+  --ag-hover-vault: linear-gradient(105deg, rgba(10, 132, 255, 0.16) 0%, rgba(94, 92, 230, 0.13) 34%, rgba(191, 90, 242, 0.11) 67%, rgba(255, 55, 95, 0.1) 100%);
+  --ag-selected-vault: linear-gradient(105deg, rgba(10, 132, 255, 0.27) 0%, rgba(94, 92, 230, 0.22) 34%, rgba(191, 90, 242, 0.19) 67%, rgba(255, 55, 95, 0.17) 100%);
+  --ag-shadow-1: 0 1px 2px rgba(28, 35, 48, 0.035), 0 7px 20px rgba(28, 35, 48, 0.06);
+  --ag-shadow-2: 0 2px 5px rgba(28, 35, 48, 0.045), 0 16px 38px rgba(28, 35, 48, 0.09);
+  --ag-shadow-float: 0 4px 10px rgba(28, 35, 48, 0.06), 0 24px 54px rgba(28, 35, 48, 0.13);
+  --ag-focus: 0 0 0 3px color-mix(in srgb, var(--ag-accent) 22%, transparent);
+  --ag-aurora: radial-gradient(44% 40% at 6% 2%, rgba(10, 132, 255, 0.34), transparent 70%), radial-gradient(40% 36% at 94% 4%, rgba(94, 92, 230, 0.28), transparent 70%), radial-gradient(42% 44% at 90% 97%, rgba(255, 55, 95, 0.17), transparent 72%), radial-gradient(48% 44% at 6% 96%, rgba(100, 210, 255, 0.26), transparent 72%);
+  --ag-modal-veil: radial-gradient(ellipse 36% 24% at 31% 45%, rgba(73, 139, 226, 0.15), transparent), radial-gradient(ellipse 36% 24% at 71% 46%, rgba(184, 112, 194, 0.13), transparent), linear-gradient(125deg, rgba(105, 118, 151, 0.34), rgba(139, 123, 162, 0.32) 52%, rgba(112, 121, 153, 0.35));
+
+  /* Text (Layer8-Akzente): Pflaumentinte 9,7:1, Fett Fuchsia, Kursiv Violett */
+  --l8-ink: #4b2f86;
+  --l8-bold: #d9269b;
+  --l8-em: var(--ag-purple);
+  --l8-auswahl: color-mix(in srgb, color-mix(in srgb, var(--ag-display-indigo) 45%, var(--ag-display-purple)) 22%, transparent);
+  --text-normal: #1d1d1f;
+  --text-muted: #6e6e73;
+  --text-faint: #86868b;
+
+  --peak: #7a2fd4;
+  --ok: #187a32;
+  --bad: #d92d20;
+  --warn: #ad5200;
+  --chart-grid: rgba(32, 38, 49, 0.08);
+  --track: rgba(94, 92, 230, 0.08);
+  --nav-bg: rgba(247, 248, 251, 0.74);
+}
+
+/* ═══ DUNKEL — Werte aus Layer8-Boot/Akzente/Luna/OS-Spotlight ═══ */
+html[data-theme='dark'] {
+  color-scheme: dark;
+  --ag-indigo: #7d7aff;
+  --ag-purple: #d47aff;
+  --ag-accent: #3d9bff;
+  --ag-paper: #0f1219;
+  --ag-line: rgba(228, 234, 246, 0.095);
+  --ag-line-strong: rgba(228, 234, 246, 0.16);
+  --ag-highlight: rgba(255, 255, 255, 0.08);
+  --ag-material: rgba(27, 30, 38, 0.82);
+  --ag-material-soft: rgba(27, 30, 38, 0.6);
+  --ag-material-solid: rgba(27, 30, 38, 0.965);
+  --ag-surface: #1b1e26;
+  --ag-panel: linear-gradient(145deg, rgba(30, 34, 44, 0.9), color-mix(in srgb, var(--cc, var(--ag-accent)) 6%, rgba(24, 27, 35, 0.86)));
+  --ag-hover-vault: linear-gradient(105deg, rgba(10, 132, 255, 0.2) 0%, rgba(94, 92, 230, 0.18) 34%, rgba(191, 90, 242, 0.16) 67%, rgba(255, 55, 95, 0.14) 100%);
+  --ag-selected-vault: linear-gradient(105deg, rgba(10, 132, 255, 0.36) 0%, rgba(94, 92, 230, 0.32) 34%, rgba(191, 90, 242, 0.28) 67%, rgba(255, 55, 95, 0.25) 100%);
+  --ag-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 7px 20px rgba(0, 0, 0, 0.28);
+  --ag-shadow-2: 0 2px 5px rgba(0, 0, 0, 0.32), 0 16px 38px rgba(0, 0, 0, 0.38);
+  --ag-shadow-float: 0 20px 54px rgba(0, 0, 0, 0.38), 0 46px 112px rgba(0, 0, 0, 0.54);
+  --ag-focus: 0 0 0 3px color-mix(in srgb, var(--ag-accent) 34%, transparent);
+  --ag-aurora: radial-gradient(42% 38% at 8% 4%, rgba(10, 132, 255, 0.22), transparent 72%), radial-gradient(38% 34% at 92% 5%, rgba(94, 92, 230, 0.18), transparent 72%), radial-gradient(40% 42% at 88% 96%, rgba(255, 55, 95, 0.1), transparent 74%), radial-gradient(46% 42% at 8% 94%, rgba(100, 210, 255, 0.14), transparent 74%);
+  --ag-modal-veil: radial-gradient(ellipse 36% 24% at 31% 45%, rgba(50, 111, 210, 0.14), transparent), radial-gradient(ellipse 36% 24% at 71% 46%, rgba(151, 71, 167, 0.12), transparent), rgba(9, 12, 27, 0.56);
+
+  --l8-ink: #c3b4ff;
+  --l8-bold: #ff9ae0;
+  --l8-auswahl: color-mix(in srgb, var(--ag-display-purple) 30%, transparent);
+  --text-normal: #f5f5f7;
+  --text-muted: #a1a1a6;
+  --text-faint: #7d7d82;
+
+  --l8-luna-flieder: #2e2842;
+  --l8-luna-butter: #332c22;
+  --l8-luna-minze: #22332c;
+  --l8-luna-rettich: #33252c;
+  --l8-luna-schrift: #ddd0f5;
+  --l8-luna-schrift-kraeftig: #f0e8ff;
+
+  --peak: #d47aff;
+  --ok: #30d158;
+  --bad: #ff6b61;
+  --warn: #ffb340;
+  --chart-grid: rgba(228, 234, 246, 0.08);
+  --track: rgba(228, 234, 246, 0.07);
+  --nav-bg: rgba(15, 18, 25, 0.74);
+}
