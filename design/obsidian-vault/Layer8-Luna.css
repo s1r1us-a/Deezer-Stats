@@ -1,0 +1,1203 @@
+/* ==========================================================================
+   LAYER8 // LUNA
+   --------------------------------------------------------------------------
+   Einzelne besondere Stellen, kein Flaechenumbau. Das Apple-Glass-Grunddesign
+   bleibt vollstaendig unangetastet.
+
+   Enthalten:
+     1. Palette
+     2. Mondphase in der Statusleiste
+     3. Quibbler-Callout   > [!quibbler]   Vermutung statt Wissen
+     4. Nargel-Callout     > [!nargel]     Verschwundenes, Verdaechtiges
+     5. Traum-Callout      > [!traum]      halbe Gedanken, Ahnungen
+     6. Spectre-Callout    > [!spectre]    sieh nochmal genauer hin
+     7. Randnotiz          > [!rand]       Kommentar neben dem Text
+     8. Leere Zustaende im Dashboard
+     9. Drei ruhige Stellen im Dashboard (Hero, Ueberschriften, Zitat)
+    10. Drei schmucklose Stellen in Obsidian selbst (leere Bereiche,
+        Tooltips, Benachrichtigungen)
+    11. Sternbild und Mondphase im leeren Bereich
+
+   Performance-Regel, an die sich alles hier haelt:
+     - keine backdrop-filter
+     - kein Filter auf vielfach vorkommenden Elementen
+     - Dauer-Animation nur dort, wo das Element ohnehin gleich verschwindet
+     - alles Bewegte laeuft ueber transform oder opacity, nie ueber Layout
+
+   Umkehrbar: Snippet in Einstellungen > Erscheinungsbild abschalten.
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   1. PALETTE
+   Durchgehend Pastell. --l8-luna-tint kommt vom Plugin "Layer8 Luna" und
+   wandert im Monatsverlauf von Puderblau (Neumond) nach Mondsilber
+   (Vollmond). Der Fallback greift, wenn das Plugin aus ist.
+   -------------------------------------------------------------------------- */
+
+:root {
+  --l8-luna-flieder: #e7ddf7;   /* Dirigible-Pflaume, sehr hell */
+  --l8-luna-pflaume: #b9a0d9;
+  --l8-luna-butter: #fdf3df;    /* Butterbier */
+  --l8-luna-butter-tief: #e8c89a;
+  --l8-luna-minze: #d6efe4;
+  --l8-luna-minze-tief: #7fc4a8;
+  --l8-luna-rettich: #f6dde5;
+  --l8-luna-rettich-tief: #e3a8bd;
+  --l8-luna-silber: #d6d8e8;
+  --l8-luna-puder: #a9bcd9;
+
+  /* Schreibfarben. Alle Werte gegen die tatsaechliche Flaeche gemessen,
+     nicht geschaetzt — die Zahlen stehen an den jeweiligen Regeln.
+
+       --l8-luna-schrift           Fliesstext und Kursiv   5,95:1 auf Flieder
+       --l8-luna-schrift-kraeftig  Titel und Fett          8,19:1 auf Flieder
+       --l8-luna-minze-schrift     Nargel-Titel            5,15:1 auf Minze
+  */
+  --l8-luna-schrift: #5b4a7a;
+  --l8-luna-schrift-kraeftig: #473660;
+  --l8-luna-minze-schrift: #2f6b57;
+  /* Traum-Titel: tiefes Puderblau, 7,44:1 auf der Puder- und 6,64:1 auf der
+     Fliederseite des Verlaufs. Bewusst blau statt pflaumig, damit sich der
+     Traum vom Klitterer unterscheidet. */
+  --l8-luna-traum-schrift: #3d4a72;
+
+  --l8-luna-tint: var(--l8-luna-silber);
+
+  /* Die Sichel des heutigen Tages. Wird vom Plugin "Layer8 Luna" gesetzt und
+     stimmt dann auf den Tag genau. Der Ersatz hier ist ein Halbmond und
+     greift, wenn das Plugin aus ist. */
+  --l8-luna-moon: url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 16 16">\
+<circle r="6" fill="none" stroke="%23d6d8e8" stroke-width="0.55" opacity="0.42"/>\
+<path d="M 0 -6 A 6 6 0 0 1 0 6 A 0 6 0 0 0 0 -6 Z" fill="%23d6d8e8"/>\
+</svg>');
+
+  /* Handgezeichnete Kante: leicht unterschiedliche Radien pro Ecke. Kostet
+     nichts und nimmt dem Kasten das Technische.
+
+     Der zweite Wert der unteren Gruppe (senkrechter Radius oben rechts) ist
+     bewusst klein: dort sitzt die Mondsichel, und Hintergrundbilder werden
+     vom border-radius beschnitten. Bei den urspruenglichen 36px schnitt die
+     Ecke quer durch die Sichel. */
+  --l8-luna-kante: 38px 14px 34px 16px / 16px 18px 14px 40px;
+}
+
+body.theme-dark {
+  --l8-luna-flieder: #2e2842;
+  --l8-luna-butter: #332c22;
+  --l8-luna-minze: #22332c;
+  --l8-luna-rettich: #33252c;
+  --l8-luna-schrift: #ddd0f5;
+  --l8-luna-schrift-kraeftig: #f0e8ff;
+}
+
+
+/* --------------------------------------------------------------------------
+   2. MONDPHASE IN DER STATUSLEISTE
+   Unten rechts. Das Plugin zeichnet die Sichel als SVG, hier bekommt sie nur
+   ihren Platz. Der Ring der unbeleuchteten Scheibe erbt currentColor.
+   -------------------------------------------------------------------------- */
+
+.status-bar-item.l8-luna-status {
+  display: flex;
+  align-items: center;
+  gap: .4em;
+
+  /* Eigene kleine Nachthimmel-Kachel. Ohne sie geht die Sichel zwischen den
+     Textelementen der Statusleiste unter — sie liest sich dann als
+     versehentlicher Punkt statt als Anzeige. */
+  margin: 0 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--l8-luna-tint) 20%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--l8-luna-tint) 34%, transparent);
+
+  color: var(--text-muted);
+  transition: background-color 180ms ease;
+}
+
+.status-bar-item.l8-luna-status:hover {
+  background: color-mix(in srgb, var(--l8-luna-tint) 38%, transparent);
+}
+
+.status-bar-item.l8-luna-status svg {
+  display: block;
+
+  /* Hier stand ein drop-shadow als weicher Schein. Entfernt am 22.09.2026:
+     ein `filter` auf einem dauerhaft sichtbaren Element erzeugt eine eigene
+     Compositing-Ebene, die bei jedem Neuzeichnen der Statusleiste mitgerechnet
+     wird — dasselbe Muster, das im September abgeschafft wurde, nur in klein.
+     Sichtbar bleibt die Sichel ohnehin durch die Nachthimmel-Kachel.
+
+     Damit enthaelt diese Datei kein filter, kein backdrop-filter und kein
+     will-change mehr. */
+}
+
+/* Der Phasenname steht bereit, ist aber aus: die Statusleiste soll ruhig
+   bleiben. Zum Einschalten die naechste Zeile von `none` auf `inline` setzen. */
+.status-bar-item.l8-luna-status .l8-luna-label {
+  display: none;
+
+  font-size: var(--font-ui-smaller);
+  letter-spacing: .02em;
+  white-space: nowrap;
+}
+
+
+/* --------------------------------------------------------------------------
+   3. QUIBBLER-CALLOUT        > [!quibbler] Schlagzeile
+   Der Klitterer — fuer Vermutung statt Wissen. Halbgares, Notizen an dich
+   selbst, "das muss ich noch pruefen".
+
+   Gestaltung: Flieder auf Butterbier, gestrichelte Kante wie mit der Hand
+   gezogen, Mondsichel und Funken oben rechts. Die leichte Drehung ist
+   statisch und wird nie animiert.
+
+   Kosten: zwei Verlaeufe und ein Hintergrundbild, alles einmal gerastert.
+   Kein Filter, kein backdrop-filter, kein Uebergang im Ruhezustand.
+   -------------------------------------------------------------------------- */
+
+.markdown-rendered .callout[data-callout="quibbler"] {
+  /* --cc faerbt im Theme Rahmen UND Titeltext (theme.css:1617). Mit dem
+     hellen Fliederton stand der Titel bei 1,77:1 — praktisch unlesbar. Der
+     Wert ist jetzt mitteltief; die Textfarben werden zusaetzlich weiter
+     unten ausdruecklich gesetzt, damit nichts mehr daran haengt. */
+  --cc: #8a6fb0;
+
+  position: relative;
+  margin: 1.6em 0;
+  padding: 0 0 1.25em;
+
+  border: 2px dashed color-mix(in srgb, var(--l8-luna-pflaume) 52%, transparent) !important;
+  border-radius: var(--l8-luna-kante) !important;
+
+  background:
+    /* Mondsichel mit drei Funken, oben rechts. Statisch. */
+    url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 76 62">\
+<path fill="%23c9b3e8" fill-rule="evenodd" d="M50 8a13 13 0 1 0 0 26a13 13 0 1 0 0-26zM56.5 9.6a11.6 11.6 0 1 1 0 22.8a11.6 11.6 0 1 1 0-22.8z"/>\
+<g fill="%23edd3a8">\
+<path d="M20 30c0 3.4 2.8 6.2 6.2 6.2c-3.4 0-6.2 2.8-6.2 6.2c0-3.4-2.8-6.2-6.2-6.2c3.4 0 6.2-2.8 6.2-6.2z"/>\
+</g>\
+<g fill="%23e3a8bd">\
+<path d="M66 40c0 2.2 1.8 4 4 4c-2.2 0-4 1.8-4 4c0-2.2-1.8-4-4-4c2.2 0 4-1.8 4-4z"/>\
+</g>\
+<g fill="%23a9bcd9">\
+<path d="M35 46c0 1.6 1.3 2.9 2.9 2.9c-1.6 0-2.9 1.3-2.9 2.9c0-1.6-1.3-2.9-2.9-2.9c1.6 0 2.9-1.3 2.9-2.9z"/>\
+</g>\
+</svg>')
+      right 1.1em top .9em / 56px auto no-repeat,
+
+    linear-gradient(
+      152deg,
+      var(--l8-luna-flieder) 0%,
+      color-mix(in srgb, var(--l8-luna-flieder) 50%, var(--l8-luna-butter)) 52%,
+      var(--l8-luna-butter) 100%
+    ) !important;
+
+  color: var(--l8-luna-schrift);
+
+  /* Ein Ausschnitt liegt nun mal nie ganz gerade. */
+  transform: rotate(-.5deg);
+
+  box-shadow:
+    0 2px 3px color-mix(in srgb, var(--l8-luna-pflaume) 16%, transparent),
+    0 14px 30px -20px color-mix(in srgb, var(--l8-luna-pflaume) 62%, transparent);
+}
+
+/* Beim Ueberfahren setzt das Theme eine transform-Transition (theme.css:1582).
+   Die Schieflage wird hier festgehalten, damit sie nicht weggezogen wird. */
+.markdown-rendered .callout[data-callout="quibbler"]:hover {
+  transform: rotate(-.5deg);
+}
+
+/*
+  Kopfzeile, wie die Zeile ueber einer Schlagzeile.
+
+  Sie haengt am Callout selbst, nicht am Titel, und sitzt INNERHALB des
+  Kastens. Grund: theme.css:1570 gibt .callout ein overflow: hidden — die
+  vorherige Fassung stand auf top: -.62em, also ausserhalb, und wurde oben
+  sauber abgeschnitten.
+
+  Text --l8-luna-schrift auf der Pillenflaeche: 5,80:1.
+*/
+.markdown-rendered .callout[data-callout="quibbler"]::before {
+  content: "Der Klitterer";
+  position: absolute;
+  top: .62em;
+  left: 1.15em;
+  z-index: 1;
+
+  padding: .12em .66em;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--l8-luna-pflaume) 38%, #fff);
+
+  color: var(--l8-luna-schrift);
+  font-family: Georgia, serif;
+  font-size: .58rem;
+  font-style: italic;
+  letter-spacing: .15em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+/*
+  Das Theme legt auf .callout-title eine eigene vierstufige Verlaufsflaeche
+  samt Trennlinie und zwei Inset-Schatten (theme.css:1598). Die lag auf meiner
+  Flaeche und erzeugte den hellen Balken im oberen Drittel. Hier wird sie
+  zurueckgenommen; die Trennlinie kommt als feine Luna-Haarlinie zurueck.
+
+  Das padding-top schafft Platz fuer die Kopfzeile darueber.
+*/
+.markdown-rendered .callout[data-callout="quibbler"] > .callout-title {
+  align-items: baseline;
+  padding: 2.5em 5.4em .45em 1.15em;
+
+  border-bottom: 1px solid color-mix(in srgb, var(--l8-luna-pflaume) 46%, transparent) !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+
+  font-family: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  font-size: 1.24em;
+  font-weight: 700;
+  letter-spacing: .008em;
+  line-height: 1.28;
+}
+
+/* 8,19:1 auf dem Fliederton. Muss ausdruecklich gesetzt werden, sonst greift
+   theme.css:1617 mit var(--cc). */
+.markdown-rendered .callout[data-callout="quibbler"]
+> .callout-title > .callout-title-inner {
+  color: var(--l8-luna-schrift-kraeftig);
+}
+
+/* Das Standardsymbol weicht einem gezeichneten Funken. */
+.markdown-rendered .callout[data-callout="quibbler"] > .callout-title > .callout-icon {
+  display: none;
+}
+
+.markdown-rendered .callout[data-callout="quibbler"]
+> .callout-title > .callout-title-inner::before {
+  content: "";
+  display: inline-block;
+  width: .82em;
+  height: .82em;
+  margin-right: .42em;
+  vertical-align: -.04em;
+
+  background: url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">\
+<path fill="%23b9a0d9" d="M10 0c0 5.5 4.5 10 10 10c-5.5 0-10 4.5-10 10c0-5.5-4.5-10-10-10c5.5 0 10-4.5 10-10z"/>\
+</svg>') center / contain no-repeat;
+}
+
+/* Fliesstext: 4,98:1 auf der Fliederseite, 5,76:1 auf der Butterseite. */
+.markdown-rendered .callout[data-callout="quibbler"] > .callout-content {
+  padding: .75em 1.4em 0 1.15em;
+  color: color-mix(in srgb, var(--l8-luna-schrift) 92%, transparent);
+  font-family: Georgia, "Iowan Old Style", serif;
+  font-size: .95em;
+  line-height: 1.64;
+}
+
+/* Fett traegt im Ausschnitt die Pflaumentinte, nicht die Vault-Palette —
+   sonst bricht die Stimmung. 9,70:1. */
+.markdown-rendered .callout[data-callout="quibbler"] .callout-content
+:is(strong, b) {
+  color: var(--l8-luna-schrift-kraeftig);
+}
+
+/*
+  Kursiv war auf einen helleren Fliederton gemischt und landete damit bei
+  2,39:1. Jede Mischung, die lesbar ist, ist vom Fliesstext kaum noch zu
+  unterscheiden — also traegt Kursiv jetzt die volle Schriftfarbe und setzt
+  sich ueber die Schraegstellung ab statt ueber die Helligkeit. 5,95:1.
+*/
+.markdown-rendered .callout[data-callout="quibbler"] .callout-content
+:is(em, i) {
+  color: var(--l8-luna-schrift);
+}
+
+/* Der Aufklapp-Pfeil stand mit var(--cc) bei 1,77:1. Jetzt 3,51:1, und er
+   dockt rechts an statt am Titeltext zu kleben. */
+.markdown-rendered .callout[data-callout="quibbler"] > .callout-title > .callout-fold {
+  margin-left: auto;
+  color: color-mix(in srgb, var(--l8-luna-pflaume) 40%, var(--l8-luna-schrift));
+}
+
+
+/* --------------------------------------------------------------------------
+   4. NARGEL-CALLOUT          > [!nargel] Stichwort
+   Fuer Verschwundenes und Verdaechtiges: was fehlt, was nicht zusammenpasst,
+   was jemand offenbar mitgenommen hat.
+
+   Minze mit einer Reihe kleiner schwebender Punkte. Gleiche Bauweise wie der
+   Klitterer, nur ohne Drehung und ohne Schlagzeilen-Typografie.
+   -------------------------------------------------------------------------- */
+
+.markdown-rendered .callout[data-callout="nargel"] {
+  /* Gleiche Begruendung wie beim Klitterer: mit --l8-luna-minze-tief stand
+     der Titel bei 1,67:1. */
+  --cc: #4e9a80;
+
+  position: relative;
+  margin: 1.4em 0;
+  padding: 0 0 1.05em;
+
+  border: 2px dashed color-mix(in srgb, var(--l8-luna-minze-tief) 44%, transparent) !important;
+  border-radius: 16px 34px 18px 30px / 30px 16px 32px 18px !important;
+
+  background:
+    url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 58 40">\
+<g fill="%237fc4a8" opacity="0.5">\
+<circle cx="12" cy="26" r="3.4"/><circle cx="26" cy="16" r="2.4"/>\
+<circle cx="38" cy="28" r="4.2"/><circle cx="49" cy="13" r="2"/>\
+<circle cx="31" cy="34" r="1.6"/>\
+</g>\
+</svg>')
+      right .8em bottom .5em / 56px auto no-repeat,
+
+    linear-gradient(
+      150deg,
+      var(--l8-luna-minze) 0%,
+      color-mix(in srgb, var(--l8-luna-minze) 46%, #fff) 100%
+    ) !important;
+
+  color: var(--l8-luna-schrift);
+  box-shadow: 0 10px 24px -20px color-mix(in srgb, var(--l8-luna-minze-tief) 70%, transparent);
+}
+
+.markdown-rendered .callout[data-callout="nargel"] > .callout-title {
+  align-items: center;
+  padding: .85em 1.25em .4em;
+
+  border-bottom: 1px solid color-mix(in srgb, var(--l8-luna-minze-tief) 40%, transparent) !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+
+  font-family: Georgia, "Iowan Old Style", serif;
+  font-size: 1.02em;
+  font-weight: 700;
+}
+
+/* 5,15:1 auf der Minzflaeche. Eigener dunkler Ton statt einer Mischung aus
+   Minze und Pflaume — die wurde graustichig und passte nicht zum Rest. */
+.markdown-rendered .callout[data-callout="nargel"]
+> .callout-title > .callout-title-inner {
+  color: var(--l8-luna-minze-schrift);
+}
+
+.markdown-rendered .callout[data-callout="nargel"] > .callout-title > .callout-icon {
+  color: var(--l8-luna-minze-schrift);
+  background: color-mix(in srgb, var(--l8-luna-minze-tief) 22%, #fff) !important;
+  box-shadow: none !important;
+}
+
+.markdown-rendered .callout[data-callout="nargel"] > .callout-title > .callout-fold {
+  margin-left: auto;
+  color: var(--l8-luna-minze-schrift);
+}
+
+.markdown-rendered .callout[data-callout="nargel"] > .callout-content {
+  padding: .6em 1.25em 0;
+  color: var(--l8-luna-schrift);
+  font-family: Georgia, "Iowan Old Style", serif;
+  font-size: .93em;
+  line-height: 1.58;
+}
+
+
+/* --------------------------------------------------------------------------
+   5. TRAUM-CALLOUT           > [!traum] Stichwort
+   Fuer halbe Gedanken: Einfaelle, Ahnungen, "vielleicht ist es ja so".
+
+   Gestaltung: Puderblau, das nach Flieder laeuft, weiche gleichmaessige
+   Rundung statt der handgezeichneten Kante des Klitterers, ein Sternenfeld
+   oben rechts. Keine Drehung — der Traum liegt ruhig.
+   -------------------------------------------------------------------------- */
+
+.markdown-rendered .callout[data-callout="traum"] {
+  /* Mitteltiefes Puderblau. Faerbt im Theme Rahmen und Titeltext; der Titel
+     wird weiter unten ausdruecklich ueberschrieben. */
+  --cc: #6b7ba8;
+
+  position: relative;
+  margin: 1.5em 0;
+  padding: 0 0 1.15em;
+
+  border: 1px solid color-mix(in srgb, var(--l8-luna-puder) 55%, transparent) !important;
+  border-radius: 26px 22px 26px 22px !important;
+
+  background:
+    url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 84 46">\
+<g fill="%23a9bcd9">\
+<circle cx="14" cy="30" r="1.5"/><circle cx="33" cy="12" r="1.1"/>\
+<circle cx="52" cy="33" r="1.3"/><circle cx="71" cy="17" r="1"/>\
+<circle cx="24" cy="41" r="1"/><circle cx="62" cy="6" r="1.2"/>\
+</g>\
+<path fill="%23c9b3e8" d="M44 14c0 3.6 3 6.6 6.6 6.6c-3.6 0-6.6 3-6.6 6.6c0-3.6-3-6.6-6.6-6.6c3.6 0 6.6-3 6.6-6.6z"/>\
+<path fill="%23d6d8e8" d="M75 33c0 2.2 1.8 4 4 4c-2.2 0-4 1.8-4 4c0-2.2-1.8-4-4-4c2.2 0 4-1.8 4-4z"/>\
+<path fill="%23e8c89a" d="M20 8c0 1.9 1.6 3.5 3.5 3.5c-1.9 0-3.5 1.6-3.5 3.5c0-1.9-1.6-3.5-3.5-3.5c1.9 0 3.5-1.6 3.5-3.5z"/>\
+</svg>')
+      right 1.3em top 1em / 84px auto no-repeat,
+
+    linear-gradient(
+      158deg,
+      color-mix(in srgb, var(--l8-luna-puder) 26%, #fff) 0%,
+      var(--l8-luna-flieder) 100%
+    ) !important;
+
+  color: var(--l8-luna-schrift);
+  box-shadow: 0 12px 26px -22px color-mix(in srgb, #6b7ba8 72%, transparent);
+}
+
+.markdown-rendered .callout[data-callout="traum"] > .callout-title {
+  align-items: center;
+  padding: .9em 6.5em .45em 1.3em;
+
+  border-bottom: 1px solid color-mix(in srgb, var(--l8-luna-puder) 48%, transparent) !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+
+  font-family: Georgia, "Iowan Old Style", serif;
+  font-size: 1.06em;
+  font-weight: 700;
+}
+
+/* 7,44:1 auf der Puderseite. Muss gesetzt werden, sonst greift theme.css:1617. */
+.markdown-rendered .callout[data-callout="traum"]
+> .callout-title > .callout-title-inner {
+  color: var(--l8-luna-traum-schrift);
+}
+
+.markdown-rendered .callout[data-callout="traum"] > .callout-title > .callout-icon {
+  display: none;
+}
+
+/* Ein weicher Stern statt des Standardsymbols. 3,53:1 gegen die Flaeche. */
+.markdown-rendered .callout[data-callout="traum"]
+> .callout-title > .callout-title-inner::before {
+  content: "";
+  display: inline-block;
+  width: .82em;
+  height: .82em;
+  margin-right: .44em;
+  vertical-align: -.06em;
+
+  background: url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">\
+<path fill="%236e7da0" d="M10 1l2.47 5.72 6.21.55-4.7 4.1 1.4 6.08L10 14.3l-5.38 3.15 1.4-6.08-4.7-4.1 6.21-.55z"/>\
+</svg>') center / contain no-repeat;
+}
+
+.markdown-rendered .callout[data-callout="traum"] > .callout-title > .callout-fold {
+  margin-left: auto;
+  color: color-mix(in srgb, var(--l8-luna-puder) 45%, var(--l8-luna-traum-schrift));
+}
+
+/* 6,66:1 auf der Puderseite, 5,95:1 auf der Fliederseite. */
+.markdown-rendered .callout[data-callout="traum"] > .callout-content {
+  padding: .65em 1.4em 0 1.3em;
+  color: var(--l8-luna-schrift);
+  font-family: Georgia, "Iowan Old Style", serif;
+  font-size: .94em;
+  line-height: 1.62;
+}
+
+.markdown-rendered .callout[data-callout="traum"] .callout-content :is(strong, b) {
+  color: var(--l8-luna-traum-schrift);
+}
+
+
+/* --------------------------------------------------------------------------
+   6. SPECTRE-CALLOUT         > [!spectre] Stichwort
+   Spectrespecs — "sieh nochmal genauer hin". Fuer Stellen, an denen du dich
+   schon einmal geirrt hast, oder die anders sind als sie aussehen.
+
+   Bewusst das zurueckhaltendste Element der ganzen Datei: fast keine Flaeche,
+   kein Rahmen, kein Schatten. Die ganze Aussage steckt in einer drei Pixel
+   breiten Haarlinie am linken Rand, die das Pastell-Spektrum durchlaeuft —
+   die Glaeser der Brille.
+   -------------------------------------------------------------------------- */
+
+.markdown-rendered .callout[data-callout="spectre"] {
+  --cc: #8a6fb0;
+
+  position: relative;
+  margin: 1.4em 0;
+  padding: 0 0 .95em;
+
+  border: none !important;
+  border-radius: 12px !important;
+
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, .92),
+    color-mix(in srgb, #fff 86%, var(--l8-luna-flieder))
+  ) !important;
+
+  box-shadow: none !important;
+}
+
+/* Die Spektrum-Haarlinie. Liegt innen, weil .callout ein overflow: hidden
+   traegt — ausserhalb wuerde sie weggeschnitten. */
+.markdown-rendered .callout[data-callout="spectre"]::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+
+  background: linear-gradient(
+    180deg,
+    var(--l8-luna-puder) 0%,
+    var(--l8-luna-pflaume) 34%,
+    var(--l8-luna-rettich-tief) 68%,
+    var(--l8-luna-butter-tief) 100%
+  );
+}
+
+.markdown-rendered .callout[data-callout="spectre"] > .callout-title {
+  align-items: center;
+  padding: .7em 1.2em .3em 1.25em;
+
+  border: none !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+
+  font-size: 1em;
+  font-weight: 680;
+}
+
+/* 10,31:1 — die Flaeche ist fast weiss, deshalb sehr komfortabel. */
+.markdown-rendered .callout[data-callout="spectre"]
+> .callout-title > .callout-title-inner {
+  color: var(--l8-luna-schrift-kraeftig);
+}
+
+.markdown-rendered .callout[data-callout="spectre"] > .callout-title > .callout-icon {
+  display: none;
+}
+
+/* Die Spectrespecs selbst: zwei Glaeser in verschiedenen Pastelltoenen. */
+.markdown-rendered .callout[data-callout="spectre"]
+> .callout-title > .callout-title-inner::before {
+  content: "";
+  display: inline-block;
+  width: 1.45em;
+  height: .78em;
+  margin-right: .42em;
+  vertical-align: -.08em;
+
+  background: url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 26 14">\
+<g stroke="%238571a5" stroke-width="1.3" fill="none" stroke-linecap="round">\
+<path d="M11.2 7h3.6"/><path d="M1.9 5.4 0.6 3"/><path d="M24.1 5.4 25.4 3"/>\
+</g>\
+<circle cx="6.6" cy="7" r="4.6" fill="%23f6dde5" stroke="%238571a5" stroke-width="1.3"/>\
+<circle cx="19.4" cy="7" r="4.6" fill="%23fdf3df" stroke="%238571a5" stroke-width="1.3"/>\
+</svg>') center / contain no-repeat;
+}
+
+.markdown-rendered .callout[data-callout="spectre"] > .callout-title > .callout-fold {
+  margin-left: auto;
+  color: color-mix(in srgb, var(--l8-luna-pflaume) 45%, var(--l8-luna-schrift));
+}
+
+/* 7,48:1. */
+.markdown-rendered .callout[data-callout="spectre"] > .callout-content {
+  padding: .35em 1.3em 0 1.25em;
+  color: var(--l8-luna-schrift);
+  font-size: .95em;
+  line-height: 1.6;
+}
+
+.markdown-rendered .callout[data-callout="spectre"] .callout-content :is(strong, b) {
+  color: var(--l8-luna-schrift-kraeftig);
+}
+
+
+/* --------------------------------------------------------------------------
+   7. RANDNOTIZ               > [!rand] Stichwort
+   Rutscht in der Leseansicht neben die Textspalte statt in den Lesefluss.
+   Trennt Kommentar von Inhalt, ohne den Text zu unterbrechen.
+
+   Kosten: fast ausschliesslich Layout-Eigenschaften. Der kleine Funke am
+   Anfang ist ein Hintergrundbild auf einem Pseudo-Element, einmal gerastert.
+
+   readableLineLength ist bei dir an, der Rand ist also frei. Wird das Fenster
+   schmal, faellt die Notiz automatisch zurueck in den Fluss.
+   -------------------------------------------------------------------------- */
+
+.markdown-preview-view .callout[data-callout="rand"] {
+  float: right;
+  clear: right;
+
+  width: 196px;
+  margin: .3em -228px 1em 1.5em;
+  padding: 0 0 0 .9em;
+
+  border: none !important;
+  /* Gepunktet statt durchgezogen: wirkt wie mit dem Bleistift angerissen. */
+  border-left: 2px dotted var(--l8-luna-pflaume) !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+
+  color: var(--text-muted);
+  font-family: Georgia, "Iowan Old Style", serif;
+  font-size: .82em;
+  line-height: 1.5;
+}
+
+.markdown-preview-view .callout[data-callout="rand"] > .callout-title {
+  padding: 0 0 .25em;
+
+  border: none !important;
+  background: none !important;
+  box-shadow: none !important;
+
+  font-size: .96em;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+
+/* Stand mit 74% Pflaume bei 3,40:1 — bei .82em Schriftgroesse zu wenig.
+   Jetzt 50%, also 5,39:1. */
+.markdown-preview-view .callout[data-callout="rand"]
+> .callout-title > .callout-title-inner {
+  color: color-mix(in srgb, var(--l8-luna-pflaume) 50%, var(--text-normal));
+}
+
+/* Das Standardsymbol wuerde in der schmalen Spalte nur Platz kosten und
+   weicht einem kleinen Funken. */
+.markdown-preview-view .callout[data-callout="rand"] > .callout-title > .callout-icon {
+  display: none;
+}
+
+.markdown-preview-view .callout[data-callout="rand"]
+> .callout-title > .callout-title-inner::before {
+  content: "";
+  display: inline-block;
+  width: .7em;
+  height: .7em;
+  margin-right: .36em;
+  vertical-align: -.02em;
+
+  background: url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">\
+<path fill="%23b9a0d9" d="M10 0c0 5.5 4.5 10 10 10c-5.5 0-10 4.5-10 10c0-5.5-4.5-10-10-10c5.5 0 10-4.5 10-10z"/>\
+</svg>') center / contain no-repeat;
+}
+
+.markdown-preview-view .callout[data-callout="rand"] > .callout-content {
+  padding: 0;
+}
+
+/* In der Bearbeitungsansicht gibt es keinen freien Rand — dort bleibt die
+   Notiz im Fluss, behaelt aber ihre Handschrift. */
+.markdown-source-view .callout[data-callout="rand"] {
+  border: none !important;
+  border-left: 2px dotted var(--l8-luna-pflaume) !important;
+  border-radius: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  font-family: Georgia, "Iowan Old Style", serif;
+  font-size: .88em;
+}
+
+@media (max-width: 1180px) {
+  .markdown-preview-view .callout[data-callout="rand"] {
+    float: none;
+    width: auto;
+    margin: 1em 0;
+  }
+}
+
+
+/* --------------------------------------------------------------------------
+   8. LEERE ZUSTAENDE IM DASHBOARD
+   `.l8-empty` ist EIN geteilter Kasten (86px, zentriert, grauer Text) fuer
+   alle leeren Zustaende des Dashboards. Bisher stand dort nur der Satz —
+   also genau in den Momenten, in denen das Dashboard am kaergsten wirkt und
+   man am ehesten hinschaut.
+
+   Jeder Bereich bekommt jetzt ein kleines gezeichnetes Motiv darueber.
+
+   Fehlerzustaende sind ausdruecklich ausgenommen (`:not(.is-error)`): wenn
+   eine Datei fehlt oder die Agenda nicht laedt, ist ein Schmuckbild fehl am
+   Platz. Dort bleibt der rote Text allein.
+
+   Kosten: ein statisches SVG pro Bereich, gerendert nur wenn der Zustand
+   tatsaechlich leer ist. Keine Animation, kein Filter.
+   -------------------------------------------------------------------------- */
+
+.layer8-dashboard-view .l8-empty:not(.is-error)::before,
+.layer8-dashboard-view .l8-loading::before {
+  content: "";
+
+  display: block;
+  width: 54px;
+  height: 40px;
+  margin-bottom: 10px;
+
+  opacity: .72;
+
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  background-size: contain;
+
+  /* Grundmotiv: eine kleine Sichel mit zwei Funken. Gilt ueberall dort, wo
+     unten kein eigenes Motiv gesetzt ist. */
+  background-image: url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 54 40">\
+<path fill="%23c9b3e8" fill-rule="evenodd" d="M27 8a12 12 0 1 0 0 24a12 12 0 1 0 0-24zM32 6a10 10 0 1 1 0 20a10 10 0 1 1 0-20z"/>\
+<path fill="%23e8c89a" d="M10 12c0 1.7 1.4 3 3 3c-1.7 0-3 1.4-3 3c0-1.7-1.4-3-3-3c1.7 0 3-1.4 3-3z"/>\
+<path fill="%23a9bcd9" d="M45 24c0 1.2 1 2.2 2.2 2.2c-1.2 0-2.2 1-2.2 2.2c0-1.2-1-2.2-2.2-2.2c1.2 0 2.2-1 2.2-2.2z"/>\
+</svg>');
+}
+
+/* Agenda: Sichel ueber einem leeren Horizont. */
+.layer8-dashboard-view .l8-agenda-panel .l8-empty:not(.is-error)::before {
+  width: 72px;
+  background-image: url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 40">\
+<path fill="%23c9b3e8" fill-rule="evenodd" d="M30 2a11 11 0 1 0 0 22a11 11 0 1 0 0-22zM34.5 .5a9.5 9.5 0 1 1 0 19a9.5 9.5 0 1 1 0-19z"/>\
+<g fill="%23d6d8e8">\
+<circle cx="12" cy="9" r="1.4"/><circle cx="55" cy="6" r="1.7"/><circle cx="62" cy="17" r="1.2"/>\
+</g>\
+<path stroke="%23b9a0d9" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.5" d="M4 33h20M30 33h14M50 33h18"/>\
+</svg>');
+}
+
+/* Geburtstage: ein Luftballon an einer Schnur. */
+.layer8-dashboard-view .l8-birthday-panel .l8-empty:not(.is-error)::before {
+  width: 40px;
+  background-image: url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">\
+<path fill="%23e3a8bd" d="M20 2c6 0 10.5 4.6 10.5 10.4C30.5 19 25.6 24.6 20 27c-5.6-2.4-10.5-8-10.5-14.6C9.5 6.6 14 2 20 2z"/>\
+<path fill="%23f6dde5" d="M20 27l2.4 3h-4.8z"/>\
+<path stroke="%23b9a0d9" stroke-width="1.3" stroke-linecap="round" fill="none" d="M20 30c0 4-4 4-4 7"/>\
+<path fill="%23fdf3df" opacity="0.6" d="M16 8c1.3-1.6 3.2-2.6 5-2.6c-2.6.6-4.4 2.6-4.6 5z"/>\
+</svg>');
+}
+
+/* Wochenstats: ein Keimling. */
+.layer8-dashboard-view .l8-week-stats .l8-empty:not(.is-error)::before {
+  width: 42px;
+  background-image: url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 42 40">\
+<path stroke="%237fc4a8" stroke-width="1.8" stroke-linecap="round" fill="none" d="M21 36V18"/>\
+<path fill="%23d6efe4" stroke="%237fc4a8" stroke-width="1.3" d="M21 20c-1-6-6-8-10-7c-1 5 3 9 10 7z"/>\
+<path fill="%23e7ddf7" stroke="%23b9a0d9" stroke-width="1.3" d="M21 16c1-5.5 5.6-7.4 9.4-6.4C31.3 14.2 27.6 18 21 16z"/>\
+<path stroke="%23b9a0d9" stroke-width="1.4" stroke-linecap="round" fill="none" opacity="0.55" d="M9 37h24"/>\
+</svg>');
+}
+
+/*
+   Das Power Center bekommt bewusst KEIN Motiv.
+
+   „Kein aktiver Timer" ist dort kein `.l8-empty`, sondern der Textinhalt von
+   `.l8-timer-active` (power-center.js:150) — dasselbe Element zeigt im
+   anderen Fall „Aktiv: 14:30 Uhr". Per CSS laesst sich nicht unterscheiden,
+   welcher der beiden Texte gerade drinsteht; ein Motiv haenge also auch am
+   laufenden Timer. Dafuer waere eine Aenderung am gebauten main.js noetig,
+   und das ist ausdruecklich draussen.
+*/
+
+/* Der Ladezustand bekommt nur das Grundmotiv, aber blasser — er ist ja
+   gleich wieder weg. */
+.layer8-dashboard-view .l8-loading::before {
+  opacity: .42;
+}
+
+
+/* --------------------------------------------------------------------------
+   9. DREI RUHIGE STELLEN IM DASHBOARD
+   Alles hier landet auf Flaechen, die heute leer oder tot sind. Nichts
+   Bestehendes wird umgefaerbt.
+   -------------------------------------------------------------------------- */
+
+/*
+  a) Das tote Element im Hero.
+
+  .l8-hero-prism-ribbon liegt im DOM und ist dauerhaft unsichtbar: seine
+  eigene Regel setzt opacity: 0, und die Animation, die es eingeblendet
+  haette, hat Layer8-Performance.css abgeschaltet. Es ist also freie Flaeche,
+  die ohnehin schon da ist.
+
+  Hier wird daraus ein stilles Polarlichtband. Es wird sichtbar gemacht und
+  an seinen Platz geschoben — mehr passiert nicht. Keine Animation,
+  will-change bleibt ausgeschaltet, und .l8-hero-motion schneidet es mit
+  seinem overflow: hidden sauber am Kartenrand ab.
+
+  Die Verschiebung: das Band ist 38% der Hero-Breite breit und sitzt auf
+  left: -52%. 264% der EIGENEN Breite entsprechen rund 100% der Hero-Breite,
+  es steht damit im rechten Drittel.
+*/
+.layer8-dashboard-view .l8-hero-prism-ribbon {
+  opacity: .46 !important;
+  transform: translate3d(264%, 0, 0) rotate(13deg) !important;
+
+  background: linear-gradient(
+    90deg,
+    transparent 6%,
+    color-mix(in srgb, var(--l8-luna-puder) 60%, transparent) 26%,
+    color-mix(in srgb, var(--l8-luna-flieder) 92%, transparent) 46%,
+    color-mix(in srgb, var(--l8-luna-rettich) 74%, transparent) 62%,
+    color-mix(in srgb, var(--l8-luna-butter) 66%, transparent) 78%,
+    transparent 94%
+  ) !important;
+}
+
+
+/*
+  b) Abschnittsueberschriften.
+
+  Vier Stueck, heute nur Kicker plus Titel und der 46px-Farbbalken des
+  Dashboards. Der Balken bleibt unangetastet — dazu kommen ein kleiner Funke
+  vor dem Kicker und eine Haarlinie, die rechts neben dem Balken ausl&auml;uft.
+*/
+.layer8-dashboard-view .l8-section-heading {
+  position: relative;
+}
+
+.layer8-dashboard-view .l8-section-kicker::before {
+  content: "";
+  display: inline-block;
+  width: .74em;
+  height: .74em;
+  margin-right: .42em;
+  vertical-align: -.1em;
+
+  background: url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">\
+<path fill="%23b9a0d9" d="M10 0c0 5.5 4.5 10 10 10c-5.5 0-10 4.5-10 10c0-5.5-4.5-10-10-10c5.5 0 10-4.5 10-10z"/>\
+</svg>') center / contain no-repeat;
+}
+
+/* Setzt genau dort an, wo der vorhandene Balken aufhoert (46px + 10px Luft),
+   und verliert sich nach rechts. */
+.layer8-dashboard-view .l8-section-heading::before {
+  content: "";
+  position: absolute;
+  left: 56px;
+  right: 0;
+  bottom: 10px;
+  height: 1px;
+  pointer-events: none;
+
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--l8-luna-pflaume) 52%, transparent),
+    transparent 62%
+  );
+}
+
+
+/*
+  c) Das Zitat des Tages.
+
+  Das grosse Anfuehrungszeichen bei opacity .075 ist schon heute das
+  dekorativste Element des Dashboards. Es bekommt links unten eine kleine
+  Sichel als Gegengewicht, in derselben Zurueckhaltung.
+
+  --quote-color wechselt pro Zitat; die Sichel nimmt einen Hauch davon auf,
+  damit sie zum jeweiligen Tag passt statt daneben zu stehen.
+*/
+.layer8-dashboard-view .l8-quote-panel::after {
+  content: "";
+  position: absolute;
+  bottom: 10px;
+  left: 14px;
+  z-index: 0;
+
+  width: 46px;
+  height: 46px;
+  pointer-events: none;
+
+  opacity: .16;
+
+  background-color: color-mix(in srgb, var(--quote-color, var(--l8-luna-pflaume)) 42%, var(--l8-luna-pflaume));
+
+  --l8-luna-quote-shape: url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">\
+<path fill="%23000" fill-rule="evenodd" d="M24 6a18 18 0 1 0 0 36a18 18 0 1 0 0-36zM31 3a16 16 0 1 1 0 32a16 16 0 1 1 0-32z"/>\
+</svg>');
+
+  -webkit-mask: var(--l8-luna-quote-shape) center / contain no-repeat;
+  mask: var(--l8-luna-quote-shape) center / contain no-repeat;
+}
+
+/* Text und Beschriftung bleiben ueber der Sichel. */
+.layer8-dashboard-view .l8-quote-panel :is(.l8-quote-label, .l8-quote-text, .l8-quote-author) {
+  position: relative;
+  z-index: 1;
+}
+
+
+/* --------------------------------------------------------------------------
+   10. DREI SCHMUCKLOSE STELLEN IN OBSIDIAN SELBST
+   Diese drei Flaechen gestaltet Apple Glass Light ueberhaupt nicht — dort
+   greift bis heute Obsidians Voreinstellung. Es wird also nichts ueberschrieben,
+   was jemand entworfen haette; es kommt nur etwas hin, wo bisher nichts war.
+
+   Die Klassennamen sind gegen obsidian-1.13.7.asar geprueft, nicht geraten.
+   -------------------------------------------------------------------------- */
+
+/*
+  a) Leere Seitenleisten-Bereiche.
+
+  „Keine Backlinks gefunden", „Keine Ueberschriften", der Suchbereich vor der
+  ersten Eingabe — bisher stand dort nur grauer Text, mittig im Nichts.
+  Dieselbe Behandlung wie die leeren Zustaende im Dashboard, damit sich beides
+  gleich anfuehlt.
+*/
+.pane-empty,
+.search-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 26px 18px;
+  color: var(--text-muted);   /* 5,60:1 auf dem Papierton */
+  text-align: center;
+}
+
+.pane-empty::before,
+.search-empty-state::before {
+  content: "";
+
+  width: 46px;
+  height: 34px;
+  margin-bottom: 11px;
+
+  opacity: .6;
+
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+
+  background-image: url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 46 34">\
+<path fill="%23c9b3e8" fill-rule="evenodd" d="M23 6a10 10 0 1 0 0 20a10 10 0 1 0 0-20zM27 4.6a8.6 8.6 0 1 1 0 17.2a8.6 8.6 0 1 1 0-17.2z"/>\
+<g fill="%23a9bcd9">\
+<circle cx="7" cy="12" r="1.5"/><circle cx="39" cy="24" r="1.3"/><circle cx="12" cy="28" r="1"/>\
+</g>\
+</svg>');
+}
+
+
+/*
+  b) Tooltips.
+
+  Obsidians Voreinstellung ist eine dunkle Blase — im hellen Apple Glass wirkt
+  das wie ein Fremdkoerper. Hier wird daraus eine helle Glasblase mit einer
+  Fliederhaarlinie. Text bleibt --text-normal: 15,84:1, also unveraendert
+  komfortabel.
+
+  Kein backdrop-filter: Tooltips erscheinen beim Ueberfahren staendig neu, und
+  eine eigene Compositing-Ebene pro Tooltip waere genau die Art Kosten, die
+  wir im Vault abgeschafft haben.
+*/
+/* Befund vom 22.09.2026, im laufenden Obsidian nachgemessen: der Tooltip
+   ist ein einzelnes .tooltip-Element, das seinen Text direkt enthaelt und
+   nur ein .tooltip-arrow als Kind hat. Ein .tooltip-content gibt es nicht.
+   Die Blase hing hier vorher an genau diesem Kind und kam deshalb nie an,
+   waehrend die Textfarbe unten sehr wohl griff: dunkle Schrift auf
+   Obsidians schwarzer Voreinstellung (oklch(0 0 none / .9)) — also ein
+   schwarzer Balken ohne lesbaren Text, am deutlichsten bei den Tooltips
+   der Fensterknoepfe, die quer ueber der Tableiste liegen.
+
+   Geometrie bleibt unangetastet: Obsidian misst Breite und Hoehe vor dem
+   Einblenden und schreibt sie inline an das Element. Zusaetzliches Padding,
+   ein Rahmen oder eine andere Schriftgroesse wuerden den Text in dieser
+   festen Box umbrechen oder abschneiden. Die Kante kommt daher als
+   inset-Schatten, nicht als border. */
+.tooltip {
+  border-radius: var(--ag-radius-sm, 10px);
+  color: var(--text-normal);
+  background: var(--ag-material-solid, var(--background-primary));
+  box-shadow:
+    inset 0 0 0 1px var(--ag-line, rgba(32, 38, 49, .09)),
+    inset 0 1px 0 var(--ag-highlight, rgba(255, 255, 255, .9)),
+    var(--ag-shadow-2, 0 2px 5px rgba(28, 35, 48, .045), 0 16px 38px rgba(28, 35, 48, .09));
+}
+
+/* Dieselbe Signaturkante wie unter der Toolbar, am aktiven Tab und unter
+   H1: der Tooltip liegt damit auf derselben Achse wie alles andere im
+   Vault, ohne dass seine Flaeche eingefaerbt wird. Als Pseudo-Element,
+   weil Breite und Hoehe inline vom Fenster gesetzt werden und weder
+   Padding noch Rahmen vertragen. Kein backdrop-filter — Tooltips
+   erscheinen staendig neu, und eine eigene Compositing-Ebene pro Tooltip
+   ist genau die Art Kosten, die im Vault abgeschafft wurde. */
+.tooltip::after {
+  content: "";
+  position: absolute;
+  right: 9px;
+  bottom: 0;
+  left: 9px;
+  height: 2px;
+  border-radius: 99px;
+  background: var(--ag-grad-hero, linear-gradient(100deg, #0a84ff 0%, #5e5ce6 30%, #bf5af2 60%, #ff375f 100%));
+  opacity: .9;
+  pointer-events: none;
+}
+
+/* Das Zeigerdreieck von Obsidian passt farblich nicht mehr und entfaellt. */
+.tooltip .tooltip-arrow {
+  display: none;
+}
+
+
+/*
+  c) Benachrichtigungen.
+
+  Die Glaskarte des Themes (theme.css:972) bleibt vollstaendig, wie sie ist —
+  Flaeche, Rahmen, Schatten, Weichzeichner werden nicht angefasst. Dazu kommt
+  nur eine Spektrum-Haarlinie am linken Rand, dieselbe wie beim
+  Spectre-Callout. Damit gehoeren Notices sichtbar zur Luna-Familie, ohne dass
+  am Bestehenden etwas verloren geht.
+*/
+.notice {
+  position: relative;
+  overflow: hidden;
+}
+
+.notice::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  pointer-events: none;
+
+  background: linear-gradient(
+    180deg,
+    var(--l8-luna-puder) 0%,
+    var(--l8-luna-pflaume) 34%,
+    var(--l8-luna-rettich-tief) 68%,
+    var(--l8-luna-butter-tief) 100%
+  );
+}
+
+
+/* --------------------------------------------------------------------------
+   11. STERNBILD IM LEEREN BEREICH
+   Steht ein Bereich leer, stand dort bisher nichts.
+
+   Das Sternbild ist ein statisches Inline-SVG als Hintergrund — von Hand
+   gesetzte Punkte und Linien, einmal gerastert, danach kostenlos.
+
+   Darueber liegt eine statische weiche Lichtebene. Beim Oeffnen eines leeren
+   Tabs wird nichts animiert und im Ruhezustand kein Frame neu gezeichnet.
+   -------------------------------------------------------------------------- */
+
+/*
+  WICHTIG — warum hier .empty-state und nicht .workspace-leaf-content:
+
+  Der erste Versuch haengte beides an die Pseudoelemente von
+  .workspace-leaf-content. Das hat im echten Obsidian nichts gezeigt, und
+  zwar aus zwei Gruenden gleichzeitig:
+
+    ::before  war display:none und opacity:0 — das kommt aus dem eigenen
+              Snippet fix-pane-focus-seam.css, das ALLE
+              .workspace-leaf-content::before mit !important abschaltet.
+    ::after   hatte background:none — das Theme belegt dieses Pseudoelement
+              selbst fuer den Fensterrahmen (theme.css:346) und gewinnt mit
+              hoeherer Spezifitaet.
+
+  Beide Pseudoelemente sind also bereits vergeben. Statt das mit !important
+  zu ueberfahren — was den Rahmen und den Seam-Fix beschaedigt haette —
+  haengt die Zeichnung jetzt an .empty-state, dem inneren Container des
+  leeren Bereichs. Den fasst weder das Theme noch ein Snippet an.
+
+  Der Selektor ist bewusst auf den leeren Tab eingegrenzt: .empty-state
+  kommt auch in Seitenleisten vor, dort soll kein Sternbild erscheinen.
+*/
+
+.workspace-leaf-content[data-type="empty"] .empty-state {
+  position: relative;
+}
+
+.workspace-leaf-content[data-type="empty"] .empty-state::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+
+  opacity: .5;
+
+  background-repeat: no-repeat, no-repeat;
+
+  /* Zwei Ebenen: oben die echte Mondphase des Tages, darunter das Sternbild.
+     Die Sichel kommt aus --l8-luna-moon, das vom Plugin taeglich neu gesetzt
+     wird — sie zeigt also wirklich, wie der Mond heute steht, und nicht eine
+     von acht gerundeten Stufen. Ist das Plugin aus, greift der Halbmond aus
+     dem Palettenabschnitt. */
+  /* Beide Ebenen sitzen im oberen Drittel. .empty-state zentriert seinen
+     Inhalt senkrecht, die Aktionslinks stehen also bei rund 50% — bei den
+     urspruenglichen 46% lag das Sternbild quer darueber. */
+  background-position: center 11%, center 28%;
+  background-size: 68px auto, 230px auto;
+
+  /* Kleiner Baer, frei gesetzt. Die Farben sind hier fest eingetragen, weil
+     ein Daten-URI keine CSS-Variablen aufloest. */
+  background-image:
+    var(--l8-luna-moon),
+    url('data:image/svg+xml;utf8,\
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 150">\
+<g stroke="%23b9a0d9" stroke-width="1.1" stroke-linecap="round" fill="none" opacity="0.55">\
+<path d="M28 104 L74 116 L120 100 L150 112 L186 88 L214 60 L178 44 L150 112"/>\
+</g>\
+<g fill="%23a9bcd9">\
+<circle cx="28" cy="104" r="2.6"/>\
+<circle cx="74" cy="116" r="3.4"/>\
+<circle cx="120" cy="100" r="2.4"/>\
+<circle cx="150" cy="112" r="3.9"/>\
+<circle cx="186" cy="88" r="2.7"/>\
+<circle cx="214" cy="60" r="3.2"/>\
+<circle cx="178" cy="44" r="2.5"/>\
+</g>\
+<g fill="%23d6d8e8" opacity="0.5">\
+<circle cx="96" cy="58" r="1"/>\
+<circle cx="238" cy="118" r="1.2"/><circle cx="14" cy="66" r="1"/>\
+<circle cx="132" cy="28" r="1.1"/><circle cx="206" cy="130" r="1"/>\
+</g>\
+</svg>');
+}
+
+/* Statische Lichtebene ohne Dauer-Animation. */
+.workspace-leaf-content[data-type="empty"] .empty-state::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+
+  /* Mittig zwischen Sichel und Sternbild, damit beide im Schein liegen. */
+  background:
+    radial-gradient(
+      ellipse 280px 190px at center 22%,
+      color-mix(in srgb, var(--l8-luna-tint) 26%, transparent),
+      transparent 70%
+    );
+
+  opacity: .5;
+}
+
+/* Titel und Aktionsliste bleiben ueber der Zeichnung. */
+.workspace-leaf-content[data-type="empty"] .empty-state > * {
+  position: relative;
+  z-index: 1;
+}

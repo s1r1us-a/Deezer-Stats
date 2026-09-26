@@ -1,0 +1,1460 @@
+/* ==========================================================================
+   OS SPOTLIGHT — H1 SIGNATURE RING
+   Clean rebuild for Omnisearch 1.30.1
+   --------------------------------------------------------------------------
+   Ziele:
+   - KEIN kreisender Lichtstrahl / Comet
+   - KEINE bewegte Lichtquelle in der Mitte
+   - dicker, sauberer Rand
+   - H1-Farben (Blau → Indigo → Violett → Pink) laufen weich im Kreis
+   - stabiler, flüssiger Ergebnisbereich ohne Hochspring-Jitter
+   ========================================================================== */
+
+@property --os-vault-ring-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+:root {
+  /* Exakt dieselbe Display-Palette wie die H1 des Apple-Glass-Themes. */
+  --os-spot-blue: var(--ag-display-blue, #0a84ff);
+  --os-spot-indigo: var(--ag-display-indigo, #5e5ce6);
+  --os-spot-purple: var(--ag-display-purple, #bf5af2);
+  --os-spot-pink: var(--ag-display-pink, #ff375f);
+  --os-spot-ease: cubic-bezier(.16,.84,.24,1);
+
+  /* Metrik des Suchfeldes. Der Verlaufs-Platzhalter liegt als eigenes
+     Element ueber dem Feld und muss exakt dieselbe Schrift tragen. */
+  --os-spot-field-size: clamp(1.14rem, 2vw, 1.34rem);
+  --os-spot-field-weight: 660;
+  --os-spot-field-tracking: -.024em;
+  --os-spot-field-indent: 59px;
+}
+
+
+/* ==========================================================================
+   1. HINTERGRUND
+   ========================================================================== */
+
+/* Gemeinsame Hintergrundregeln fuer Omnisearch und Strg+P stehen am Ende. */
+
+
+/* ==========================================================================
+   2. STABILE POSITION
+   ========================================================================== */
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"]) .prompt-container {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+
+  padding:
+    clamp(145px, 21vh, 235px)
+    34px
+    34px !important;
+}
+
+
+/* ==========================================================================
+   3. SPOTLIGHT-FENSTER + DICKER ROTIERENDER H1-RAND
+   ========================================================================== */
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"]) .prompt {
+  --os-vault-ring-angle: 0deg;
+
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+
+  width: min(940px, calc(100vw - 90px)) !important;
+  max-width: 940px !important;
+  max-height: min(760px, calc(100vh - 80px)) !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+
+  /* Bewusst dick: der Farbring ist jetzt ein echtes Designelement. */
+  border: 11px solid transparent !important;
+  border-radius: 36px !important;
+
+  /*
+     Schicht 1 = Glas-Innenfläche
+     Schicht 2 = H1-Farbring
+     Nur Schicht 2 liegt im Randbereich.
+  */
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255,255,255,.945),
+      rgba(247,249,255,.835) 47%,
+      rgba(249,246,255,.855)
+    )
+    padding-box,
+
+    conic-gradient(
+      from var(--os-vault-ring-angle),
+
+      var(--os-spot-blue) 0%,
+      color-mix(in srgb, var(--os-spot-blue) 52%, var(--os-spot-indigo)) 12%,
+      var(--os-spot-indigo) 27%,
+      color-mix(in srgb, var(--os-spot-indigo) 48%, var(--os-spot-purple)) 40%,
+      var(--os-spot-purple) 54%,
+      color-mix(in srgb, var(--os-spot-purple) 46%, var(--os-spot-pink)) 67%,
+      var(--os-spot-pink) 78%,
+      color-mix(in srgb, var(--os-spot-pink) 52%, var(--os-spot-purple)) 86%,
+      color-mix(in srgb, var(--os-spot-purple) 46%, var(--os-spot-indigo)) 94%,
+      var(--os-spot-blue) 100%
+    )
+    border-box
+    !important;
+
+  background-origin:
+    padding-box,
+    border-box !important;
+
+  background-clip:
+    padding-box,
+    border-box !important;
+
+  outline:
+    1px solid rgba(255,255,255,.78);
+
+  outline-offset:
+    -5px;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.98),
+    inset 0 0 0 1px rgba(255,255,255,.28),
+
+    0 18px 42px rgba(26,34,55,.20),
+    0 40px 100px rgba(31,38,69,.28),
+
+    0 0 38px
+      color-mix(in srgb, var(--os-spot-blue) 34%, transparent),
+
+    -28px 5px 78px
+      color-mix(in srgb, var(--os-spot-indigo) 22%, transparent),
+
+    31px 10px 92px
+      color-mix(in srgb, var(--os-spot-pink) 21%, transparent),
+
+    0 30px 138px
+      color-mix(in srgb, var(--os-spot-purple) 20%, transparent)
+    !important;
+
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+
+  /*
+     Nur zwei Animationen:
+     - Öffnen
+     - Farbring
+     Kein Comet, kein Lichtstrahl, kein pulsierender Schatten.
+  */
+  /*
+     steps(180) statt linear — 21.09.2026.
+
+     --os-vault-ring-angle steckt in einem conic-gradient. Ein animierter
+     Winkel bedeutet deshalb: der Verlauf muss neu gezeichnet werden, sobald
+     sich der Wert ändert. Das ist keine Compositor-Arbeit, sondern echtes
+     Repaint der gesamten Fensterfläche — bei linear also 60-mal pro Sekunde,
+     genau während getippt wird.
+
+     Der saubere Ausweg wäre eine rotierende Ebene mit transform. Der geht
+     hier nicht: der Ring IST der Rahmen von .prompt, und .prompt trägt
+     overflow: hidden — ein Pseudo-Element im Randbereich würde
+     weggeschnitten. Das ließe sich nur mit einem zusätzlichen Wrapper lösen,
+     den es im Suchdialog nicht gibt.
+
+     steps(180) senkt stattdessen die Frequenz: 180 Schritte auf 7,2s sind
+     25 Neuzeichnungen pro Sekunde statt 60, also 58 Prozent weniger. Ein
+     Schritt entspricht 2 Grad; bei einem Verlauf mit Farbstopps alle 12
+     Prozent verschiebt das die Farben um rund 0,6 Prozent der Ringlänge.
+     Sichtbar ist das nicht — die Umdrehung dauert unverändert 7,2s.
+  */
+  animation:
+    osSpotlightOpen
+      220ms
+      var(--os-spot-ease)
+      both,
+
+    osVaultRingRotate
+      7.2s
+      steps(180)
+      infinite
+    !important;
+
+  isolation: isolate;
+}
+
+
+/* Keine zusätzlichen bewegten Lichtquellen. */
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"]) .prompt::before,
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"]) .prompt::after {
+  content: none !important;
+  display: none !important;
+}
+
+
+/* ==========================================================================
+   4. SUCHKOPF
+   ========================================================================== */
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt-input-container {
+  position: relative !important;
+
+  display: flex !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+
+  width: 100% !important;
+  box-sizing: border-box !important;
+
+  margin: 0 !important;
+  padding: 46px 14px 20px !important;
+
+  border-bottom:
+    1px solid
+    color-mix(in srgb, var(--os-spot-indigo) 12%, rgba(75,85,105,.11))
+    !important;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255,255,255,.52),
+      rgba(255,255,255,.18)
+    )
+    !important;
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt-input-container::after {
+  content: "OS  SPOTLIGHT  •  VAULT SEARCH";
+
+  position: absolute;
+  top: 15px;
+  left: 19px;
+
+  background:
+    linear-gradient(
+      90deg,
+      var(--os-spot-blue),
+      var(--os-spot-indigo),
+      var(--os-spot-purple),
+      var(--os-spot-pink)
+    );
+
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  font-size: .67rem;
+  font-weight: 830;
+  letter-spacing: .145em;
+  line-height: 1;
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt-input-container::before {
+  content: "⌕";
+
+  position: absolute;
+  z-index: 4;
+
+  left: 36px;
+  bottom: 36px;
+
+  transform: translateY(50%);
+
+  color:
+    color-mix(in srgb, var(--os-spot-blue) 86%, #263247);
+
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+
+  pointer-events: none;
+}
+
+
+/* ==========================================================================
+   5. SUCHFELD
+   ========================================================================== */
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"]) .prompt-input {
+  display: block !important;
+
+  flex: 1 1 0% !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+
+  height: 66px !important;
+
+  box-sizing: border-box !important;
+
+  margin: 0 !important;
+  padding: 0 52px 0 var(--os-spot-field-indent) !important;
+
+  border: 1px solid transparent !important;
+  border-radius: 19px !important;
+
+  color: var(--text-normal) !important;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255,255,255,.93),
+      rgba(248,250,255,.84)
+    )
+    padding-box,
+
+    linear-gradient(
+      100deg,
+      rgba(255,255,255,.78),
+      color-mix(in srgb, var(--os-spot-blue) 18%, rgba(255,255,255,.78)),
+      color-mix(in srgb, var(--os-spot-purple) 16%, rgba(255,255,255,.78))
+    )
+    border-box
+    !important;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.95),
+    0 3px 10px rgba(35,43,61,.05),
+    0 10px 26px -22px
+      color-mix(in srgb, var(--os-spot-indigo) 24%, transparent)
+    !important;
+
+  font-size: var(--os-spot-field-size) !important;
+  font-weight: var(--os-spot-field-weight) !important;
+  letter-spacing: var(--os-spot-field-tracking) !important;
+
+  caret-color:
+    var(--ag-caret, var(--os-spot-pink))
+    !important;
+
+  transition:
+    transform 150ms var(--os-spot-ease),
+    box-shadow 160ms ease
+    !important;
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"]) .prompt-input:focus {
+  transform: translateY(-1px);
+
+  box-shadow:
+    inset 0 1px 0 white,
+
+    0 0 0 3px
+      color-mix(in srgb, var(--os-spot-blue) 9%, transparent),
+
+    0 5px 14px rgba(40,49,72,.08),
+
+    0 16px 34px -22px
+      color-mix(in srgb, var(--os-spot-indigo) 24%, transparent)
+    !important;
+}
+
+
+/* --------------------------------------------------------------------------
+   5b. PLATZHALTER IM H1-VERLAUF
+   ::placeholder ist in Chromium eine Box ueber die volle Feldbreite — ein
+   background-clip: text darauf wuerde den Verlauf ueber ~1000px strecken und
+   von der Schrift bliebe nur der blaue Anfang. Deshalb liegt der Platzhalter
+   als eigenes, textbreites Element ueber dem Feld; der native wird nur dort
+   ausgeblendet, wo die Ueberlagerung auch wirklich greift.
+
+   Die Stops sind dieselben wie bei der H1 des Themes:
+   dunkler Anker → Blau 15% → Indigo 46% → Violett 76% → Pink 100%.
+   -------------------------------------------------------------------------- */
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.omnisearch-input-field:has(> input.prompt-input[placeholder*="Omnisearch"]) {
+  position: relative !important;
+}
+
+body:not(.l8-o1):not(.l8-o2):not(.l8-o3)
+.omnisearch-input-field > input.prompt-input[placeholder="Omnisearch - Vault"]::placeholder,
+body:not(.l8-o1):not(.l8-o2):not(.l8-o3)
+.omnisearch-input-field > input.prompt-input[placeholder="Omnisearch - File"]::placeholder {
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.omnisearch-input-field:has(> input.prompt-input:placeholder-shown)::after {
+  position: absolute;
+  z-index: 3;
+
+  top: 50%;
+  left: var(--os-spot-field-indent);
+  transform: translateY(-50%);
+
+  max-width: calc(100% - var(--os-spot-field-indent) - 52px);
+  overflow: hidden;
+  white-space: nowrap;
+
+  background-image:
+    linear-gradient(
+      94deg,
+      color-mix(in srgb, var(--os-spot-blue) 88%, #111827) 0%,
+      var(--os-spot-blue) 15%,
+      var(--os-spot-indigo) 46%,
+      var(--os-spot-purple) 76%,
+      var(--os-spot-pink) 100%
+    );
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  font-size: var(--os-spot-field-size);
+  font-weight: var(--os-spot-field-weight);
+  letter-spacing: var(--os-spot-field-tracking);
+  line-height: 1;
+
+  pointer-events: none;
+}
+
+/* attr() liest nur vom eigenen Element, und ein <input> traegt keine
+   Pseudoelemente. Darum steht der Text je Omnisearch-Modus hier — und nur
+   hier entsteht ueberhaupt ein ::after, weil `content` sonst fehlt. */
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.omnisearch-input-field:has(> input.prompt-input[placeholder="Omnisearch - Vault"]:placeholder-shown)::after {
+  content: "Omnisearch - Vault";
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.omnisearch-input-field:has(> input.prompt-input[placeholder="Omnisearch - File"]:placeholder-shown)::after {
+  content: "Omnisearch - File";
+}
+
+
+/* ==========================================================================
+   6. ULTRA-SMOOTH ERGEBNISBÜHNE
+   ========================================================================== */
+
+/*
+   Wichtig:
+   Wir öffnen die Bühne schon sobald TEXT im Suchfeld steht.
+   Damit klappt sie nicht ständig ein, wenn Omnisearch beim Tippen seine
+   Treffer-DOM kurz neu aufbaut.
+*/
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"]) .prompt-results {
+  height: 0 !important;
+
+  min-height: 0 !important;
+  max-height: none !important;
+
+  margin: 0 !important;
+  padding: 0 13px !important;
+
+  opacity: 0;
+
+  transform: translate3d(0, -7px, 0);
+
+  overflow: hidden !important;
+
+  contain: layout paint;
+  will-change: height, opacity, transform;
+
+  transition:
+    height 285ms var(--os-spot-ease),
+    padding 285ms var(--os-spot-ease),
+    opacity 150ms ease 35ms,
+    transform 235ms var(--os-spot-ease)
+    !important;
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt:has(.prompt-input:not(:placeholder-shown))
+.prompt-results {
+  height: min(438px, 43vh) !important;
+
+  padding:
+    14px 18px 14px !important;
+
+  opacity: 1;
+
+  transform: translate3d(0, 0, 0);
+
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+}
+
+
+/* ==========================================================================
+   7. ERGEBNIS-KARTEN
+   ========================================================================== */
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .suggestion-item {
+  position: relative;
+
+  margin: 5px 0 !important;
+  padding: 13px 15px !important;
+
+  border: 1px solid transparent !important;
+  border-radius: 16px !important;
+
+  color: var(--text-normal) !important;
+
+  background:
+    rgba(255,255,255,.25) !important;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.50)
+    !important;
+
+  animation: none !important;
+  filter: none !important;
+
+  contain: layout paint;
+
+  transition:
+    transform 135ms var(--os-spot-ease),
+    border-color 135ms ease,
+    background 135ms ease
+    !important;
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .suggestion-item:hover {
+  transform: translate3d(2px,0,0);
+
+  border-color:
+    color-mix(in srgb, var(--os-spot-blue) 16%, rgba(255,255,255,.72))
+    !important;
+
+  background:
+    color-mix(in srgb, var(--os-spot-blue) 5%, rgba(255,255,255,.68))
+    !important;
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .suggestion-item.is-selected {
+  transform:
+    translate3d(5px,0,0)
+    scale(1.002);
+
+  border-color:
+    color-mix(in srgb, var(--os-spot-indigo) 30%, rgba(255,255,255,.86))
+    !important;
+
+  background:
+    radial-gradient(
+      72% 130% at 0% 0%,
+      color-mix(in srgb, var(--os-spot-blue) 14%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      65% 125% at 100% 100%,
+      color-mix(in srgb, var(--os-spot-purple) 10%, transparent),
+      transparent 72%
+    ),
+    rgba(255,255,255,.80)
+    !important;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.94),
+    0 8px 22px
+      color-mix(in srgb, var(--os-spot-indigo) 9%, transparent)
+    !important;
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .suggestion-item.is-selected::before {
+  content: "";
+
+  position: absolute;
+
+  left: 5px;
+  top: 17%;
+  bottom: 17%;
+
+  width: 3px;
+
+  border-radius: 999px;
+
+  background:
+    linear-gradient(
+      180deg,
+      var(--os-spot-blue),
+      var(--os-spot-indigo),
+      var(--os-spot-purple),
+      var(--os-spot-pink)
+    );
+}
+
+
+/* Keine wandernden Glanzstreifen auf den Ergebnissen. */
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .suggestion-item::after {
+  content: none !important;
+  display: none !important;
+}
+
+
+/* ==========================================================================
+   8. OMNISEARCH-TEXT
+   ========================================================================== */
+
+body:not(.l8-o1):not(.l8-o2):not(.l8-o3)
+.prompt :is(
+  .omnisearch-result__title,
+  .omnisearch-result-title,
+  [class*="omnisearch"][class*="title"]
+) {
+  color: var(--text-normal) !important;
+  font-weight: 760 !important;
+  letter-spacing: -.016em !important;
+}
+
+body:not(.l8-o1):not(.l8-o2):not(.l8-o3)
+.prompt :is(
+  .omnisearch-result__path,
+  .omnisearch-result-path,
+  .omnisearch-result__folder,
+  .omnisearch-result-folder,
+  [class*="omnisearch"][class*="path"],
+  [class*="omnisearch"][class*="folder"]
+) {
+  color: var(--text-muted) !important;
+  font-size: .77rem !important;
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt :is(.omnisearch-highlight, mark) {
+  padding: .02em .14em .05em;
+
+  border-radius: .28em;
+
+  color:
+    color-mix(in srgb, var(--text-normal) 92%, var(--os-spot-indigo))
+    !important;
+
+  background:
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--os-spot-blue) 20%, transparent),
+      color-mix(in srgb, var(--os-spot-purple) 18%, transparent),
+      color-mix(in srgb, var(--os-spot-pink) 15%, transparent)
+    )
+    !important;
+
+  font-weight: 720;
+}
+
+
+/* ==========================================================================
+   9. SHORTCUT-LEISTE AUSBLENDEN
+   ========================================================================== */
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt-instructions {
+  display: none !important;
+}
+
+
+/* ==========================================================================
+   10. SCROLLBAR
+   ========================================================================== */
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt-results::-webkit-scrollbar {
+  width: 11px !important;
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt-results::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt-results::-webkit-scrollbar-thumb {
+  border: 3px solid transparent !important;
+  border-radius: 999px !important;
+
+  background:
+    linear-gradient(
+      180deg,
+      var(--os-spot-blue),
+      var(--os-spot-indigo),
+      var(--os-spot-purple),
+      var(--os-spot-pink)
+    )
+    !important;
+
+  background-clip: content-box !important;
+}
+
+
+/* ==========================================================================
+   11. DARK MODE
+   ========================================================================== */
+
+body.theme-dark:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt {
+  background:
+    linear-gradient(
+      145deg,
+      rgba(27,30,38,.965),
+      rgba(24,27,35,.92) 48%,
+      rgba(31,26,38,.93)
+    )
+    padding-box,
+
+    conic-gradient(
+      from var(--os-vault-ring-angle),
+
+      var(--os-spot-blue) 0%,
+      color-mix(in srgb, var(--os-spot-blue) 52%, var(--os-spot-indigo)) 12%,
+      var(--os-spot-indigo) 27%,
+      color-mix(in srgb, var(--os-spot-indigo) 48%, var(--os-spot-purple)) 40%,
+      var(--os-spot-purple) 54%,
+      color-mix(in srgb, var(--os-spot-purple) 46%, var(--os-spot-pink)) 67%,
+      var(--os-spot-pink) 78%,
+      color-mix(in srgb, var(--os-spot-pink) 52%, var(--os-spot-purple)) 86%,
+      color-mix(in srgb, var(--os-spot-purple) 46%, var(--os-spot-indigo)) 94%,
+      var(--os-spot-blue) 100%
+    )
+    border-box
+    !important;
+
+  outline-color: rgba(255,255,255,.12);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.08),
+
+    0 20px 54px rgba(0,0,0,.38),
+    0 46px 112px rgba(0,0,0,.54),
+
+    0 0 74px
+      color-mix(in srgb, var(--os-spot-blue) 28%, transparent),
+
+    0 0 132px
+      color-mix(in srgb, var(--os-spot-purple) 21%, transparent)
+    !important;
+}
+
+body.theme-dark:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt-input {
+  color: var(--text-normal) !important;
+
+  background:
+    rgba(255,255,255,.065)
+    padding-box,
+
+    linear-gradient(
+      100deg,
+      color-mix(in srgb, var(--os-spot-blue) 62%, #202632),
+      color-mix(in srgb, var(--os-spot-indigo) 58%, #20232d),
+      color-mix(in srgb, var(--os-spot-purple) 55%, #24202a),
+      color-mix(in srgb, var(--os-spot-pink) 52%, #2a2026)
+    )
+    border-box
+    !important;
+}
+
+body.theme-dark:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .suggestion-item {
+  background: rgba(255,255,255,.025) !important;
+}
+
+/* ==========================================================================
+   INPUT RIGHT-EDGE FIX
+   Omnisearch 1.30.1 wraps the input in two additional flex elements.
+   Its empty button container still keeps a 1em end margin on desktop and
+   therefore makes the search field look too short on the right.
+   ========================================================================== */
+
+body:not(.is-mobile):has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt-input-container > .prompt-input-cta {
+  display: none !important;
+  flex: 0 0 0 !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  max-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+/* Let Omnisearch's own wrapper use the complete inner prompt width. */
+body:not(.is-mobile):has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt-input-container > .omnisearch-input-container {
+  flex: 1 1 100% !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  margin-inline: 0 !important;
+}
+
+/* The field itself must be allowed to grow inside the Omnisearch wrapper. */
+body:not(.is-mobile):has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.omnisearch-input-field {
+  flex: 1 1 0% !important;
+  width: auto !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+body:not(.is-mobile):has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.omnisearch-input-field > input.prompt-input {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  margin-inline: 0 !important;
+}
+
+/* Svelte leaves whitespace/anchor nodes here even when no button exists. */
+body:not(.is-mobile):has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.omnisearch-input-container__buttons:not(:has(button)) {
+  display: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+
+/* ==========================================================================
+   12. KLEINERE FENSTER
+   ========================================================================== */
+
+@media (max-height: 780px) {
+  body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+  .prompt-container {
+    padding-top: 92px !important;
+  }
+
+  body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+  .prompt:has(.prompt-input:not(:placeholder-shown))
+  .prompt-results {
+    height: min(330px, 39vh) !important;
+  }
+}
+
+@media (max-width: 780px) {
+  body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+  .prompt-container {
+    padding: 13vh 14px 14px !important;
+  }
+
+  body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+  .prompt {
+    width: calc(100vw - 28px) !important;
+    border-width: 9px !important;
+    border-radius: 28px !important;
+  }
+
+  body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+  .prompt:has(.prompt-input:not(:placeholder-shown))
+  .prompt-results {
+    height: min(360px, 42vh) !important;
+  }
+}
+
+
+/* ==========================================================================
+   13. PERFORMANCE / REDUCED MOTION
+   ========================================================================== */
+
+body.ag-performance-mode:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  filter: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+  .prompt {
+    animation:
+      none !important;
+  }
+
+  body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+  .prompt-results,
+  body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+  .prompt .suggestion-item {
+    transition: none !important;
+  }
+}
+
+
+
+
+/* ==========================================================================
+   14. ANIMATIONEN
+   ========================================================================== */
+
+@keyframes osVaultRingRotate {
+  from {
+    --os-vault-ring-angle: 0deg;
+  }
+
+  to {
+    --os-vault-ring-angle: 360deg;
+  }
+}
+
+@keyframes osSpotlightOpen {
+  0% {
+    opacity: 0;
+
+    transform:
+      translate3d(0, 10px, 0)
+      scale(.976);
+  }
+
+  70% {
+    opacity: 1;
+
+    transform:
+      translate3d(0, -1px, 0)
+      scale(1.002);
+  }
+
+  100% {
+    opacity: 1;
+
+    transform:
+      translate3d(0, 0, 0)
+      scale(1);
+  }
+}
+
+
+/* ========================================================================== 
+   STRG+P — dieselbe Suchoberflaeche wie Omnisearch
+   Die Plugin-CSS wird von Obsidian erst beim Plugin-Reload neu geladen.
+   Diese Regeln liegen im aktiven Snippet und gelten sofort fuer beide Suchen.
+   ========================================================================== */
+
+body.theme-light .layer8-command-palette .prompt-container,
+body.theme-dark .layer8-command-palette .prompt-container {
+  padding: clamp(145px, 21vh, 235px) 34px 34px !important;
+}
+
+body.theme-light .layer8-command-palette .prompt.cps-command-palette-prompt,
+body.theme-dark .layer8-command-palette .prompt.cps-command-palette-prompt {
+  --os-vault-ring-angle: 0deg;
+  --cps-face: linear-gradient(145deg, rgba(255,255,255,.945), rgba(247,249,255,.835) 47%, rgba(249,246,255,.855));
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0 !important;
+  width: min(940px, calc(100vw - 90px)) !important;
+  max-width: 940px !important;
+  max-height: min(760px, calc(100vh - 80px)) !important;
+  overflow: hidden !important;
+  border: 11px solid transparent !important;
+  border-radius: 36px !important;
+  background:
+    var(--cps-face) padding-box,
+    conic-gradient(from var(--os-vault-ring-angle),
+      var(--os-spot-blue) 0%,
+      color-mix(in srgb, var(--os-spot-blue) 52%, var(--os-spot-indigo)) 12%,
+      var(--os-spot-indigo) 27%,
+      color-mix(in srgb, var(--os-spot-indigo) 48%, var(--os-spot-purple)) 40%,
+      var(--os-spot-purple) 54%,
+      color-mix(in srgb, var(--os-spot-purple) 46%, var(--os-spot-pink)) 67%,
+      var(--os-spot-pink) 78%,
+      color-mix(in srgb, var(--os-spot-pink) 52%, var(--os-spot-purple)) 86%,
+      color-mix(in srgb, var(--os-spot-purple) 46%, var(--os-spot-indigo)) 94%,
+      var(--os-spot-blue) 100%) border-box !important;
+  outline: 1px solid rgba(255,255,255,.78) !important;
+  outline-offset: -5px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.98),
+    inset 0 0 0 1px rgba(255,255,255,.28),
+    0 18px 42px rgba(26,34,55,.20),
+    0 40px 100px rgba(31,38,69,.28),
+    0 0 38px color-mix(in srgb, var(--os-spot-blue) 34%, transparent),
+    -28px 5px 78px color-mix(in srgb, var(--os-spot-indigo) 22%, transparent),
+    31px 10px 92px color-mix(in srgb, var(--os-spot-pink) 21%, transparent),
+    0 30px 138px color-mix(in srgb, var(--os-spot-purple) 20%, transparent) !important;
+  animation: osSpotlightOpen 220ms var(--os-spot-ease) both,
+    osVaultRingRotate 7.2s steps(180) infinite !important;
+}
+
+body.theme-dark .layer8-command-palette .prompt.cps-command-palette-prompt {
+  --cps-face: linear-gradient(145deg, rgba(27,30,38,.965), rgba(24,27,35,.92) 48%, rgba(31,26,38,.93));
+  outline-color: rgba(255,255,255,.12) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.08),
+    0 20px 54px rgba(0,0,0,.38),
+    0 46px 112px rgba(0,0,0,.54),
+    0 0 74px color-mix(in srgb, var(--os-spot-blue) 28%, transparent),
+    0 0 132px color-mix(in srgb, var(--os-spot-purple) 21%, transparent) !important;
+}
+
+body.theme-light .layer8-command-palette .prompt.cps-command-palette-prompt .prompt-input-container,
+body.theme-dark .layer8-command-palette .prompt.cps-command-palette-prompt .prompt-input-container {
+  flex: 0 0 auto !important;
+  min-height: 66px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  animation: none !important;
+}
+
+body.theme-light .layer8-command-palette .prompt-input-container::before,
+body.theme-dark .layer8-command-palette .prompt-input-container::before {
+  content: none !important;
+  display: none !important;
+}
+
+body.theme-light .layer8-command-palette .prompt-input-container::after,
+body.theme-dark .layer8-command-palette .prompt-input-container::after {
+  left: var(--os-spot-field-indent) !important;
+  font-size: var(--os-spot-field-size) !important;
+  font-weight: var(--os-spot-field-weight) !important;
+  letter-spacing: var(--os-spot-field-tracking) !important;
+}
+
+body.theme-light .layer8-command-palette .prompt.cps-command-palette-prompt input.prompt-input,
+body.theme-dark .layer8-command-palette .prompt.cps-command-palette-prompt input.prompt-input {
+  height: 66px !important;
+  min-height: 66px !important;
+  padding: 0 52px 0 var(--os-spot-field-indent) !important;
+  border: 1px solid transparent !important;
+  border-radius: 19px !important;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,.93), rgba(248,250,255,.84)) padding-box,
+    linear-gradient(100deg, rgba(255,255,255,.78),
+      color-mix(in srgb, var(--os-spot-blue) 18%, rgba(255,255,255,.78)),
+      color-mix(in srgb, var(--os-spot-purple) 16%, rgba(255,255,255,.78))) border-box !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.95),
+    0 3px 10px rgba(35,43,61,.05),
+    0 10px 26px -22px color-mix(in srgb, var(--os-spot-indigo) 24%, transparent) !important;
+  font-size: var(--os-spot-field-size) !important;
+  font-weight: var(--os-spot-field-weight) !important;
+  letter-spacing: var(--os-spot-field-tracking) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+body.theme-dark .layer8-command-palette .prompt.cps-command-palette-prompt input.prompt-input {
+  color: var(--text-normal) !important;
+  background: rgba(255,255,255,.065) !important;
+}
+
+body.theme-light .layer8-command-palette .prompt.cps-command-palette-prompt:has(input.prompt-input:not(:placeholder-shown)),
+body.theme-dark .layer8-command-palette .prompt.cps-command-palette-prompt:has(input.prompt-input:not(:placeholder-shown)) {
+  gap: 0 !important;
+}
+
+body.theme-light .layer8-command-palette .prompt-input-container:has(input.prompt-input:placeholder-shown) :is(.prompt-input-cta, .search-input-clear-button),
+body.theme-dark .layer8-command-palette .prompt-input-container:has(input.prompt-input:placeholder-shown) :is(.prompt-input-cta, .search-input-clear-button) {
+  display: none !important;
+}
+
+body.theme-light .layer8-command-palette .prompt.cps-command-palette-prompt .prompt-results,
+body.theme-dark .layer8-command-palette .prompt.cps-command-palette-prompt .prompt-results {
+  flex: 0 1 auto !important;
+  height: 0 !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 13px !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  opacity: 0 !important;
+  transform: translate3d(0, -7px, 0) !important;
+  pointer-events: none !important;
+  transition: height 285ms var(--os-spot-ease), padding 285ms var(--os-spot-ease),
+    opacity 150ms ease 35ms, transform 235ms var(--os-spot-ease) !important;
+}
+
+body.theme-light .layer8-command-palette .prompt.cps-command-palette-prompt:has(input.prompt-input:not(:placeholder-shown)) .prompt-results,
+body.theme-dark .layer8-command-palette .prompt.cps-command-palette-prompt:has(input.prompt-input:not(:placeholder-shown)) .prompt-results {
+  height: min(438px, 43vh) !important;
+  max-height: min(438px, 43vh) !important;
+  padding: 14px 18px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  opacity: 1 !important;
+  transform: translate3d(0, 0, 0) !important;
+  pointer-events: auto !important;
+}
+
+@media (max-height: 780px) {
+  body.theme-light .layer8-command-palette .prompt-container,
+  body.theme-dark .layer8-command-palette .prompt-container {
+    padding-top: 92px !important;
+  }
+}
+
+@media (max-width: 780px) {
+  body.theme-light .layer8-command-palette .prompt-container,
+  body.theme-dark .layer8-command-palette .prompt-container {
+    padding: 13vh 14px 14px !important;
+  }
+
+  body.theme-light .layer8-command-palette .prompt.cps-command-palette-prompt,
+  body.theme-dark .layer8-command-palette .prompt.cps-command-palette-prompt {
+    width: calc(100vw - 28px) !important;
+    border-width: 9px !important;
+    border-radius: 28px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.theme-light .layer8-command-palette .prompt.cps-command-palette-prompt,
+  body.theme-dark .layer8-command-palette .prompt.cps-command-palette-prompt {
+    animation: none !important;
+  }
+}
+
+/* Die laufende Plugin-Stylesheet-Version kann noch den kompletten Vault
+   filtern. Das Snippet wird live geladen und nimmt diese zweite Blur-Schicht
+   auch ohne Plugin-Neustart aus Strg+P heraus. */
+body:has(.layer8-command-palette) .workspace:not(.l8-x):not(.l8-x),
+body:has(.layer8-command-palette) .titlebar:not(.l8-x):not(.l8-x),
+body:has(.layer8-command-palette) .status-bar:not(.l8-x):not(.l8-x) {
+  filter: none !important;
+  transform: none !important;
+  transition: none !important;
+}
+
+/* Eine gemeinsame, eindeutig priorisierte Mondglas-Ebene fuer beide Suchen.
+   Falls Obsidian beide Hintergrundknoten erzeugt, bleibt nur der innere aktiv. */
+body:is(.theme-light, .theme-dark) :is(
+  .modal-container:has(.omnisearch-modal),
+  .layer8-command-palette
+):not(.l8-x):not(.l8-x) {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+body.theme-light :is(
+  .modal-container:has(.omnisearch-modal),
+  .layer8-command-palette
+):not(.l8-x):not(.l8-x) :is(.modal-bg, .prompt-bg):not(.l8-x) {
+  background:
+    radial-gradient(ellipse 36% 24% at 31% 45%, rgba(73, 139, 226, .15), transparent),
+    radial-gradient(ellipse 36% 24% at 71% 46%, rgba(184, 112, 194, .13), transparent),
+    linear-gradient(125deg, rgba(105, 118, 151, .34), rgba(139, 123, 162, .32) 52%, rgba(112, 121, 153, .35)) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(.88) !important;
+  backdrop-filter: blur(18px) saturate(.88) !important;
+}
+
+body.theme-dark :is(
+  .modal-container:has(.omnisearch-modal),
+  .layer8-command-palette
+):not(.l8-x):not(.l8-x) :is(.modal-bg, .prompt-bg):not(.l8-x) {
+  background:
+    radial-gradient(ellipse 36% 24% at 31% 45%, rgba(50, 111, 210, .14), transparent),
+    radial-gradient(ellipse 36% 24% at 71% 46%, rgba(151, 71, 167, .12), transparent),
+    rgba(9, 12, 27, .56) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(.88) !important;
+  backdrop-filter: blur(18px) saturate(.88) !important;
+}
+
+body:is(.theme-light, .theme-dark) :is(
+  .modal-container:has(.omnisearch-modal),
+  .layer8-command-palette
+):not(.l8-x):not(.l8-x):has(.prompt-bg) .modal-bg:not(.l8-x) {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+body.ag-performance-mode :is(
+  .modal-container:has(.omnisearch-modal),
+  .layer8-command-palette
+):not(.l8-x):not(.l8-x) :is(.modal-bg, .prompt-bg):not(.l8-x) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+
+
+/* ==========================================================================
+   15. NACHTRAG 24.09.2026 — SCHOENERE ERGEBNISSE (Entwurf „Neu“)
+   --------------------------------------------------------------------------
+   Grundprinzip unveraendert: Leiste, Ring, Unschaerfe, Position und alle
+   Regeln aus 1–14 bleiben Zeichen fuer Zeichen stehen. Hier kommt nur
+   dazu, was in der Vorschau gewaehlt wurde:
+     a) etwas hoehere Buehne, Auszug auf 2 Zeilen mit weichem Ende
+     b) Dateityp-Symbol, Endung und Ordnerzeile in Achsenfarben
+     c) Treffer: im Titel Verlaufsschrift, im Text Pastell-Textmarker
+     d) ausgewaehlte Karte: Verlaufsrahmen + ↵-Tastenkappe
+     e) Tastenleiste zurueck, deutsch, nur bei offener Buehne
+     f) Sternbild-Wasserzeichen + Luna-Leerzustand
+   Kosten: nur Hintergruende, Masken und Farben. Keine neue Animation,
+   kein Blur, kein backdrop-filter.
+   ========================================================================== */
+
+/* --- a) Buehne ---------------------------------------------------------- */
+@media (min-height: 781px) and (min-width: 781px) {
+  body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+  .prompt:has(.prompt-input:not(:placeholder-shown))
+  .prompt-results {
+    height: min(520px, 50vh) !important;
+  }
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .suggestion-item .omnisearch-result__body {
+  -webkit-line-clamp: 2 !important;
+  margin: 4px 0 0 !important;
+  line-height: 1.5 !important;
+  /* Weiches Ende statt harter Kante am rechten Rand. */
+  -webkit-mask: linear-gradient(90deg, #000 82%, transparent);
+          mask: linear-gradient(90deg, #000 82%, transparent);
+}
+
+/* --- b) Symbol, Endung, Ordnerzeile ------------------------------------- */
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .omnisearch-result__title {
+  font-size: .95rem;
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .omnisearch-result__title svg {
+  color: var(--os-spot-blue);
+  stroke-width: 2.1px;
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .omnisearch-result__title svg:is(.lucide-corner-down-right, .lucide-link) {
+  color: var(--os-spot-indigo);
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .omnisearch-result__title svg:is(.lucide-image, .lucide-file-image) {
+  color: var(--os-spot-purple);
+}
+
+/* Hinweis: Omnisearch zeichnet Notizen UND PDFs mit demselben Symbol
+   (lucide-file) — eine Unterscheidung nach Dateityp ist per CSS nicht
+   moeglich. Dateien bleiben deshalb einheitlich Blau. */
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .omnisearch-result__extension {
+  display: inline-block;
+  padding: 0 .55em .05em;
+  border-radius: 99px;
+  font-size: .64rem !important;
+  font-weight: 700;
+  letter-spacing: .03em;
+  line-height: 1.55;
+  color: #fff !important;
+  /* Der Titel malt seinen Text per background-clip; ohne diese Zeile
+     erbt die Pille die durchsichtige Fuellfarbe und bleibt leer. */
+  -webkit-text-fill-color: #fff !important;
+  background: linear-gradient(94deg, var(--os-spot-indigo), var(--os-spot-purple)) !important;
+  -webkit-background-clip: border-box !important;
+          background-clip: border-box !important;
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .omnisearch-result__folder-path {
+  margin-top: 2px;
+  gap: 5px !important;
+  font-size: .72rem !important;
+  font-weight: 560;
+  color: color-mix(in srgb, var(--os-spot-indigo) 70%, var(--text-muted)) !important;
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .omnisearch-result__folder-path svg {
+  width: 12px;
+  height: 12px;
+  color: var(--os-spot-indigo);
+}
+
+/* --- c) Treffer-Markierung ------------------------------------------------ */
+/* Im Titel: Verlaufsschrift mit feiner Unterlinie — ein Marker waere dort
+   zu laut. Schlaegt die Regel aus Abschnitt 8 ueber den Titel-Kontext. */
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .omnisearch-result__title :is(.omnisearch-highlight, mark) {
+  padding: 0 !important;
+  border-radius: 0 !important;
+  background: linear-gradient(94deg,
+    color-mix(in srgb, var(--os-spot-blue) 88%, #111827),
+    var(--os-spot-blue) 15%, var(--os-spot-indigo) 46%,
+    var(--os-spot-purple) 76%, var(--os-spot-pink)) !important;
+  -webkit-background-clip: text !important;
+          background-clip: text !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent;
+  text-decoration: underline 1.5px color-mix(in srgb, var(--os-spot-purple) 55%, transparent) !important;
+  text-underline-offset: 3px;
+  font-weight: 780;
+}
+
+/* Im Auszug: derselbe Pastell-Textmarker wie ==Markierung== in den Notizen,
+   mit ungleichen Radien wie von Hand gezogen. */
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .omnisearch-result__body :is(.omnisearch-highlight, mark) {
+  padding: 0 .06em !important;
+  border-radius: .35em .15em .4em .12em !important;
+  color: color-mix(in srgb, var(--text-normal) 80%, var(--os-spot-indigo)) !important;
+  background: linear-gradient(100deg,
+    color-mix(in srgb, var(--os-spot-blue) 16%, transparent),
+    color-mix(in srgb, var(--os-spot-purple) 20%, transparent)) !important;
+  font-weight: 650;
+  text-decoration: none !important;
+}
+
+/* --- d) Ausgewaehlte Karte ------------------------------------------------ */
+/* Verlaufsrahmen als eigene Ebene (Maske), damit der Kartengrund aus
+   Abschnitt 7 und der Dunkelmodus unberuehrt bleiben. Anker ist die Karte
+   selbst (.suggestion-item ist position: relative). */
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .prompt-results .suggestion-item.is-selected > .omnisearch-result::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  padding: 1px;
+  border-radius: 16px;
+  pointer-events: none;
+  background: linear-gradient(94deg,
+    color-mix(in srgb, var(--os-spot-blue) 60%, transparent),
+    color-mix(in srgb, var(--os-spot-purple) 55%, transparent),
+    color-mix(in srgb, var(--os-spot-pink) 50%, transparent));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .prompt-results .suggestion-item.is-selected {
+  padding-right: 48px !important;
+}
+
+/* Hebt „Keine wandernden Glanzstreifen“ (Abschnitt 7) nur fuer die
+   ausgewaehlte Karte auf und setzt dort die Tastenkappe hin. */
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .prompt-results .suggestion-item.is-selected::after {
+  content: "↵" !important;
+  display: grid !important;
+  place-items: center;
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  margin-top: -12px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--os-spot-indigo);
+  background: color-mix(in srgb, var(--background-primary) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--os-spot-indigo) 22%, transparent);
+  box-shadow: 0 1.5px 0 color-mix(in srgb, var(--os-spot-indigo) 25%, transparent);
+}
+
+/* --- e) Tastenleiste ------------------------------------------------------ */
+/* Omnisearch liefert zwoelf englische Hinweise. Gezeigt werden fuenf, mit
+   deutschem Text: 1 navigieren, 3 oeffnen, 5 neuer Tab, 10 Link einfuegen,
+   12 schliessen. Die Tasten selbst setzt Omnisearch (je nach System). */
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt:has(.prompt-input:not(:placeholder-shown)) .prompt-instructions {
+  display: flex !important;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 14px;
+  margin: 0 !important;
+  padding: 9px 14px 12px !important;
+  border-top: 1px solid color-mix(in srgb, var(--os-spot-indigo) 12%, transparent);
+  background: transparent !important;
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .prompt-instructions > .prompt-instruction:not(:nth-child(1), :nth-child(3), :nth-child(5), :nth-child(10), :nth-child(12)) {
+  display: none !important;
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .prompt-instructions > .prompt-instruction {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 !important;
+}
+
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt .prompt-instructions .prompt-instruction-command {
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 650;
+  color: var(--os-spot-indigo);
+  background: color-mix(in srgb, var(--background-primary) 90%, transparent);
+  border: 1px solid color-mix(in srgb, var(--os-spot-indigo) 20%, transparent);
+  box-shadow: 0 1.5px 0 color-mix(in srgb, var(--os-spot-indigo) 22%, transparent);
+}
+
+/* Englischen Text ausblenden, deutschen daneben setzen. */
+body:not(.l8-o1):not(.l8-o2)
+.prompt.omnisearch-modal .prompt-instructions > .prompt-instruction > span:last-child {
+  font-size: 0 !important;
+}
+
+body:not(.l8-o1):not(.l8-o2)
+.prompt.omnisearch-modal .prompt-instructions > .prompt-instruction > span:last-child::after {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+body:not(.l8-o1):not(.l8-o2) .prompt.omnisearch-modal .prompt-instructions > .prompt-instruction:nth-child(1) > span:last-child::after { content: "wählen"; }
+body:not(.l8-o1):not(.l8-o2) .prompt.omnisearch-modal .prompt-instructions > .prompt-instruction:nth-child(3) > span:last-child::after { content: "öffnen"; }
+body:not(.l8-o1):not(.l8-o2) .prompt.omnisearch-modal .prompt-instructions > .prompt-instruction:nth-child(5) > span:last-child::after { content: "neuer Tab"; }
+body:not(.l8-o1):not(.l8-o2) .prompt.omnisearch-modal .prompt-instructions > .prompt-instruction:nth-child(10) > span:last-child::after { content: "Link einfügen"; }
+body:not(.l8-o1):not(.l8-o2) .prompt.omnisearch-modal .prompt-instructions > .prompt-instruction:nth-child(12) > span:last-child::after { content: "schließen"; }
+
+/* --- f) Luna: Wasserzeichen und Leerzustand ------------------------------ */
+/* Sternbild unten rechts in der Buehne. Der Hintergrund einer Scroll-Box
+   scrollt nicht mit — es bleibt also ruhig stehen. Deckkraft steckt im SVG. */
+body:has(.prompt .prompt-input[placeholder*="Omnisearch"])
+.prompt:has(.prompt-input:not(:placeholder-shown)) .prompt-results {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 150'><g opacity='.14'><g stroke='%235e5ce6' stroke-width='1.4' fill='none'><path d='M28 104 L74 116 L120 100 L150 112 L186 88 L214 60 L178 44 L150 112'/></g><g fill='%235e5ce6'><circle cx='28' cy='104' r='3'/><circle cx='74' cy='116' r='4'/><circle cx='120' cy='100' r='3'/><circle cx='150' cy='112' r='4.5'/><circle cx='186' cy='88' r='3'/><circle cx='214' cy='60' r='3.6'/><circle cx='178' cy='44' r='3'/></g></g></svg>") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 22px bottom 12px !important;
+  background-size: 150px auto !important;
+}
+
+/* „We found 0 results“ wird zu Sternbild, Mond und deutschem Satz. */
+body:not(.l8-o1):not(.l8-o2)
+.omnisearch-modal .prompt-results:not(:has(.suggestion-item)) > div[style*="text-align"] {
+  padding: 22px 12px 26px;
+  font-size: 0 !important;
+}
+
+body:not(.l8-o1):not(.l8-o2)
+.omnisearch-modal .prompt-results:not(:has(.suggestion-item)) > div[style*="text-align"]::before {
+  content: "";
+  display: block;
+  width: 170px;
+  height: 84px;
+  margin: 0 auto 10px;
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='-10 -20 280 170'><g stroke='%23b9a0d9' stroke-width='1.2' fill='none' opacity='.7'><path d='M28 104 L74 116 L120 100 L150 112 L186 88 L214 60 L178 44 L150 112'/></g><g fill='%23a9bcd9'><circle cx='28' cy='104' r='2.6'/><circle cx='74' cy='116' r='3.4'/><circle cx='120' cy='100' r='2.4'/><circle cx='150' cy='112' r='3.9'/><circle cx='186' cy='88' r='2.7'/><circle cx='214' cy='60' r='3.2'/><circle cx='178' cy='44' r='2.5'/></g><circle cx='40' cy='20' r='16' fill='%231c1d45'/><path d='M40 4 A16 16 0 0 1 40 36 A7 16 0 0 1 40 4Z' fill='%23f4f0ff'/></svg>") center / contain no-repeat;
+}
+
+body:not(.l8-o1):not(.l8-o2)
+.omnisearch-modal .prompt-results:not(:has(.suggestion-item)) > div[style*="text-align"]::after {
+  content: "Hier ist nichts … noch nicht.";
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--os-spot-indigo) 80%, var(--text-normal));
+}

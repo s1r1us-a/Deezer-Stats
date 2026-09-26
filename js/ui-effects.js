@@ -10,25 +10,6 @@
   const reduceMotion = () => reduceMQ.matches;
   const scrollBehavior = () => reduceMotion() ? 'auto' : 'smooth';
 
-  // ── Spotlight: folgt der Maus ──────────────────────────────
-  // Nur bei feinem Zeiger (Maus) und ohne Reduced-Motion — auf Touch bringt
-  // der Effekt nichts und kostet nur Pointer-Events.
-  const spot = document.getElementById('spotlight');
-  if(spot && finePointerMQ.matches && !reduceMotion()){
-    let raf = null, tx = 50, ty = 50;
-    window.addEventListener('pointermove', (e) => {
-      if(reduceMotion()) return;
-      tx = (e.clientX / window.innerWidth) * 100;
-      ty = (e.clientY / window.innerHeight) * 100;
-      if(raf) return;
-      raf = requestAnimationFrame(() => {
-        document.documentElement.style.setProperty('--mx', tx + '%');
-        document.documentElement.style.setProperty('--my', ty + '%');
-        raf = null;
-      });
-    }, { passive: true });
-  }
-
   // ── Scroll-Progress-Bar ────────────────────────────────────
   const progress = document.getElementById('scrollProgress');
   const backTop = document.getElementById('backTop');
@@ -89,30 +70,6 @@
       }, { rootMargin: '-45% 0px -50% 0px', threshold: 0 });
       sectionMap.forEach((_, section) => io.observe(section));
     }
-  }
-
-  // ── Parallax-Orbs ──────────────────────────────────────────
-  const parallaxEls = document.querySelectorAll('[data-parallax]');
-  if(parallaxEls.length){
-    let parallaxRaf = null;
-    const resetParallax = () => parallaxEls.forEach(el => { el.style.transform = 'none'; });
-    const updateParallax = () => {
-      parallaxRaf = null;
-      // Bei Reduced-Motion keine Scroll-Verschiebung — Orbs bleiben statisch.
-      if(reduceMotion()){ resetParallax(); return; }
-      const y = window.scrollY;
-      parallaxEls.forEach(el => {
-        const factor = parseFloat(el.dataset.parallax) || 0;
-        el.style.transform = `translate3d(0, ${-y * factor}px, 0)`;
-      });
-    };
-    window.addEventListener('scroll', () => {
-      if(parallaxRaf) return;
-      parallaxRaf = requestAnimationFrame(updateParallax);
-    }, { passive: true });
-    // Live auf Umschalten der Präferenz reagieren.
-    reduceMQ.addEventListener('change', () => { reduceMotion() ? resetParallax() : updateParallax(); });
-    updateParallax();
   }
 
   // ── Number-Counter: MutationObserver auf .mc-val ──────────
@@ -254,28 +211,34 @@
   else document.addEventListener('DOMContentLoaded', update);
 })();
 
-/* ── Theme-Toggle (analog gptstats initTheme) ──────────────────────
-   Standard: Light — Dark nur, wenn der Nutzer es per Toggle gewählt hat.
+/* ── Theme-Toggle ────────────────────────────────────────────────────
+   Standard: System (prefers-color-scheme), eigene Wahl per Toggle gewinnt.
    Das data-theme-Attribut wird bereits vor dem ersten Paint durch das
    Inline-Script im <head> gesetzt; hier nur Toggle + Persistenz. */
 (function(){
   'use strict';
   const btn = document.getElementById('themeToggle');
   if(!btn) return;
-  const metaTheme = document.querySelector('meta[name="theme-color"]');
-
   function applyThemeMeta(){
-    if(!metaTheme) return;
     const bg = getComputedStyle(document.body).getPropertyValue('--bg').trim();
-    if(bg) metaTheme.setAttribute('content', bg);
+    if(bg) document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', bg));
   }
 
-  btn.addEventListener('click', () => {
-    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  function setTheme(next, persist){
     document.documentElement.dataset.theme = next;
-    try{ localStorage.setItem('dzs-theme', next); }catch(e){}
+    if(persist){ try{ localStorage.setItem('dzs-theme', next); }catch(e){} }
     applyThemeMeta();
     if(typeof window.applyChartTheme === 'function') window.applyChartTheme();
+  }
+  btn.addEventListener('click', () => {
+    setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark', true);
+  });
+  // Ohne eigene Wahl folgt das Design live dem System
+  const sysMQ = window.matchMedia('(prefers-color-scheme: dark)');
+  sysMQ.addEventListener('change', e => {
+    let stored = null;
+    try{ stored = localStorage.getItem('dzs-theme'); }catch(err){}
+    if(stored !== 'light' && stored !== 'dark') setTheme(e.matches ? 'dark' : 'light', false);
   });
 
   applyThemeMeta();

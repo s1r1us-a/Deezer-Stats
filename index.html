@@ -1,10 +1,16 @@
 <!DOCTYPE html>
-<html lang="de" data-theme="light">
+<html lang="de">
 <head>
 <meta charset="UTF-8">
 <script>
 /* Theme vor dem ersten Paint setzen — verhindert Flash beim Reload */
-try { document.documentElement.dataset.theme = localStorage.getItem('dzs-theme') || 'light'; } catch (e) {}
+/* Gespeicherte Wahl gewinnt, sonst folgt das Design dem System */
+(function () {
+  var t = null;
+  try { t = localStorage.getItem('dzs-theme'); } catch (e) {}
+  if (t !== 'light' && t !== 'dark') t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  document.documentElement.dataset.theme = t;
+})();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <!-- iOS Safari Web-App / Homescreen-Support -->
@@ -12,7 +18,8 @@ try { document.documentElement.dataset.theme = localStorage.getItem('dzs-theme')
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="s1r1us-a Stats">
-<meta name="theme-color" content="#f5f5f7">
+<meta name="theme-color" content="#f7f8fb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f1219" media="(prefers-color-scheme: dark)">
 <meta name="format-detection" content="telephone=no">
 <meta name="color-scheme" content="light dark">
 <title>s1r1us-a — Ultimate Stats</title>
@@ -52,14 +59,16 @@ try { document.documentElement.dataset.theme = localStorage.getItem('dzs-theme')
 <body>
 <a href="#overview" class="skip-link">Zum Inhalt springen</a>
 
-<!-- ✨ MAKEOVER: Decor-Layer -->
-<div class="scroll-progress" id="scrollProgress"></div>
-<div class="spotlight" id="spotlight"></div>
-<div class="bg-orbs" aria-hidden="true">
-  <div class="orb-parallax" data-parallax="0.25"><div class="bg-orb o1"></div></div>
-  <div class="orb-parallax" data-parallax="0.45"><div class="bg-orb o2"></div></div>
-  <div class="orb-parallax" data-parallax="0.15"><div class="bg-orb o3"></div></div>
+<!-- Startbildschirm im Stil von Layer8-Boot -->
+<div id="boot" aria-hidden="true">
+  <div class="boot-mark">s1r1us-a Stats</div>
+  <div class="boot-aster"><span class="asterism"></span></div>
+  <div class="boot-msg">Archiv wird geladen</div>
+  <div class="boot-bar"><i></i></div>
 </div>
+<script>setTimeout(function(){document.body.classList.add('booted');},6000);</script>
+
+<div class="scroll-progress" id="scrollProgress"></div>
 
 <!-- ✨ MAKEOVER: Side-Nav (Desktop only) -->
 <nav class="side-nav" aria-label="Schnellnavigation" id="sideNav">
@@ -129,6 +138,7 @@ try { document.documentElement.dataset.theme = localStorage.getItem('dzs-theme')
         <div class="online-dot" id="online-dot" style="display:none;"></div>
       </div>
       <div>
+        <div class="hero-eyebrow">Deezer · Last.fm · Archiv</div>
         <div class="hero-name">s1r1us-a</div>
         <div class="hero-realname" id="hero-rn">Lädt...</div>
         <div class="hero-meta" id="hero-meta"><div class="ld"><div class="sp"></div></div></div>
@@ -183,7 +193,7 @@ try { document.documentElement.dataset.theme = localStorage.getItem('dzs-theme')
     <div class="sec-hdr">
       <div class="sec-title">Top Charts</div>
       <div class="sec-actions">
-        <div id="charts-track-count" style="display:none;font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:6px;background:var(--pink3);border:1px solid rgba(255,55,95,.25);color:var(--pink2);white-space:nowrap;"></div>
+        <div id="charts-track-count" style="display:none;"></div>
         <div class="sort-wrap">
           <button class="sort-btn active" id="sb-plays" data-action="setSort" data-arg="plays">Plays</button>
           <button class="sort-btn" id="sb-alpha" data-action="setSort" data-arg="alpha">A–Z</button>
@@ -201,7 +211,7 @@ try { document.documentElement.dataset.theme = localStorage.getItem('dzs-theme')
       </div>
     </div>
     <div class="search-wrap">
-      <span class="search-icon">🔍</span>
+      <span class="search-icon" aria-hidden="true">⌕</span>
       <input class="search-input" id="chart-search" placeholder="Suchen..." aria-label="Charts durchsuchen">
     </div>
     <div class="ctabs" role="tablist" aria-label="Kategorie">
@@ -233,13 +243,13 @@ try { document.documentElement.dataset.theme = localStorage.getItem('dzs-theme')
             <button class="pb" data-m="lifetime">Lifetime ∞</button>
           </div>
         </div>
-        <div id="lifetime-progress" style="display:none;font-family:var(--mono);font-size:10px;color:var(--pink);margin-bottom:8px;"></div>
-        <div class="chart-wrap" style="height:200px;"><canvas id="monthlyChart" role="img" aria-label="Monatliche Scrobbles"></canvas></div>
+                <div class="chart-wrap" style="height:200px;"><canvas id="monthlyChart" role="img" aria-label="Monatliche Scrobbles"></canvas></div>
         <div id="lifetime-stats" class="metric-grid" style="margin-top:12px;display:none;"></div>
       </div>
       <div class="chart-glass">
         <div class="chart-glass-hdr">
           <span class="chart-glass-title">Top-Künstler Anteile</span>
+          <span class="chart-glass-sub">an allen Scrobbles</span>
         </div>
         <div class="chart-wrap" style="height:200px;"><canvas id="pieChart" role="img" aria-label="Künstler Anteile"></canvas></div>
         <div id="pie-legend" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;"></div>
@@ -289,11 +299,11 @@ try { document.documentElement.dataset.theme = localStorage.getItem('dzs-theme')
     <div id="cal-container"><div class="ld"><div class="sp"></div> Lade Kalender-Daten...</div></div>
     <div class="cal-legend">
       <span>Weniger</span>
-      <div class="cal-leg-box" style="background:var(--bg3)"></div>
-      <div class="cal-leg-box" style="background:rgba(255,55,95,.25)"></div>
-      <div class="cal-leg-box" style="background:rgba(255,55,95,.5)"></div>
-      <div class="cal-leg-box" style="background:rgba(255,55,95,.75)"></div>
-      <div class="cal-leg-box" style="background:var(--pink)"></div>
+      <div class="cal-leg-box lv0"></div>
+      <div class="cal-leg-box lv1"></div>
+      <div class="cal-leg-box lv2"></div>
+      <div class="cal-leg-box lv3"></div>
+      <div class="cal-leg-box lv4"></div>
       <span>Mehr</span>
     </div>
     <div id="year-content" style="margin-top:24px;"><div class="ld"><div class="sp"></div></div></div>
@@ -375,10 +385,10 @@ try { document.documentElement.dataset.theme = localStorage.getItem('dzs-theme')
       <div id="archive-progress-txt" class="modal-progress-txt">0%</div>
     </div>
     <div class="modal-actions">
-      <button id="archive-import-btn" data-action="startFullImport" class="modal-btn-primary">⬇ Vollständiger Import</button>
+      <button id="archive-import-btn" data-action="startFullImport" class="modal-btn-secondary">⬇ Vollständiger Import</button>
       <button id="archive-delta-btn" data-action="startDeltaSync" class="modal-btn-secondary">↻ Delta-Sync</button>
-      <button id="archive-check-btn" data-action="startArchiveCheck" class="modal-btn-secondary">🔎 Archiv prüfen</button>
-      <button id="archive-repair-btn" data-action="startArchiveRepair" class="modal-btn-secondary" style="display:none;">🩹 Reparieren</button>
+      <button id="archive-check-btn" data-action="startArchiveCheck" class="modal-btn-primary">🔎 Archiv prüfen</button>
+      <button id="archive-repair-btn" data-action="startArchiveRepair" class="modal-btn-primary" style="display:none;">🩹 Reparieren</button>
       <button id="archive-abort-btn" data-action="abortImport" class="modal-btn-danger">✕ Abbrechen</button>
     </div>
     <div id="archive-check" class="archive-check" style="display:none;"></div>
@@ -396,7 +406,7 @@ try { document.documentElement.dataset.theme = localStorage.getItem('dzs-theme')
     <div class="sec-hdr" style="cursor:pointer;" data-action="toggleArchive">
       <div class="sec-title">Archiv <span id="archive-sec-badge" class="sec-info" style="margin-left:6px;"></span></div>
       <div style="display:flex;align-items:center;gap:10px;">
-        <span id="archive-toggle-icon" style="font-family:var(--mono);font-size:12px;color:var(--text3);transition:transform .3s;">▼</span>
+        <span id="archive-toggle-icon" style="font-size:12px;color:var(--text3);transition:transform .3s;">▼</span>
       </div>
     </div>
     <div id="archive-body" style="display:none;">

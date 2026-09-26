@@ -11,7 +11,6 @@ const FB_CONFIG={
 firebase.initializeApp(FB_CONFIG);
 const db=firebase.database();
 
-const AVG_TRACK_SEC=180; // 3:00 average
 const SLIDE_DURATION_MS=5800;
 const SLIDE_DURATION_LONG=7200; // for intro / outro
 
@@ -66,6 +65,22 @@ window.addEventListener('orientationchange',()=>setTimeout(setVH,200));
 // DATA LOAD
 // ═════════════════════════════════════════════════════════════════
 
+// Schreibweisen vereinheitlichen: „daft punk“ und „Daft Punk“ zählen als
+// ein Künstler (wie im Dashboard). Angezeigt wird die häufigste Schreibweise.
+function unifyNames(list){
+  const pick = (getKey, getName, setName) => {
+    const counts = new Map();
+    list.forEach(s => { const n = getName(s); if(!n) return; const k = getKey(s);
+      let m = counts.get(k); if(!m){ m = new Map(); counts.set(k, m); } m.set(n, (m.get(n)||0)+1); });
+    const best = new Map();
+    counts.forEach((m,k) => { let b='',c=-1; m.forEach((n,name)=>{ if(n>c){b=name;c=n;} }); best.set(k,b); });
+    list.forEach(s => { const n = getName(s); if(n) setName(s, best.get(getKey(s))); });
+  };
+  pick(s=>s.artist.toLowerCase(), s=>s.artist, (s,v)=>{s.artist=v;});
+  pick(s=>s.artist.toLowerCase()+'|'+s.track.toLowerCase(), s=>s.track, (s,v)=>{s.track=v;});
+  pick(s=>s.artist.toLowerCase()+'|'+s.album.toLowerCase(), s=>s.album, (s,v)=>{s.album=v;});
+}
+
 // Shared preload — dedupes concurrent fetches, caches result.
 // Returns Promise<Array> (empty array if no archive).
 function preloadArchive(){
@@ -74,12 +89,16 @@ function preloadArchive(){
     const snap = await db.ref('scrobbles').once('value');
     if(!snap.exists()) return [];
     const data = snap.val();
-    const arr = Object.entries(data).map(([key, v]) => ({
-      ts: parseInt(key.split('_')[0]) * 1000,
-      artist: (v && v.artist ? String(v.artist) : '').trim(),
-      track: (v && v.track ? String(v.track) : '').trim(),
-      album: (v && v.album ? String(v.album) : '').trim()
-    })).filter(s => s.artist && s.ts > 0).sort((a,b) => a.ts - b.ts);
+    // Gemeinsame Archiv-Logik (core.js): gleiche Sortierung, Track-IDs und
+    // Groß/Kleinschreibungs-Regeln wie im Dashboard.
+    const list = ScrobbleCore.toList(data).filter(s => s.artist);
+    unifyNames(list);
+    try{
+      const meta = await db.ref('track_meta').once('value');
+      ScrobbleCore.Durations.setMeta(meta.exists() ? meta.val() : {});
+    }catch(e){ console.warn('track_meta nicht geladen:', e); }
+    ScrobbleCore.Durations.recompute(list);
+    const arr = list.map(s => ({ts: s.ts*1000, artist: s.artist, track: s.track, album: s.album, tid: s.tid}));
     state.allScrobbles = arr;
     return arr;
   })();
@@ -124,7 +143,7 @@ function computeCompareStats(scrobbles){
   });
   const sorted = [...artistMap.entries()].sort((a,b)=>b[1]-a[1]);
   const total = scrobbles.length;
-  const totalSec = total * AVG_TRACK_SEC;
+  const totalSec = ScrobbleCore.Durations.total(scrobbles);
   return {
     total,
     totalHours: Math.floor(totalSec/3600),
@@ -245,7 +264,7 @@ function computeStats(){
   wdCounts.forEach((c,w)=>{ if(c>peakWdCount){ peakWdCount=c; peakWd=w; } });
 
   // Hours listened
-  const totalSec = total*AVG_TRACK_SEC;
+  const totalSec = ScrobbleCore.Durations.total(scr);
   const h = Math.floor(totalSec/3600);
   const m = Math.floor((totalSec%3600)/60);
   const daysEquiv = (totalSec/86400).toFixed(1);
@@ -710,7 +729,9 @@ function animateCounter(el, target, dur=1500){
 
 function spawnConfetti(container, count=40){
   if(prefersReducedMotion()) return;
-  const colors = ['#0a84ff','#5e5ce6','#bf5af2','#ff375f','#ff9f0a','#30d158'];
+  const cs = getComputedStyle(document.documentElement);
+  const colors = ['--ag-display-blue','--ag-display-indigo','--ag-display-purple','--ag-display-pink','--ag-display-teal','--ag-display-orange']
+    .map(v => cs.getPropertyValue(v).trim() || '#5e5ce6');
   const layer = document.createElement('div');
   layer.className = 'confetti';
   for(let i=0;i<count;i++){
@@ -995,10 +1016,10 @@ function bindInteractions(){
 }
 
 // ═════════════════════════════════════════════════════════════════
-// SHARE CARD (html2canvas)
+// SHARE CARD (modern-screenshot — rendert mit echtem Browser-CSS)
 // ═════════════════════════════════════════════════════════════════
 async function shareCard(){
-  if(typeof html2canvas === 'undefined'){ toast('Screenshot-Modul nicht geladen'); return; }
+  if(typeof modernScreenshot === 'undefined'){ toast('Screenshot-Modul nicht geladen'); return; }
   const s = state.stats; const p = state.period;
   if(!s || !p){ return; }
 
@@ -1022,11 +1043,8 @@ async function shareCard(){
 
   toast('Erstelle Bild…');
   try{
-    const canvas = await html2canvas(card,{
-      backgroundColor:null, scale:2, useCORS:true, allowTaint:true, logging:false,
-      width:540, height:960
-    });
-    canvas.toBlob(async blob=>{
+    const blob = await modernScreenshot.domToBlob(card,{scale:2, width:540, height:960, type:'image/png'});
+    await (async blob=>{
       if(!blob){ toast('Fehler beim Erstellen'); return; }
       const filename = `s1r1us-a-wrapped-${p.kind==='30d'?'30d':p.year}.png`;
       // Try native share first (mobile)
@@ -1043,7 +1061,7 @@ async function shareCard(){
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(()=>URL.revokeObjectURL(url), 1000);
       toast('Gespeichert ✨');
-    }, 'image/png', 0.95);
+    })(blob);
   }catch(e){
     console.error(e);
     toast('Fehler: '+e.message);

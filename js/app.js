@@ -270,7 +270,7 @@ function animateCounter(el,target,dur=1200){
     const p=Math.min((Date.now()-start)/dur,1);
     const ease=1-Math.pow(1-p,3);
     const val=from+(target-from)*ease;
-    el.textContent=isFloat?val.toFixed(1):fmt(Math.round(val));
+    el.textContent=isFloat?val.toLocaleString('de-DE',{minimumFractionDigits:1,maximumFractionDigits:1}):fmt(Math.round(val));
     if(p<1) requestAnimationFrame(tick);
   };
   tick();
@@ -446,6 +446,7 @@ function coverageNote(cov){
   const p=Math.round(cov*100);
   return p>=99?'echte Track-Längen':p>0?`${p} % echte Längen`:'geschätzt (Längen laden…)';
 }
+const fmtLen=sec=>{const s=Math.round(sec);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')+' Min';};
 function renderOverview({total,days,u}){
   const list=archiveList();
   const arch=list.length>0;
@@ -469,6 +470,7 @@ function renderOverview({total,days,u}){
     <div class="mc" style="--cc:var(--ag-display-blue)"><div class="mc-label">Entdeckte Künstler</div><div class="mc-val counter" id="cnt-artists">0</div></div>
     <div class="mc" style="--cc:var(--ag-display-indigo)"><div class="mc-label">Entdeckte Tracks</div><div class="mc-val counter" id="cnt-tracks">0</div></div>
     <div class="mc" style="--cc:var(--ag-display-purple)"><div class="mc-label">Entdeckte Alben</div><div class="mc-val counter" id="cnt-albums">0</div></div>
+    <div class="mc" style="--cc:var(--ag-display-pink)"><div class="mc-label">Ø Tracklänge</div><div class="mc-val" id="mc-avglen">${fmtLen(totalFinal?li.mins*60/totalFinal:210)}</div><div class="mc-sub">pro Scrobble</div></div>
   `;
   setTimeout(()=>{
     animateCounter(document.getElementById('cnt-total'),totalFinal);
@@ -495,11 +497,13 @@ function onDurationsUpdated(force=false){
   const v=document.getElementById('mc-time-val'),s=document.getElementById('mc-time-sub');
   if(v) v.textContent=fmtHours(li.mins);
   if(s) s.textContent=`≈ ${fmtTime(li.mins/Math.max(days,1))} / Tag · ${coverageNote(li.coverage)}`;
+  const al=document.getElementById('mc-avglen');
+  if(al) al.textContent=fmtLen(li.mins*60/list.length);
   updateTodayTime();
   const yr=document.getElementById('yr-total-sub');
   if(yr&&selectedYear){
     const sl=C.slice(list,C.sec(new Date(selectedYear,0,1)),C.sec(new Date(selectedYear+1,0,1)));
-    yr.textContent=`Scrobbles · ≈ ${fmtTime(C.Durations.total(sl)/60)}`;
+    yr.textContent=`Scrobbles · ≈ ${fmtHours(C.Durations.total(sl)/60)} Hörzeit`;
   }
 }
 
@@ -741,7 +745,7 @@ function renderMonthlyChart(counts){
     options:{responsive:true,maintainAspectRatio:false,
       plugins:{legend:{display:false},tooltip:{...cc.tooltip,callbacks:{label:c=>' '+fmt(c.parsed.y)+' Scrobbles'}}},
       scales:{
-        x:{ticks:{color:cc.tick,font:{size:lifetime?8:9},maxRotation:lifetime?90:45,callback:lifetime?((v,i)=>i%3===0?labels[i]:''):undefined},grid:{display:false},border:{display:false}},
+        x:{ticks:Object.assign({color:cc.tick,font:{size:lifetime?8:9},maxRotation:lifetime?90:45},lifetime?{callback:(v,i)=>i%3===0?labels[i]:''}:{}),grid:{display:false},border:{display:false}},
         y:{ticks:{color:cc.tick,font:{size:9},callback:v=>fmt(v)},grid:{color:cc.grid},border:{display:false}}}}
   });
   const statsEl=document.getElementById('lifetime-stats');
@@ -843,7 +847,7 @@ function renderWeekday(data){
     counts=data.counts;
     total=data.total;
     const m=(data.label||'').match(/Letzte\s+[^·]+/i);
-    subLabel=m?m[0].trim().toLowerCase():'Aktivität';
+    subLabel=m?m[0].trim():'Aktivität';
   }
   const subEl=document.getElementById('wd-sub');
   if(subEl) subEl.textContent=subLabel;
@@ -860,9 +864,9 @@ function renderWeekday(data){
         <div class="wd-l" style="opacity:${c===0?0.35:1};color:${isMx?'var(--peak)':'var(--text3)'};">${days[i]}</div>
       </div>`;
     }).join('')}</div>
-    <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:12px;">
+    <div class="chart-foot">
       <span>${fmt(total)} Plays gesamt</span>
-      ${max>0?`<span style="color:var(--peak);">Peak: ${topDay} · ${fmt(max)} Plays</span>`:''}
+      ${max>0?`<span class="peak">Peak: ${topDay} · ${fmt(max)} Plays</span>`:''}
     </div>
   `;
 }
@@ -879,7 +883,7 @@ function renderClock(data){
   } else {
     hours=data.hours;
     const m=(data.label||'').match(/Letzte\s+[^·]+/i);
-    subLabel=m?m[0].trim().toLowerCase():'Aktivität';
+    subLabel=m?m[0].trim():'Aktivität';
   }
   const subEl=document.getElementById('clock-sub');
   if(subEl) subEl.textContent=subLabel;
@@ -907,9 +911,9 @@ function renderClock(data){
 
   document.getElementById('hour-chart').innerHTML=`
     <div class="wd-bars" id="hour-bars" style="height:140px;align-items:flex-end;padding-bottom:0;gap:4px;">${bars}</div>
-    <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:12px;">
+    <div class="chart-foot">
       <span>${fmt(total)} Plays gesamt</span>
-      ${max>0?`<span style="color:var(--peak);">Peak: ${String(peakHour).padStart(2,'0')}:00 · ${fmt(max)} Plays</span>`:''}
+      ${max>0?`<span class="peak">Peak: ${String(peakHour).padStart(2,'0')}:00 · ${fmt(max)} Plays</span>`:''}
     </div>
   `;
 
@@ -1237,7 +1241,7 @@ async function loadYearReview(year){
     <div class="mc hi year-total" style="--cc:var(--ag-display-indigo)">
       <div class="mc-label">Gesamt ${year}</div>
       <div class="mc-val pink">${fmt(sl.length)}</div>
-      <div class="mc-sub" id="yr-total-sub">Scrobbles · ≈ ${fmtTime(C.Durations.total(sl)/60)}</div>
+      <div class="mc-sub" id="yr-total-sub">Scrobbles · ≈ ${fmtHours(C.Durations.total(sl)/60)} Hörzeit</div>
     </div>
     <div class="g3">
       <div><div class="kicker">Top Künstler</div><div class="rlist">${miniList(artists,'artists')}</div></div>
@@ -1264,9 +1268,9 @@ async function loadCompare(){
   function renderSide(side,label){
     return `<div class="cmp-side">
       <div class="cmp-title">${label}</div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">Top Künstler</div>
+      <div class="kicker">Top Künstler</div>
       <div class="rlist" style="margin-bottom:14px;">${side.artists.slice(0,5).map((a,i)=>`<div class="ri" style="padding:6px 10px;"><span class="rn ${rankCls(i)}">${i+1}</span>${imgEl(a.image?.find(x=>x.size==='medium')?.['#text']||a.image?.[1]?.['#text'])}<div class="ri-info"><div class="ri-name">${escapeHTML(a.name)}</div></div><span class="plays">${fmt(parseInt(a.playcount||0))}</span></div>`).join('')}</div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.06em;">Top Tracks</div>
+      <div class="kicker">Top Tracks</div>
       <div class="rlist">${side.tracks.slice(0,5).map((t,i)=>`<div class="ri" style="padding:6px 10px;"><span class="rn ${rankCls(i)}">${i+1}</span>${imgEl(t.image?.find(x=>x.size==='medium')?.['#text']||t.image?.[1]?.['#text'])}<div class="ri-info"><div class="ri-name">${escapeHTML(t.name)}</div><div class="ri-sub">${escapeHTML(t.artist?.name||'')}</div></div><span class="plays">${fmt(parseInt(t.playcount||0))}</span></div>`).join('')}</div>
     </div>`;
   }
@@ -1614,7 +1618,7 @@ async function openArtistDrillDown(artistName,period=chartPeriod){
   const a=artistName.toLowerCase();
   const sl=C.slice(archiveList(),from,to).filter(e=>e.artist.toLowerCase()===a);
   const sorted=C.aggregate(sl,'tracks');
-  subEl.textContent=`${PERIOD_LABEL[period]||period} · ${fmt(sl.length)} Plays · ${fmt(sorted.length)} Tracks · ≈ ${fmtTime(C.Durations.total(sl)/60)}`;
+  subEl.textContent=`${PERIOD_LABEL[period]||period} · ${fmt(sl.length)} Plays · ${fmt(sorted.length)} Tracks · ≈ ${fmtHours(C.Durations.total(sl)/60)}`;
   if(!sorted.length){bodyEl.innerHTML=emptyState('Keine Tracks für diesen Zeitraum gefunden.');return;}
   const max=sorted[0].playcount;
   bodyEl.innerHTML=`<div class="rlist">${sorted.map((t,i)=>{
@@ -1660,6 +1664,7 @@ async function init(){
     joinYear=heroJoinYear;
     if(_lastHeroData) renderHero(_lastHeroData,isLfmDown());
     renderOverview(ud);
+    document.body.classList.add('booted');
     buildYearSel(heroJoinYear);
     loadCompare();
     try{window._lastRecentTracks=await loadRecent();}catch(e){window._lastRecentTracks=[];}
@@ -1689,6 +1694,7 @@ async function init(){
     });
   }catch(e){
     console.error(e);
+    document.body.classList.add('booted');
     document.body.insertAdjacentHTML('afterbegin',`<div class="wrap"><div class="err" style="margin:16px 0;">Fehler: ${escapeHTML(e.message)}</div></div>`);
   }
 }
